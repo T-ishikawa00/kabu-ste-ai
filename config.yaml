@@ -1,0 +1,107 @@
+# config.yaml — production-safe（HoldID遅延対策入り）
+
+api:
+  base: http://localhost:18080/kabusapi
+  api_password: Htk050313
+  trade_password: Htk_222305
+
+telemetry_path: runtime/telemetry.json
+
+entry:
+  theta: 0.55
+
+exit:
+  trail_back_pct: 0.008
+  trail_start_pct: 0.02
+  max_hold_sec: 8
+  rules:
+    max_spread_ticks_mean_5m: 1.0   # 直近5分の平均スプレッド(ティック)
+    min_vol_1m_mean_5m: 8000        # 直近5分の平均1分出来高(近似)
+    obi_mean_high: 0.58
+    obi_mean_low: 0.42
+  hysteresis:
+    add_required_hits: 2
+    drop_required_hits: 3
+
+learning:
+  enable_auto_train: true
+  auto_train_time: "16:30"   # JST
+  lookback_days: 7
+  micro_go_live_enabled: true
+  challenger_share: 0.10
+
+risk:
+  no_new_entry_after: "14:50"
+  force_close_time: "14:55"
+
+safety:
+  api_latency_ms_limit: 1500
+  pause_on_latency: true
+  spike_pct: 3.5
+  spike_window_sec: 3
+  pause_after_spike_sec: 60
+  board_min_interval_ms: 200
+  api_qps_limit: 12
+  kill_switch_file: runtime/kill.txt
+  holdid_wait_ms: 3000     # ← HoldID待ちを3秒に延長
+  poll_interval_ms: 50     # ← 50msポーリング
+  api_qps_limit: 6               # ← 1秒6回上限目安
+  board_min_interval_ms: 700     # ← 同一銘柄の板は最短0.9秒間隔
+  cooldown_after_exit_sec: 0.6    # 2.0→1.2（回転↑
+  streak_pause_sec: 90           # 連敗時は小休止を長めに
+
+paper_trading: true        # 本番は false に変更
+
+orders:
+  buy:
+    front_order_type: 10        # 10=成行
+    margin_trade_type: 1        # 制度信用（FIFO返済が通る）
+  sell:
+    front_order_type: 10        # 10=成行
+    margin_trade_type: 1        # 制度信用に合わせる
+
+portfolio:
+  max_open_positions: 3
+
+# 追加/修正点だけ抜粋（他セクションはそのまま）
+
+# 同時監視の上限（板のQPSと相談して小さめ推奨）
+max_concurrent_symbols: 6
+
+gatekeeper:
+  enabled: true
+  allowed_symbols: []   # 空なら下の symbols を全許可（ローテーションの土台にする）
+
+rotation:
+  enabled: true
+  recompute_sec: 60
+  max_watchlist: 8
+  min_watchlist: 5
+  # rules/hysteresis は前回のままでOK
+
+symbols:
+  - code: "7013" 
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 3
+  - code: "5595"  
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 3
+  - code: "4418" 
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 3
+  - code: "3778"  
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 3
+  - code: "4443" 
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 3
+  - code: "3853"  
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 3
+
