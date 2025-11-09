@@ -1,5 +1,3 @@
-# config.yaml — production-safe（HoldID遅延対策入り）
-
 api:
   base: http://localhost:18080/kabusapi
   api_password: Htk050313
@@ -15,8 +13,8 @@ exit:
   trail_start_pct: 0.02
   max_hold_sec: 8
   rules:
-    max_spread_ticks_mean_5m: 1.0   # 直近5分の平均スプレッド(ティック)
-    min_vol_1m_mean_5m: 8000        # 直近5分の平均1分出来高(近似)
+    max_spread_ticks_mean_5m: 1.0
+    min_vol_1m_mean_5m: 8000
     obi_mean_high: 0.58
     obi_mean_low: 0.42
   hysteresis:
@@ -25,7 +23,7 @@ exit:
 
 learning:
   enable_auto_train: true
-  auto_train_time: "16:30"   # JST
+  auto_train_time: "16:30"
   lookback_days: 7
   micro_go_live_enabled: true
   challenger_share: 0.10
@@ -40,68 +38,58 @@ safety:
   spike_pct: 3.5
   spike_window_sec: 3
   pause_after_spike_sec: 60
-  board_min_interval_ms: 200
-  api_qps_limit: 12
+  board_min_interval_ms: 900
+  api_qps_limit: 6
   kill_switch_file: runtime/kill.txt
-  holdid_wait_ms: 3000     # ← HoldID待ちを3秒に延長
-  poll_interval_ms: 50     # ← 50msポーリング
-  api_qps_limit: 6               # ← 1秒6回上限目安
-  board_min_interval_ms: 700     # ← 同一銘柄の板は最短0.9秒間隔
-  cooldown_after_exit_sec: 0.6    # 2.0→1.2（回転↑
-  streak_pause_sec: 90           # 連敗時は小休止を長めに
+  holdid_wait_ms: 3000
+  poll_interval_ms: 50
+  cooldown_after_exit_sec: 0.6
+  streak_pause_sec: 90
 
-paper_trading: true        # 本番は false に変更
+paper_trading: true
 
 orders:
-  buy:
-    front_order_type: 10        # 10=成行
-    margin_trade_type: 1        # 制度信用（FIFO返済が通る）
-  sell:
-    front_order_type: 10        # 10=成行
-    margin_trade_type: 1        # 制度信用に合わせる
+  style: "marketable_limit"
+  ioc: true
+  cap_ticks_entry: 2
+  cap_ticks_exit: 3
+  cap_pct_entry: 0.30
+  cap_pct_exit: 0.50
+  retry:
+    enabled: true
+    max_attempts: 2
+    widen_ticks_each: 1
+    wait_ms_between: 200
+  forbid_market_on_5yen: true
 
 portfolio:
-  max_open_positions: 3
-
-# 追加/修正点だけ抜粋（他セクションはそのまま）
-
-# 同時監視の上限（板のQPSと相談して小さめ推奨）
-max_concurrent_symbols: 6
+  max_open_positions: 6
 
 gatekeeper:
   enabled: true
-  allowed_symbols: []   # 空なら下の symbols を全許可（ローテーションの土台にする）
+  allowed_symbols: []
 
 rotation:
   enabled: true
   recompute_sec: 60
   max_watchlist: 8
   min_watchlist: 5
-  # rules/hysteresis は前回のままでOK
+
+max_concurrent_symbols: 5
 
 symbols:
-  - code: "7013" 
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 3
-  - code: "5595"  
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 3
-  - code: "4418" 
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 3
-  - code: "3778"  
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 3
-  - code: "4443" 
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 3
-  - code: "3853"  
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 3
+  - { code: "7013", exchange: 1, qty: 100, min_order_interval_sec: 3 }
+  - { code: "7011", exchange: 1, qty: 100, min_order_interval_sec: 3 }
+  - { code: "5803", exchange: 1, qty: 100, min_order_interval_sec: 3 }
+  - { code: "9432", exchange: 1, qty: 100, min_order_interval_sec: 3 }
+  - { code: "5020", exchange: 1, qty: 100, min_order_interval_sec: 3 }
+
+strategies:
+  SCALP:      { tp_ticks: 1, sl_ticks: 1, max_hold_sec: 25,  max_spread_ticks: 3,  heat_entry: 0.64, exit_drop: 0.45 }
+  MINI_SWING: { tp_ticks_cap: 4, sl_ticks_cap: 2, max_hold_sec: 300, max_spread_ticks: 2, heat_exit_drop: 0.40, obi_flip: 0.10, vwap_distance_max: 0.35 }
+
+router:
+  prefer_swing_if: { heat: 0.72, vwap_distance: 0.25, spread_ticks: 2, vol_boost_ratio: 1.5, market_temp: 0.60 }
+  forbid_entry_if: { spread_ticks: 6, vol_rank: 0.10, price_step: 5 }
+
 

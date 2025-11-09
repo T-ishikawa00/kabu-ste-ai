@@ -85,3 +85,7 @@ class RiskSizer:
         self.last_decide_ms[code] = now
         qty = RULE_CFG["size_levels"][idx]
         return {"qty": qty, "reason": reason, "idx": idx}
+    def size_for_strategy(base_qty: int, strategy: str) -> int:
+        if strategy == "MINI_SWING":
+            return max(100, int(base_qty * 0.5))
+        return int(base_qty)

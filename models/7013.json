@@ -1,5 +1,10 @@
 {
-  "theta": 0.64,
-  "w_buy": 0.9989990009999998,
-  "w_sell": 1.0
+  "w_buy": 0.9960049999950038,
+  "w_sell": 1.0,
+  "theta_by_strategy": {
+    "SCALP": 0.65,
+    "MINI_SWING": 0.61
+  },
+  "reward_sum": 2.0,
+  "updated_at": "2025-11-09T14:34:11.535073+09:00"
 }
