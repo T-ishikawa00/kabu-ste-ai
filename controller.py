@@ -62,11 +62,29 @@ VOL_MED_FACTOR  = 0.4
 MOMENTUM_DELTA  = 0.5
 OBI_BE_THRESH   = 0.48
 
+
 def _hhmm() -> str:
     return now().strftime("%H:%M")
 
+
 def _time_ge(target_hhmm: str) -> bool:
     return _hhmm() >= str(target_hhmm)
+
+
+def _regime_now() -> str:
+    """
+    簡易レジーム判定:
+      - 09:00〜09:10 くらいまで: OPEN
+      - 〜12:30       : AM
+      - それ以降      : PM
+    """
+    h = _hhmm()
+    if h < "09:10":
+        return "OPEN"
+    if h < "12:30":
+        return "AM"
+    return "PM"
+
 
 class Controller:
     def __init__(self, cfg):
@@ -281,14 +299,14 @@ class Controller:
                                 self._cooldown_until[code_s] = time.time() + pause_sec
                                 logging.warning("Spike pause: code=%s Δ=%.2f%% for %.0fs", code_s, d_pct, pause_sec)
 
-                    # ====== 特徴量（7.3 最小） ======
+                    # ====== 特徴量（7.3 最小＋8.0用拡張） ======
                     # VWAP距離(%)
                     vwap = (h["pv"]/h["vv"]) if h["vv"] > 0 else float(cur)
                     vwap_dist_pct = abs(float(cur) - vwap) / max(1.0, vwap) * 100.0
                     # 出来高加速(1min/5minMA)
                     vol1m = sum(list(h["vol_1s"])[-60:])
                     if len(h["vol_1s"]) >= 300:
-                        vol5m = sum(list(h["vol_1s"])[-300:]) / 5.0
+                        vol5m = sum(list(h["vol_1s"])[-300:]) / 5.0  # 1分あたり
                     else:
                         vol5m = max(1.0, sum(h["vol_1s"]) / max(1, len(h["vol_1s"])))
                     vol_boost = float(vol1m) / max(1.0, vol5m)
@@ -304,6 +322,10 @@ class Controller:
                     depth_ratio = float((bid_qty or 1)) / max(1.0, float(ask_qty or 1))
                     depth_factor = depth_ratio / (1.0 + depth_ratio)   # 0〜1
                     market_temp = max(0.0, min(1.0, 0.5 * min(2.0, vol_boost) / 2.0 + 0.5 * depth_factor))
+                    market_heat = market_temp  # Lv8.0 用の名前付け
+
+                    # 時間帯レジーム
+                    regime = _regime_now()
 
                     # スプレッド広すぎ → 観測
                     if (spread_ticks is not None) and (spread_ticks > ROUTER_FORBID["spread_ticks"]):
@@ -400,17 +422,25 @@ class Controller:
                         elif (spread_ticks is not None) and (spread_ticks > SWING["max_spread_ticks"]):
                             strategy = "OBSERVE"
 
+                    # 市場温度しきい値（レジーム別）
+                    market_heat_thr = 0.5 if regime == "OPEN" else 0.4
+                    market_hot_enough = (market_heat >= market_heat_thr)
+
                     # エントリー可否
                     if (not pos_open) and strong_long and (strategy != "OBSERVE") \
                         and can_trade_window and can_new_entry and under_max_positions and interval_ok \
-                        and allowed and cool_ok and (self._daily_pnl > -self._daily_stop):
+                        and allowed and cool_ok and (self._daily_pnl > -self._daily_stop) \
+                        and market_hot_enough:
 
                         # 戦略別のサイズ調整：SWINGは0.5倍
                         if strategy == "MINI_SWING":
                             decided_qty = max(100, int(decided_qty * 0.5))
 
                         if self.cfg.paper_trading:
-                            logging.info("PAPER BUY %s@%s x%d cur=%s strategy=%s", sym.code, sym.exchange, decided_qty, cur, strategy)
+                            logging.info(
+                                "PAPER BUY %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f",
+                                sym.code, sym.exchange, decided_qty, cur, strategy, regime, heat_for_router, market_heat
+                            )
                             self.brk.pos[sym.code] = {
                                 "entry": float(cur), "qty": int(decided_qty),
                                 "ts": time.time(), "fill_ts": time.time(),
@@ -418,7 +448,10 @@ class Controller:
                             }
                             self.brk.last_order_ts[sym.code] = time.time()
                         else:
-                            logging.info("LIVE BUY  %s@%s x%d cur=%s strategy=%s", sym.code, sym.exchange, decided_qty, cur, strategy)
+                            logging.info(
+                                "LIVE BUY  %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f",
+                                sym.code, sym.exchange, decided_qty, cur, strategy, regime, heat_for_router, market_heat
+                            )
                             res = self.brk.buy(sym, b, cur)
                             if not res or res.get("Result") != 0:
                                 logging.error("LIVE BUY 失敗: %s", res)
@@ -502,9 +535,9 @@ class Controller:
                                         logging.info(f"[BROKER] EXIT_OK code={sym.code} resp={resp}")
                                     del self.brk.pos[sym.code]
 
-                        # --- MINI_SWING: 条件崩壊型 ---
+                        # --- MINI_SWING: 条件崩壊型 ---  (Lv8.0: 市場温度も見る)
                         elif strategy == "MINI_SWING":
-                            # 条件崩壊：heat低下・OBI反転・出来高失速・VWAP逸脱・時間切れ
+                            # 条件崩壊：heat低下・OBI反転・出来高失速・VWAP逸脱・時間切れ・市場温度低下
                             hit_tp = isinstance(bid, (int, float)) and (bid >= entry_px + SWING["tp_ticks_cap"] * tick)
                             hit_sl = isinstance(bid, (int, float)) and (bid <= entry_px - SWING["sl_ticks_cap"] * tick)
                             heat_now = float(imbalance if imbalance is not None else 0.5)
@@ -514,11 +547,18 @@ class Controller:
                             hit_time = held_sec >= SWING["max_hold_sec"]
                             hit_force = bool(force_close)
 
-                            if hit_tp or hit_sl or hit_time or hit_force or (heat_now < SWING["heat_exit_drop"]) or vol_cool or obi_flip or vwap_over:
+                            # 市場温度による EXIT 条件（レジーム別）
+                            exit_mkt_thr = 0.35 if regime == "OPEN" else 0.30
+                            market_cold = (market_heat < exit_mkt_thr)
+
+                            if hit_tp or hit_sl or hit_time or hit_force \
+                               or (heat_now < SWING["heat_exit_drop"]) \
+                               or vol_cool or obi_flip or vwap_over or market_cold:
                                 if hit_tp: reason = "TP"
                                 elif hit_sl: reason = "SL"
                                 elif hit_time: reason = "TIME"
                                 elif hit_force: reason = "FORCE"
+                                elif market_cold: reason = "MKT"
                                 else: reason = "COND"
 
                                 if self.cfg.paper_trading:
