@@ -1,0 +1,13 @@
+2025-11-15 15:27:21,577 [INFO] ==== Session Start 2025-11-15 15:27:21 ====
+2025-11-15 15:27:21,577 [INFO] === 通常取引モード起動 ===
+2025-11-15 15:27:21,578 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-11-15 15:27:21,579 [INFO] HB i=1 paper=True kill_exists=False latency_ms=0
+2025-11-15 15:27:21,741 [INFO] token OK
+2025-11-15 15:27:21,763 [INFO] register OK (4件)
+2025-11-15 15:27:21,763 [INFO] 起動 mode=PAPER / symbols=['7013', '7011', '9432', '5020']
+2025-11-15 15:27:22,594 [INFO] HB i=2 paper=True kill_exists=False latency_ms=0
+2025-11-15 15:27:23,607 [INFO] HB i=3 paper=True kill_exists=False latency_ms=0
+2025-11-15 15:27:24,624 [INFO] HB i=4 paper=True kill_exists=False latency_ms=0
+2025-11-15 15:27:25,638 [INFO] HB i=5 paper=True kill_exists=False latency_ms=0
+2025-11-15 15:27:26,652 [INFO] HB i=6 paper=True kill_exists=False latency_ms=0
+2025-11-15 15:27:26,777 [INFO] KeyboardInterrupt: stopping controller...

@@ -43,7 +43,7 @@ safety:
   kill_switch_file: runtime/kill.txt
   holdid_wait_ms: 3000
   poll_interval_ms: 50
-  cooldown_after_exit_sec: 0.6
+  cooldown_after_exit_sec: 1.2
   streak_pause_sec: 90
 
 paper_trading: true
@@ -61,26 +61,32 @@ orders:
     widen_ticks_each: 1
     wait_ms_between: 200
   forbid_market_on_5yen: true
-
-portfolio:
-  max_open_positions: 6
+  buy:  { front_order_type: 20, margin_trade_type: 3 }
+  sell: { front_order_type: 20, margin_trade_type: 3 }
 
 gatekeeper:
-  enabled: true
-  allowed_symbols: []
+  enabled: false
+  allowed_symbols:
+    - "7013"
+    - "7011"
+    - "9432"
+    - "5020"
+
+ortfolio:
+  max_open_positions: 4
+
 
 rotation:
   enabled: true
   recompute_sec: 60
-  max_watchlist: 8
+  max_watchlist: 10
   min_watchlist: 5
 
-max_concurrent_symbols: 5
+max_concurrent_symbols: 4
 
 symbols:
-  - { code: "7013", exchange: 1, qty: 100, min_order_interval_sec: 3 }
+  - { code: "7013", exchange: 1, qty: 100, min_order_interval_sec: 5 }
   - { code: "7011", exchange: 1, qty: 100, min_order_interval_sec: 3 }
-  - { code: "5803", exchange: 1, qty: 100, min_order_interval_sec: 3 }
   - { code: "9432", exchange: 1, qty: 100, min_order_interval_sec: 3 }
   - { code: "5020", exchange: 1, qty: 100, min_order_interval_sec: 3 }
 
@@ -89,7 +95,7 @@ strategies:
   MINI_SWING: { tp_ticks_cap: 4, sl_ticks_cap: 2, max_hold_sec: 300, max_spread_ticks: 2, heat_exit_drop: 0.40, obi_flip: 0.10, vwap_distance_max: 0.35 }
 
 router:
-  prefer_swing_if: { heat: 0.72, vwap_distance: 0.25, spread_ticks: 2, vol_boost_ratio: 1.5, market_temp: 0.60 }
+  prefer_swing_if: { heat: 0.70, vwap_distance: 0.35, spread_ticks: 2, vol_boost_ratio: 1.2, market_temp: 0.60 }
   forbid_entry_if: { spread_ticks: 6, vol_rank: 0.10, price_step: 5 }
 
 

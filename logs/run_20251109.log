@@ -148,3 +148,24 @@
 2025-11-09 15:07:01,894 [INFO] HB i=2 paper=True kill_exists=False latency_ms=4
 2025-11-09 15:07:02,896 [INFO] HB i=3 paper=True kill_exists=False latency_ms=3
 2025-11-09 15:07:03,012 [INFO] KeyboardInterrupt: stopping controller...
+2025-11-09 15:11:35,885 [INFO] ==== Session Start 2025-11-09 15:11:35 ====
+2025-11-09 15:11:35,886 [INFO] === 通常取引モード起動 ===
+2025-11-09 15:11:35,886 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-11-09 15:11:35,887 [INFO] HB i=1 paper=True kill_exists=False latency_ms=0
+2025-11-09 15:11:35,893 [INFO] token OK
+2025-11-09 15:11:35,894 [INFO] register OK (5件)
+2025-11-09 15:11:35,894 [INFO] 起動 mode=PAPER / symbols=['7013', '7011', '5803', '9432', '5020']
+2025-11-09 15:11:36,893 [INFO] HB i=2 paper=True kill_exists=False latency_ms=2
+2025-11-09 15:11:37,901 [INFO] HB i=3 paper=True kill_exists=False latency_ms=5
+2025-11-09 15:11:38,917 [INFO] HB i=4 paper=True kill_exists=False latency_ms=5
+2025-11-09 15:11:39,918 [INFO] HB i=5 paper=True kill_exists=False latency_ms=4
+2025-11-09 15:11:40,922 [INFO] HB i=6 paper=True kill_exists=False latency_ms=1
+2025-11-09 15:11:41,936 [INFO] HB i=7 paper=True kill_exists=False latency_ms=4
+2025-11-09 15:11:42,940 [INFO] HB i=8 paper=True kill_exists=False latency_ms=1
+2025-11-09 15:11:43,955 [INFO] HB i=9 paper=True kill_exists=False latency_ms=1
+2025-11-09 15:11:44,961 [INFO] HB i=10 paper=True kill_exists=False latency_ms=7
+2025-11-09 15:11:45,965 [INFO] HB i=11 paper=True kill_exists=False latency_ms=4
+2025-11-09 15:11:46,970 [INFO] HB i=12 paper=True kill_exists=False latency_ms=4
+2025-11-09 15:11:47,971 [INFO] HB i=13 paper=True kill_exists=False latency_ms=10
+2025-11-09 15:11:48,972 [INFO] HB i=14 paper=True kill_exists=False latency_ms=4
+2025-11-09 15:11:49,797 [INFO] KeyboardInterrupt: stopping controller...
