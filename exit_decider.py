@@ -37,10 +37,10 @@ class ExitDecider:
         # ここから下はすべてデフォルト付きの新パラメータ（既存呼び出しは壊さない）
         theta_drop: float = 0.40,          # heat 低下しきい値
         obi_flip_thr: float = 0.10,        # OBI 反転差
-        vol_cool_ratio: float = 0.5,       # 出来高冷え比率 (recent < avg * ratio)
+        vol_cool_ratio: float = 0.1,       # 出来高冷え比率 (recent < avg * ratio)
         max_hold_sec: int = 120,           # 最大保有秒
-        min_market_heat: float = 0.30,     # 市場温度の下限（通常）
-        min_market_heat_open: float = 0.35 # 市場温度の下限（寄りは少し厳しめ）
+        min_market_heat: float = 0.10,     # 市場温度の下限（通常）
+        min_market_heat_open: float = 0.15 # 市場温度の下限（寄りは少し厳しめ）
     ):
         self.model_path = model_path
         self.alpha = alpha

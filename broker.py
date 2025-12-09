@@ -2,11 +2,13 @@
 import time, logging, datetime
 from typing import Optional, Dict, Any, List, Tuple
 
+from utils_common import tick_size  # ★ 追加：tick計算に使う
+
 class Broker:
     """
-    安定版: 成行オンリー + 制度信用ペイロード固定
-      - 新規: 信用新規 成行 (FrontOrderType=10)
-      - 返済: ExecutionIDをClosePositions.HoldIDに指定（取得不可ならFIFO）
+    ミニスイング用 Broker
+      - 新規: 信用新規「指値改善」(ベストASK近辺の指値)
+      - 返済: 成行（ExecutionID指定 or FIFO）
       - ガード: API遅延/取引時間/同時建玉数/同銘柄重複をBroker内でも弾く
     """
 
@@ -118,9 +120,11 @@ class Broker:
             time.sleep(0.08)
         return []
 
-    # -------------------- 新規（信用 成行） --------------------
+    # -------------------- 新規（信用 成行）※未使用（バックアップ） --------------------
     def _live_buy_credit(self, sym, qty: int):
-        # ★ペイロードはあなたの安定版に完全準拠（変更なし）
+        """
+        旧・成行版。トラブル時のバックアップ用として残しておく。
+        """
         payload = {
             "Password": self.cfg.api.trade_password,
             "Symbol": str(sym.code),
@@ -128,7 +132,7 @@ class Broker:
             "SecurityType": 1,
             "Side": 2,                 # 買い（新規）
             "CashMargin": 2,           # 信用 新規
-            "MarginTradeType": 3,      # ※あなたの安定版通り
+            "MarginTradeType": 3,      # あなたの安定版通り
             "DelivType": 0,
             "FundType": 11,            # 信用
             "AccountType": 4,          # 特定
@@ -140,7 +144,7 @@ class Broker:
         self._coerce_ints(payload, ["Exchange","SecurityType","Side","CashMargin",
                                     "MarginTradeType","DelivType","FundType","AccountType",
                                     "Qty","FrontOrderType","Price","ExpireDay"])
-        logging.info("[LIVE] sendorder BUY payload=%s", payload)
+        logging.info("[LIVE] sendorder BUY(MKT) payload=%s", payload)
         res = self.api.sendorder(payload)
         if res and isinstance(res, dict) and res.get("OrderId"):
             self._last_buy_order_id[str(sym.code)] = res["OrderId"]
@@ -166,7 +170,7 @@ class Broker:
             "SecurityType": 1,
             "Side": 1,                 # 売り（返済）
             "CashMargin": 3,           # 信用 返済
-            "MarginTradeType": 3,      # ※あなたの安定版通り
+            "MarginTradeType": 3,      # あなたの安定版通り
             "DelivType": 2,            # 返済
             "FundType": 11,            # 信用
             "AccountType": 4,          # 特定
@@ -191,7 +195,7 @@ class Broker:
             "SecurityType": 1,
             "Side": 1,                 # 売り（返済）
             "CashMargin": 3,           # 信用 返済
-            "MarginTradeType": 1,      # ※あなたの安定版通り（ここは1のまま）
+            "MarginTradeType": 1,      # あなたの安定版通り
             "DelivType": 2,            # 返済
             "FundType": 11,            # 信用
             "AccountType": 4,          # 特定
@@ -207,9 +211,12 @@ class Broker:
         logging.info("[LIVE] sendorder SELL payload=%s", payload)
         return self.api.sendorder(payload)
 
-    # -------------------- 外部呼び出し --------------------
+    # -------------------- 外部呼び出し：新規 --------------------
     def buy(self, sym, board, cur_px):
-        """新規（信用 成行） + 同時建玉/同銘柄ガード"""
+        """
+        新規（信用 指値改善） + 同時建玉/同銘柄ガード
+        - ベストASK近辺に指値を置いてスリッページを抑える
+        """
         try:
             if not self.can_trade_now(is_entry=True):
                 logging.warning("[GUARD] time/latency gate blocks entry")
@@ -223,16 +230,60 @@ class Broker:
                 logging.warning("[GUARD] symbol already open: %s", sym.code)
                 return None
 
+            # 板から bid / ask を取得
+            ask = (board.get("BestAsk") or {}).get("Price") or board.get("AskPrice")
+            bid = (board.get("BestBid") or {}).get("Price") or board.get("BidPrice")
+
+            # tick 計算
+            tick = tick_size(sym.code, cur_px, board)
+            if not isinstance(ask, (int, float)) or not isinstance(bid, (int, float)) or tick <= 0:
+                logging.warning("[BUY] fallback to MKT (no bid/ask or tick<=0) code=%s", sym.code)
+                # どうしても板情報が取れない場合は旧・成行にフォールバック
+                qty_fb = int(getattr(sym, "qty", 100))
+                return self._live_buy_credit(sym, qty_fb)
+
+            # 指値価格：ベストASK - 1tick（ただし BID を割り込まないように調整）
+            limit_px = ask - tick
+            if limit_px <= bid:
+                limit_px = bid + tick
+
             qty = int(getattr(sym, "qty", 100))
-            res = self._live_buy_credit(sym, qty)
+
+            payload = {
+                "Password": self.cfg.api.trade_password,
+                "Symbol": str(sym.code),
+                "Exchange": int(sym.exchange),
+                "SecurityType": 1,
+                "Side": 2,                 # 買い（新規）
+                "CashMargin": 2,           # 信用 新規
+                "MarginTradeType": 3,      # あなたの安定版通り
+                "DelivType": 0,
+                "FundType": 11,            # 信用
+                "AccountType": 4,          # 特定
+                "Qty": int(qty),
+                "FrontOrderType": 20,      # ★ 指値
+                "Price": float(limit_px),  # ★ 指値価格
+                "ExpireDay": 0,
+            }
+            self._coerce_ints(payload, ["Exchange","SecurityType","Side","CashMargin",
+                                        "MarginTradeType","DelivType","FundType","AccountType",
+                                        "Qty","FrontOrderType","ExpireDay"])
+            logging.info("[LIVE] sendorder BUY(LMT) code=%s bid=%s ask=%s limit=%s qty=%d payload=%s",
+                         sym.code, bid, ask, limit_px, qty, payload)
+
+            res = self.api.sendorder(payload)
+            if res and isinstance(res, dict) and res.get("OrderId"):
+                self._last_buy_order_id[str(sym.code)] = res["OrderId"]
             if not res or res.get("Result") != 0:
-                logging.error("LIVE BUY 失敗(信用): %s", res)
+                logging.error("LIVE BUY 失敗(LMT): %s", res)
                 return None
             return res
+
         except Exception as e:
-            logging.error("LIVE BUY 失敗(信用): %s", e)
+            logging.error("LIVE BUY 失敗(LMT): %s", e)
             return None
 
+    # -------------------- 外部呼び出し：返済 --------------------
     def sell(self, sym, qty: int):
         """
         返済。順序:
@@ -266,3 +317,4 @@ class Broker:
         except Exception as e:
             logging.error("LIVE SELL 失敗(信用): %s", e)
             return False, str(e)
+
