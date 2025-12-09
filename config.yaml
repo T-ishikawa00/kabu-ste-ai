@@ -11,7 +11,8 @@ entry:
 exit:
   trail_back_pct: 0.008
   trail_start_pct: 0.02
-  max_hold_sec: 8
+  # controller側のSWINGと合わせて、とりあえず40秒に揃えておく
+  max_hold_sec: 40
   rules:
     max_spread_ticks_mean_5m: 1.0
     min_vol_1m_mean_5m: 8000
@@ -65,37 +66,55 @@ orders:
   sell: { front_order_type: 20, margin_trade_type: 3 }
 
 gatekeeper:
-  enabled: false
+  enabled: false         # 自分で銘柄決めるので門番はOFFのまま
   allowed_symbols:
-    - "7013"
-    - "7011"
-    - "9432"
-    - "5020"
+    - "9501"
 
-ortfolio:
-  max_open_positions: 4
-
+portfolio:
+  max_open_positions: 1  # 1銘柄 / 1ポジ固定
 
 rotation:
-  enabled: true
+  enabled: false         # 1銘柄運用なのでローテーション無効化
   recompute_sec: 60
   max_watchlist: 10
   min_watchlist: 5
 
-max_concurrent_symbols: 4
+# Controllerは len(symbols) を優先するが、明示的に1にしておく
+max_concurrent_symbols: 1
 
 symbols:
-  - { code: "7013", exchange: 1, qty: 100, min_order_interval_sec: 5 }
-  - { code: "7011", exchange: 1, qty: 100, min_order_interval_sec: 3 }
-  - { code: "9432", exchange: 1, qty: 100, min_order_interval_sec: 3 }
-  - { code: "5020", exchange: 1, qty: 100, min_order_interval_sec: 3 }
+  # 東京電力HD
+  - { code: "9501", exchange: 1, qty: 100, min_order_interval_sec: 5 }
 
 strategies:
-  SCALP:      { tp_ticks: 1, sl_ticks: 1, max_hold_sec: 25,  max_spread_ticks: 3,  heat_entry: 0.64, exit_drop: 0.45 }
-  MINI_SWING: { tp_ticks_cap: 4, sl_ticks_cap: 2, max_hold_sec: 300, max_spread_ticks: 2, heat_exit_drop: 0.40, obi_flip: 0.10, vwap_distance_max: 0.35 }
+  # ここは「設定としての見た目」を controller の SWING 定義と揃えておく
+  SCALP:
+    tp_ticks: 1
+    sl_ticks: 1
+    max_hold_sec: 25
+    max_spread_ticks: 3
+    heat_entry: 0.64
+    exit_drop: 0.45
+
+  MINI_SWING:
+    tp_ticks_cap: 8      # controller.SWING と同じ
+    sl_ticks_cap: 3
+    max_hold_sec: 40
+    max_spread_ticks: 2
+    heat_exit_drop: 0.40
+    obi_flip: 0.10
+    vwap_distance_max: 0.35
 
 router:
-  prefer_swing_if: { heat: 0.70, vwap_distance: 0.35, spread_ticks: 2, vol_boost_ratio: 1.2, market_temp: 0.60 }
-  forbid_entry_if: { spread_ticks: 6, vol_rank: 0.10, price_step: 5 }
+  prefer_swing_if:
+    heat: 0.70
+    vwap_distance: 0.30
+    spread_ticks: 2
+    vol_boost_ratio: 1.2
+    market_temp: 0.50
+  forbid_entry_if:
+    spread_ticks: 6
+    vol_rank: 0.10
+    price_step: 5
 
 

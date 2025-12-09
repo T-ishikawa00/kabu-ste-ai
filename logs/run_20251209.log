@@ -1,0 +1,51 @@
+2025-12-09 18:40:00,291 [INFO] ==== Session Start 2025-12-09 18:40:00 ====
+2025-12-09 18:40:00,292 [INFO] === 通常取引モード起動 ===
+2025-12-09 18:40:00,294 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-12-09 18:40:06,883 [INFO] ==== Session Start 2025-12-09 18:40:06 ====
+2025-12-09 18:40:06,884 [INFO] === 通常取引モード起動 ===
+2025-12-09 18:40:06,884 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-12-09 18:42:01,805 [INFO] ==== Session Start 2025-12-09 18:42:01 ====
+2025-12-09 18:42:01,806 [INFO] === 通常取引モード起動 ===
+2025-12-09 18:42:01,806 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-12-09 18:42:53,462 [INFO] ==== Session Start 2025-12-09 18:42:53 ====
+2025-12-09 18:42:53,463 [INFO] === 通常取引モード起動 ===
+2025-12-09 18:42:53,463 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-12-09 18:43:42,299 [INFO] ==== Session Start 2025-12-09 18:43:42 ====
+2025-12-09 18:43:42,300 [INFO] === 通常取引モード起動 ===
+2025-12-09 18:43:42,300 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-12-09 18:43:42,302 [INFO] HB i=1 paper=True kill_exists=False latency_ms=0
+2025-12-09 18:43:42,971 [INFO] token OK
+2025-12-09 18:43:43,122 [INFO] register OK (1件)
+2025-12-09 18:43:43,122 [INFO] 起動 mode=PAPER / symbols=['9501']
+2025-12-09 18:43:43,307 [INFO] HB i=2 paper=True kill_exists=False latency_ms=0
+2025-12-09 18:43:44,308 [INFO] HB i=3 paper=True kill_exists=False latency_ms=0
+2025-12-09 18:43:45,322 [INFO] HB i=4 paper=True kill_exists=False latency_ms=0
+2025-12-09 18:43:46,337 [INFO] HB i=5 paper=True kill_exists=False latency_ms=0
+2025-12-09 18:43:47,338 [INFO] HB i=6 paper=True kill_exists=False latency_ms=0
+2025-12-09 18:43:48,136 [WARNING] [API] ReadTimeout: HTTPConnectionPool(host='localhost', port=18080): Read timed out. (read timeout=5)
+2025-12-09 18:43:48,354 [INFO] HB i=7 paper=True kill_exists=False latency_ms=0
+2025-12-09 18:43:49,368 [INFO] HB i=8 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:43:50,375 [INFO] HB i=9 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:43:51,391 [INFO] HB i=10 paper=True kill_exists=False latency_ms=5
+2025-12-09 18:43:52,407 [INFO] HB i=11 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:43:53,414 [INFO] HB i=12 paper=True kill_exists=False latency_ms=5
+2025-12-09 18:43:54,427 [INFO] HB i=13 paper=True kill_exists=False latency_ms=2
+2025-12-09 18:43:55,442 [INFO] HB i=14 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:43:56,455 [INFO] HB i=15 paper=True kill_exists=False latency_ms=5
+2025-12-09 18:43:57,467 [INFO] HB i=16 paper=True kill_exists=False latency_ms=5
+2025-12-09 18:43:58,469 [INFO] HB i=17 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:43:59,485 [INFO] HB i=18 paper=True kill_exists=False latency_ms=28
+2025-12-09 18:44:00,489 [INFO] HB i=19 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:44:01,504 [INFO] HB i=20 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:44:02,516 [INFO] HB i=21 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:44:03,532 [INFO] HB i=22 paper=True kill_exists=False latency_ms=4
+2025-12-09 18:44:04,547 [INFO] HB i=23 paper=True kill_exists=False latency_ms=6
+2025-12-09 18:44:05,550 [INFO] HB i=24 paper=True kill_exists=False latency_ms=5
+2025-12-09 18:44:06,564 [INFO] HB i=25 paper=True kill_exists=False latency_ms=6
+2025-12-09 18:44:07,576 [INFO] HB i=26 paper=True kill_exists=False latency_ms=1
+2025-12-09 18:44:08,592 [INFO] HB i=27 paper=True kill_exists=False latency_ms=2
+2025-12-09 18:44:09,604 [INFO] HB i=28 paper=True kill_exists=False latency_ms=6
+2025-12-09 18:44:10,618 [INFO] HB i=29 paper=True kill_exists=False latency_ms=3
+2025-12-09 18:44:11,632 [INFO] HB i=30 paper=True kill_exists=False latency_ms=6
+2025-12-09 18:44:12,648 [INFO] HB i=31 paper=True kill_exists=False latency_ms=1
+2025-12-09 18:44:13,167 [INFO] KeyboardInterrupt: stopping controller...

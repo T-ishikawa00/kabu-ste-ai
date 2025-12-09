@@ -23,23 +23,25 @@ from strategy_router import StrategyRouter, Context
 from train_policy_online import update_after_trade
 
 # ===== パラメータ（初期値） =====
+# SCALP は観測寄り。実トレードは MINI_SWING をメインとする。
 SCALP = dict(
     tp_ticks=1,
     sl_ticks=1,
     max_hold_sec=25,
     max_spread_ticks=3,
     heat_entry=0.64,
-    exit_drop=0.45
+    exit_drop=0.45,
 )
 
+# ミニスイング特化パラメータ
 SWING = dict(
-    tp_ticks_cap=4,        # 上限TP
-    sl_ticks_cap=2,        # 上限SL
-    max_hold_sec=300,      # 2〜5分
+    tp_ticks_cap=8,          # 上限TP（通常4〜8tickを狙う。市場が強い時の上限）
+    sl_ticks_cap=3,          # 上限SL（2〜3tick逆行で撤退）
+    max_hold_sec=40,         # 最大保有時間（10〜40秒レンジ）
     max_spread_ticks=2,
-    heat_exit_drop=0.40,
-    obi_flip=0.10,
-    vwap_distance_max=0.35  # %
+    heat_exit_drop=0.45,     # 板優位性が0.45未満に落ちたら危険
+    obi_flip=0.15,           # 売り優勢側に0.15以上振れたら危険
+    vwap_distance_max=0.40,  # VWAPからの乖離上限（%）
 )
 
 # ルーター閾値（初期）
@@ -48,16 +50,17 @@ ROUTER_PREF = dict(
     vwap_distance=0.25,   # %
     spread_ticks=2,
     vol_boost_ratio=1.5,
-    market_temp=0.60
+    market_temp=0.60,
 )
 ROUTER_FORBID = dict(
     spread_ticks=6,
     vol_rank=0.10,
-    price_step=5
+    price_step=5,
 )
 
 LOOP_SLEEP_SEC  = 0.05
 FAST_CHECK_SEC  = 0.3
+GRACE_SEC      = 60.0
 VOL_MED_FACTOR  = 0.4
 MOMENTUM_DELTA  = 0.5
 OBI_BE_THRESH   = 0.48
@@ -107,7 +110,10 @@ class Controller:
         # 時間・QPS制御
         self._next_board_at = {str(s.code): 0.0 for s in self.syms}
         self._backoff      = {str(s.code): 0.0 for s in self.syms}
-        self._board_min_iv = max(0.2, float(getattr(getattr(self.cfg, "safety", object()), "board_min_interval_ms", 900)) / 1000.0)
+        self._board_min_iv = max(
+            0.2,
+            float(getattr(getattr(self.cfg, "safety", object()), "board_min_interval_ms", 900)) / 1000.0,
+        )
         self._qps_limit    = int(getattr(getattr(self.cfg, "safety", object()), "api_qps_limit", 6))
         self._rr_i = 0
 
@@ -134,13 +140,19 @@ class Controller:
                 "px_1s":    deque(maxlen=10),
                 "last_cumvol": None,
                 "last_ts": 0.0,
-                "pv": 0.0, "vv": 0.0,      # VWAP用
-                "vol_min": 1e18, "vol_max": 0.0,  # 日内ボリューム正規化
+                "pv": 0.0,
+                "vv": 0.0,      # VWAP用
+                "vol_min": 1e18,
+                "vol_max": 0.0,  # 日内ボリューム正規化
+                "last_bid_qty": 0.0,  # 板厚変化検出用
+                "last_ask_qty": 0.0,
             }
 
         # クールダウン・連敗・日次
         self._cooldown_until: Dict[str, float] = {}
-        self._cooldown_after_exit_sec = float(getattr(getattr(self.cfg, "safety", object()), "cooldown_after_exit_sec", 2.0))
+        self._cooldown_after_exit_sec = float(
+            getattr(getattr(self.cfg, "safety", object()), "cooldown_after_exit_sec", 2.0)
+        )
         self._streak: Dict[str, int] = {s.code: 0 for s in self.syms}
         self._streak_pause_sec = float(getattr(getattr(self.cfg, "safety", object()), "streak_pause_sec", 60.0))
         self._daily_pnl = 0.0
@@ -153,12 +165,14 @@ class Controller:
         self.symbol_gate   = SymbolGate(model_path="model_registry.json")
 
         # 7.3 ルーター
-        self.router = StrategyRouter({
-            "router": {
-                "prefer_swing_if": ROUTER_PREF,
-                "forbid_entry_if": ROUTER_FORBID
+        self.router = StrategyRouter(
+            {
+                "router": {
+                    "prefer_swing_if": ROUTER_PREF,
+                    "forbid_entry_if": ROUTER_FORBID,
+                }
             }
-        })
+        )
 
     # ---- trades_*.jsonl 出力（KPI集計用）----
     def _append_trade_log(self, rec: dict):
@@ -247,8 +261,10 @@ class Controller:
 
                     # 価格・板
                     cur = (
-                        b.get("CurrentPrice") or b.get("CurrentPriceV2") or
-                        b.get("LastTradedPrice") or b.get("CurrentValue")
+                        b.get("CurrentPrice")
+                        or b.get("CurrentPriceV2")
+                        or b.get("LastTradedPrice")
+                        or b.get("CurrentValue")
                     )
                     if cur is None:
                         cur = (b.get("BestAsk") or {}).get("Price") or (b.get("BestBid") or {}).get("Price")
@@ -269,6 +285,15 @@ class Controller:
 
                     # 1秒統計の更新
                     h = self.hist[code_s]
+
+                    # 板厚の一つ前を保持
+                    prev_bid_qty = float(h.get("last_bid_qty", 0.0))
+                    prev_ask_qty = float(h.get("last_ask_qty", 0.0))
+                    cur_bid_qty  = float(bid_qty or 0.0)
+                    cur_ask_qty  = float(ask_qty or 0.0)
+                    h["last_bid_qty"] = cur_bid_qty
+                    h["last_ask_qty"] = cur_ask_qty
+
                     if nowt - h["last_ts"] >= 1.0:
                         if spread_ticks is not None:
                             h["spr_ticks"].append(float(spread_ticks))
@@ -351,12 +376,34 @@ class Controller:
                     base_med = (sorted(vol_hist)[len(vol_hist)//2] if vol_hist else 0.0)
                     vol_thr = max(120.0, base_med * VOL_MED_FACTOR)
 
-                    # 共通フラグ
-                    obi_ok      = (imbalance is not None and imbalance >= SCALP["heat_entry"])
-                    spread_ok   = (spread_ticks is not None and spread_ticks <= SCALP["max_spread_ticks"])
-                    momentum_ok = (upticks >= 0) or (abs(delta_ticks) >= MOMENTUM_DELTA)
-                    liquidity_ok= (vol5 >= vol_thr)
-                    strong_long = (delta_ticks >= 0) and obi_ok and spread_ok and momentum_ok and liquidity_ok
+                    # ===== ミニスイング仕様のエントリー条件 =====
+                    # 条件候補:
+                    # C1: 直近のΔ価格が上向き（継続性）
+                    # C2: 板バランスが買い優勢（OBI >= 0.55）
+                    # C3: 出来高加速（vol_boost >= 1.2）
+                    # C4: VWAPより上で、乖離が許容内
+                    # C5: スプレッド1tick以内
+                    trend_up = (delta_ticks > 0.0)
+                    obi_ok_soft = (imbalance is not None and imbalance >= 0.55)
+                    vol_accel = (vol_boost >= 1.2)
+                    vwap_ok = (float(cur) >= vwap) and (vwap_dist_pct <= 0.30)
+                    spread_tight = (spread_ticks is not None and spread_ticks <= 1.0)
+                    liquidity_ok = (vol5 >= vol_thr)
+
+                    score = 0
+                    if trend_up:
+                        score += 1
+                    if obi_ok_soft:
+                        score += 1
+                    if vol_accel:
+                        score += 1
+                    if vwap_ok:
+                        score += 1
+                    if spread_tight:
+                        score += 1
+
+                    # 5条件中3つ以上 + 流動性クリア でエントリー候補
+                    strong_long = (score >= 3) and liquidity_ok
 
                     # 共通ガード
                     allowed = True
@@ -409,7 +456,7 @@ class Controller:
                         vwap_distance_pct=float(vwap_dist_pct),
                         vol_boost_ratio=float(vol_boost),
                         vol_rank=float(vol_rank),
-                        market_temp=float(market_temp)
+                        market_temp=float(market_temp),
                     )
                     strategy = self.router.decide(cx)
 
@@ -422,44 +469,77 @@ class Controller:
                         elif (spread_ticks is not None) and (spread_ticks > SWING["max_spread_ticks"]):
                             strategy = "OBSERVE"
 
+                    # ミニスイング特化：SCALPは実行せず、SCALP→MINI_SWINGに寄せる
+                    if strategy == "SCALP":
+                        strategy = "MINI_SWING"
+
                     # 市場温度しきい値（レジーム別）
                     market_heat_thr = 0.5 if regime == "OPEN" else 0.4
                     market_hot_enough = (market_heat >= market_heat_thr)
 
                     # エントリー可否
-                    if (not pos_open) and strong_long and (strategy != "OBSERVE") \
-                        and can_trade_window and can_new_entry and under_max_positions and interval_ok \
-                        and allowed and cool_ok and (self._daily_pnl > -self._daily_stop) \
-                        and market_hot_enough:
+                    if (
+                        (not pos_open)
+                        and strong_long
+                        and (strategy != "OBSERVE")
+                        and can_trade_window
+                        and can_new_entry
+                        and under_max_positions
+                        and interval_ok
+                        and allowed
+                        and cool_ok
+                        and (self._daily_pnl > -self._daily_stop)
+                        and market_hot_enough
+                    ):
 
-                        # 戦略別のサイズ調整：SWINGは0.5倍
+                        # 戦略別のサイズ調整：MINI_SWING は0.5倍（必要なら）
                         if strategy == "MINI_SWING":
                             decided_qty = max(100, int(decided_qty * 0.5))
 
                         if self.cfg.paper_trading:
                             logging.info(
-                                "PAPER BUY %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f",
-                                sym.code, sym.exchange, decided_qty, cur, strategy, regime, heat_for_router, market_heat
+                                "PAPER BUY %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f score=%d",
+                                sym.code,
+                                sym.exchange,
+                                decided_qty,
+                                cur,
+                                strategy,
+                                regime,
+                                heat_for_router,
+                                market_heat,
+                                score,
                             )
                             self.brk.pos[sym.code] = {
-                                "entry": float(cur), "qty": int(decided_qty),
-                                "ts": time.time(), "fill_ts": time.time(),
-                                "strategy": strategy
+                                "entry": float(cur),
+                                "qty": int(decided_qty),
+                                "ts": time.time(),
+                                "fill_ts": time.time(),
+                                "strategy": strategy,
                             }
                             self.brk.last_order_ts[sym.code] = time.time()
                         else:
                             logging.info(
-                                "LIVE BUY  %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f",
-                                sym.code, sym.exchange, decided_qty, cur, strategy, regime, heat_for_router, market_heat
+                                "LIVE BUY  %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f score=%d",
+                                sym.code,
+                                sym.exchange,
+                                decided_qty,
+                                cur,
+                                strategy,
+                                regime,
+                                heat_for_router,
+                                market_heat,
+                                score,
                             )
                             res = self.brk.buy(sym, b, cur)
                             if not res or res.get("Result") != 0:
                                 logging.error("LIVE BUY 失敗: %s", res)
                             else:
                                 self.brk.pos[sym.code] = {
-                                    "entry": float(cur), "qty": int(decided_qty),
-                                    "ts": time.time(), "fill_ts": None,
-                                    "strategy": strategy
+                                    "entry": float(cur),
+                                    "qty": int(decided_qty),
+                                    "ts": time.time(),
+                                    "fill_ts": None,
+                                    "strategy": strategy,
                                 }
                             self.brk.last_order_ts[sym.code] = time.time()
 
@@ -472,74 +552,29 @@ class Controller:
                         base_ts = float(pos.get("fill_ts") or pos.get("ts") or time.time())
                         held_sec = time.time() - base_ts
 
-                        # --- SCALP: 既存ロジック（TP/SL/時間/強制/早BE） ---
+                        # SCALPは現在MINI_SWINGロジックに統合する
                         if strategy == "SCALP":
-                            tp_px = entry_px + SCALP["tp_ticks"] * tick
-                            sl_px = entry_px - SCALP["sl_ticks"] * tick
+                            strategy = "MINI_SWING"
+                            pos["strategy"] = "MINI_SWING"
 
-                            fast_force = False
-                            if held_sec >= FAST_CHECK_SEC:
-                                if (spread_ticks is not None) and (spread_ticks > SCALP["max_spread_ticks"]):
-                                    fast_force = True
-                                if (bid_qty and ask_qty) and (bid_qty + ask_qty > 0):
-                                    obi = bid_qty / (bid_qty + ask_qty)
-                                    if obi < OBI_BE_THRESH:
-                                        sl_px = max(sl_px, entry_px)  # 早BE
-
-                            # bid基準のBE+（+1tickでSLを半分まで切り上げ）
+                        # --- MINI_SWING: 条件崩壊型（ノイズ耐性＋危険シグナル3個以上でEXIT） ---
+                        if strategy == "MINI_SWING":
+                            # 現在の含み損益（tick換算）
                             if isinstance(bid, (int, float)):
-                                if bid >= entry_px + 0.5 * tick:
-                                    sl_px = max(sl_px, entry_px + 0.0 * tick)
-                                if bid >= entry_px + 1.0 * tick:
-                                    sl_px = max(sl_px, entry_px + 0.5 * tick)
+                                live_pnl_ticks = (bid - entry_px) / max(tick, 0.5)
+                                exit_px_live = float(bid)
+                            else:
+                                live_pnl_ticks = (cur - entry_px) / max(tick, 0.5)
+                                exit_px_live = float(cur)
 
-                            hit_tp   = isinstance(bid, (int, float)) and (bid >= tp_px)
-                            hit_sl   = isinstance(bid, (int, float)) and (bid <= sl_px)
-                            hit_time = held_sec >= SCALP["max_hold_sec"]
-                            hit_force= bool(force_close or fast_force)
+                            # 固定TP/SL
+                            hit_tp = isinstance(bid, (int, float)) and (
+                                bid >= entry_px + SWING["tp_ticks_cap"] * tick
+                            )
+                            hit_sl = isinstance(bid, (int, float)) and (
+                                bid <= entry_px - SWING["sl_ticks_cap"] * tick
+                            )
 
-                            if hit_tp or hit_sl or hit_time or hit_force:
-                                reason = ("TP" if hit_tp else "SL" if hit_sl else "TIME" if hit_time else "FORCE")
-                                if self.cfg.paper_trading:
-                                    exit_px = float(bid if isinstance(bid, (int, float)) else cur)
-                                    pnl = (exit_px - entry_px) * qty
-                                    pnl_ticks = (exit_px - entry_px) / max(tick, 0.5)
-                                    self._daily_pnl += pnl
-                                    self._streak[sym.code] = self._streak.get(sym.code, 0) + (1 if pnl > 0 else -1)
-                                    logging.info(f"PAPER EXIT {sym.code}@{sym.exchange} x{qty} bid={exit_px:.1f} → {reason} strategy={strategy} pnl={pnl:.1f}")
-
-                                    # 学習
-                                    try:
-                                        update_after_trade({"code": sym.code, "strategy": strategy, "pnl_ticks": float(pnl_ticks)})
-                                    except Exception as e:
-                                        logging.warning(f"[OnlineTrain] failed {e}")
-
-                                    # 取引ログ
-                                    self._append_trade_log({
-                                        "ts": jst_iso(),
-                                        "code": sym.code,
-                                        "strategy": strategy,
-                                        "reason": reason,
-                                        "pnl_ticks": float(pnl_ticks),
-                                        "pnl_jpy": float(pnl),
-                                        "slippage_ticks": None
-                                    })
-
-                                    del self.brk.pos[sym.code]
-                                else:
-                                    logging.info(f"LIVE EXIT  {sym.code}@{sym.exchange} x{qty} reason={reason} age={held_sec:.1f}s strategy={strategy}")
-                                    ok, resp = self.brk.sell(sym, qty=qty)  # FIFO/ExecutionIDはBroker側
-                                    if not ok:
-                                        logging.error(f"[BROKER] EXIT_REJECT code={sym.code} resp={resp}")
-                                    else:
-                                        logging.info(f"[BROKER] EXIT_OK code={sym.code} resp={resp}")
-                                    del self.brk.pos[sym.code]
-
-                        # --- MINI_SWING: 条件崩壊型 ---  (Lv8.0: 市場温度も見る)
-                        elif strategy == "MINI_SWING":
-                            # 条件崩壊：heat低下・OBI反転・出来高失速・VWAP逸脱・時間切れ・市場温度低下
-                            hit_tp = isinstance(bid, (int, float)) and (bid >= entry_px + SWING["tp_ticks_cap"] * tick)
-                            hit_sl = isinstance(bid, (int, float)) and (bid <= entry_px - SWING["sl_ticks_cap"] * tick)
                             heat_now = float(imbalance if imbalance is not None else 0.5)
                             vol_cool = (vol_boost < 0.8)
                             obi_flip = (heat_now < (0.5 - SWING["obi_flip"]))  # 売り優勢側へ反転
@@ -547,48 +582,91 @@ class Controller:
                             hit_time = held_sec >= SWING["max_hold_sec"]
                             hit_force = bool(force_close)
 
-                            # 市場温度による EXIT 条件（レジーム別）
-                            exit_mkt_thr = 0.35 if regime == "OPEN" else 0.30
+                            # 市場温度による EXIT 条件
+                            exit_mkt_thr = 0.35
                             market_cold = (market_heat < exit_mkt_thr)
 
-                            if hit_tp or hit_sl or hit_time or hit_force \
-                               or (heat_now < SWING["heat_exit_drop"]) \
-                               or vol_cool or obi_flip or vwap_over or market_cold:
-                                if hit_tp: reason = "TP"
-                                elif hit_sl: reason = "SL"
-                                elif hit_time: reason = "TIME"
-                                elif hit_force: reason = "FORCE"
-                                elif market_cold: reason = "MKT"
-                                else: reason = "COND"
+                            # 危険シグナルをカウント
+                            danger_flags = []
+                            if heat_now < SWING["heat_exit_drop"]:
+                                danger_flags.append("HEAT")
+                            if vol_cool:
+                                danger_flags.append("VOL")
+                            if obi_flip:
+                                danger_flags.append("OBI")
+                            if vwap_over:
+                                danger_flags.append("VWAP")
+                            if market_cold:
+                                danger_flags.append("MKT")
 
+                            do_exit = False
+                            reason = "COND"
+
+                            # 1. 強制系は即EXIT
+                            if hit_tp or hit_sl or hit_time or hit_force:
+                                do_exit = True
+                                if hit_tp:
+                                    reason = "TP"
+                                elif hit_sl:
+                                    reason = "SL"
+                                elif hit_time:
+                                    reason = "TIME"
+                                elif hit_force:
+                                    reason = "FORCE"
+                            else:
+                                # 2. 猶予期間中は条件ベースEXITを無効化（ノイズ耐性）
+                                if held_sec < GRACE_SEC:
+                                    do_exit = False
+                                    reason = "HOLD_GRACE"
+                                else:
+                                    # 3. 危険シグナルが3個以上そろったときだけ条件崩壊としてEXIT
+                                    if len(danger_flags) >= 3:
+                                        do_exit = True
+                                        reason = "COND"
+
+                            if do_exit:
                                 if self.cfg.paper_trading:
-                                    exit_px = float(bid if isinstance(bid, (int, float)) else cur)
+                                    exit_px = exit_px_live
                                     pnl = (exit_px - entry_px) * qty
                                     pnl_ticks = (exit_px - entry_px) / max(tick, 0.5)
                                     self._daily_pnl += pnl
-                                    self._streak[sym.code] = self._streak.get(sym.code, 0) + (1 if pnl > 0 else -1)
-                                    logging.info(f"PAPER EXIT {sym.code}@{sym.exchange} x{qty} bid={exit_px:.1f} → {reason} strategy={strategy} pnl={pnl:.1f}")
+                                    self._streak[sym.code] = self._streak.get(sym.code, 0) + (
+                                        1 if pnl > 0 else -1
+                                    )
+                                    logging.info(
+                                        f"PAPER EXIT {sym.code}@{sym.exchange} x{qty} "
+                                        f"bid={exit_px:.1f} → {reason} strategy={strategy} pnl={pnl:.1f} "
+                                        f"pnl_ticks={pnl_ticks:.2f} danger={danger_flags}"
+                                    )
 
                                     # 学習
                                     try:
-                                        update_after_trade({"code": sym.code, "strategy": strategy, "pnl_ticks": float(pnl_ticks)})
+                                        update_after_trade(
+                                            {"code": sym.code, "strategy": strategy, "pnl_ticks": float(pnl_ticks)}
+                                        )
                                     except Exception as e:
                                         logging.warning(f"[OnlineTrain] failed {e}")
 
                                     # 取引ログ
-                                    self._append_trade_log({
-                                        "ts": jst_iso(),
-                                        "code": sym.code,
-                                        "strategy": strategy,
-                                        "reason": reason,
-                                        "pnl_ticks": float(pnl_ticks),
-                                        "pnl_jpy": float(pnl),
-                                        "slippage_ticks": None
-                                    })
+                                    self._append_trade_log(
+                                        {
+                                            "ts": jst_iso(),
+                                            "code": sym.code,
+                                            "strategy": strategy,
+                                            "reason": reason,
+                                            "pnl_ticks": float(pnl_ticks),
+                                            "pnl_jpy": float(pnl),
+                                            "slippage_ticks": None,
+                                        }
+                                    )
 
                                     del self.brk.pos[sym.code]
                                 else:
-                                    logging.info(f"LIVE EXIT  {sym.code}@{sym.exchange} x{qty} reason={reason} age={held_sec:.1f}s strategy={strategy}")
+                                    logging.info(
+                                        f"LIVE EXIT  {sym.code}@{sym.exchange} x{qty} "
+                                        f"reason={reason} age={held_sec:.1f}s strategy={strategy} "
+                                        f"pnl_ticks≈{live_pnl_ticks:.2f} danger={danger_flags}"
+                                    )
                                     ok, resp = self.brk.sell(sym, qty=qty)
                                     if not ok:
                                         logging.error(f"[BROKER] EXIT_REJECT code={sym.code} resp={resp}")
@@ -604,11 +682,13 @@ class Controller:
                 now_sec = time.time()
                 if now_sec - self._last_tele_write >= 1.0:
                     try:
-                        self.tele.save_atomic({
-                            "ts": jst_iso(),
-                            "pnl": self._daily_pnl,
-                            "streak": self._streak,
-                        })
+                        self.tele.save_atomic(
+                            {
+                                "ts": jst_iso(),
+                                "pnl": self._daily_pnl,
+                                "streak": self._streak,
+                            }
+                        )
                         self._last_tele_write = now_sec
                     except Exception:
                         logging.warning("telemetry write failed", exc_info=True)
@@ -619,5 +699,4 @@ class Controller:
                 logging.exception("controller main loop error: %s", e)
                 time.sleep(0.2)
                 continue
-
 

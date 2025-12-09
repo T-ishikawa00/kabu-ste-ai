@@ -1,0 +1,21 @@
+{
+  "theta_by_strategy": {
+    "SCALP": 0.64,
+    "MINI_SWING": 0.75
+  },
+  "w_buy": 1.0,
+  "w_sell": 1.0,
+  "reward_sum": 233.5,
+  "updated_at": "2025-11-18T11:19:39.454454+09:00",
+  "online": {
+    "trade_count": 299,
+    "win_count": 0,
+    "loss_count": 0,
+    "cum_pnl": 0.0,
+    "ev_per_trade": 0.0,
+    "last_pnl": 0.0,
+    "last_side": "",
+    "last_updated": 1764305016.1776845
+  },
+  "theta": 0.62
+}
