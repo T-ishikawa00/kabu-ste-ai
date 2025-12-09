@@ -10,12 +10,6 @@ from broker import Broker
 from kabus_api import KabusAPI
 from model_registry import ModelRegistry
 
-# 学習・メタ層
-from entry_decider import EntryDecider
-from exit_decider import ExitDecider
-from risk_sizer import RiskSizer
-from symbol_gate import SymbolGate
-
 # Lv7.3: 戦略分離用
 from strategy_router import StrategyRouter, Context
 
@@ -33,14 +27,14 @@ SCALP = dict(
     exit_drop=0.45,
 )
 
-# ミニスイング特化パラメータ
+# ★★★ 修正箇所1: ミニスイング → 本格スイング寄りパラメータへ変更 ★★★
 SWING = dict(
-    tp_ticks_cap=8,          # 上限TP（通常4〜8tickを狙う。市場が強い時の上限）
-    sl_ticks_cap=3,          # 上限SL（2〜3tick逆行で撤退）
-    max_hold_sec=40,         # 最大保有時間（10〜40秒レンジ）
-    max_spread_ticks=2,
-    heat_exit_drop=0.45,     # 板優位性が0.45未満に落ちたら危険
-    obi_flip=0.15,           # 売り優勢側に0.15以上振れたら危険
+    tp_ticks_cap=20,         # 上限TP（20tick程度まで許容）
+    sl_ticks_cap=10,         # 上限SL（ノイズで狩られないよう10tickまで許容）
+    max_hold_sec=120,        # 最大保有時間（2分）
+    max_spread_ticks=3,      # スプレッド許容を少し拡大
+    heat_exit_drop=0.40,     # 板優位性が0.40未満に落ちたら危険シグナル
+    obi_flip=0.10,           # 売り優勢側に0.10以上振れたら危険シグナル
     vwap_distance_max=0.40,  # VWAPからの乖離上限（%）
 )
 
@@ -60,7 +54,7 @@ ROUTER_FORBID = dict(
 
 LOOP_SLEEP_SEC  = 0.05
 FAST_CHECK_SEC  = 0.3
-GRACE_SEC      = 60.0
+GRACE_SEC       = 30.0        # ★★★ 修正: 30秒間はノイズEXITを無効化（猶予期間）
 VOL_MED_FACTOR  = 0.4
 MOMENTUM_DELTA  = 0.5
 OBI_BE_THRESH   = 0.48
@@ -109,12 +103,12 @@ class Controller:
 
         # 時間・QPS制御
         self._next_board_at = {str(s.code): 0.0 for s in self.syms}
-        self._backoff      = {str(s.code): 0.0 for s in self.syms}
+        self._backoff       = {str(s.code): 0.0 for s in self.syms}
         self._board_min_iv = max(
             0.2,
             float(getattr(getattr(self.cfg, "safety", object()), "board_min_interval_ms", 900)) / 1000.0,
         )
-        self._qps_limit    = int(getattr(getattr(self.cfg, "safety", object()), "api_qps_limit", 6))
+        self._qps_limit     = int(getattr(getattr(self.cfg, "safety", object()), "api_qps_limit", 6))
         self._rr_i = 0
 
         # Gatekeeper
@@ -130,7 +124,7 @@ class Controller:
         self.rotation_enabled = bool(getattr(self.rot_cfg, "enabled", False))
         self.rotation_last_ts = 0.0
 
-        # 秒統計（直近5分＝300サンプル）＋特徴量の素材
+        # 秒統計（直近5分＝300サンプル）＋特徴量の素材＋1分足バッファ
         self.hist: Dict[str, Dict[str, Any]] = {}
         for s in self.syms:
             self.hist[str(s.code)] = {
@@ -146,6 +140,9 @@ class Controller:
                 "vol_max": 0.0,  # 日内ボリューム正規化
                 "last_bid_qty": 0.0,  # 板厚変化検出用
                 "last_ask_qty": 0.0,
+                # 1分足OHLC
+                "m1_cur": None,               # 進行中の1分足
+                "m1_bars": deque(maxlen=600)  # 過去600分分の1分足
             }
 
         # クールダウン・連敗・日次
@@ -157,12 +154,6 @@ class Controller:
         self._streak_pause_sec = float(getattr(getattr(self.cfg, "safety", object()), "streak_pause_sec", 60.0))
         self._daily_pnl = 0.0
         self._daily_stop = float(getattr(getattr(self.cfg, "risk", object()), "max_daily_loss_jpy", 10000))
-
-        # 学習層・メタ層
-        self.entry_decider = EntryDecider(model_path="model_registry.json")
-        self.exit_decider  = ExitDecider(model_path="model_registry.json")
-        self.risk_sizer    = RiskSizer(model_path="model_registry.json", use_bandit=False)
-        self.symbol_gate   = SymbolGate(model_path="model_registry.json")
 
         # 7.3 ルーター
         self.router = StrategyRouter(
@@ -299,6 +290,9 @@ class Controller:
                             h["spr_ticks"].append(float(spread_ticks))
                     if isinstance(bid_qty, (int, float)) and isinstance(ask_qty, (int, float)) and (bid_qty + ask_qty) > 0:
                         h["obi"].append(bid_qty / (bid_qty + ask_qty))
+
+                    # 出来高・VWAP計算用
+                    dv = 0.0
                     cumv = b.get("TradingVolume") or b.get("CurrentVolume") or b.get("Volume")
                     if isinstance(cumv, (int, float)):
                         if h["last_cumvol"] is not None:
@@ -310,6 +304,32 @@ class Controller:
                         h["last_cumvol"] = float(cumv)
                     h["px_1s"].append(float(cur))
                     h["last_ts"] = nowt
+
+                    # --- 1分足OHLCの生成・更新 ---
+                    dt_now = datetime.datetime.fromtimestamp(nowt)
+                    minute_key = dt_now.replace(second=0, microsecond=0)
+                    price_f = float(cur)
+
+                    bar1 = h.get("m1_cur")
+                    if bar1 is None or bar1["start"] != minute_key:
+                        # 1分の切り替わり → 直前のバーを確定させて履歴に積む
+                        if bar1 is not None:
+                            h["m1_bars"].append(bar1)
+                        # 新しい1分足を開始
+                        h["m1_cur"] = {
+                            "start": minute_key,
+                            "open": price_f,
+                            "high": price_f,
+                            "low": price_f,
+                            "close": price_f,
+                            "vol": float(dv),
+                        }
+                    else:
+                        # 進行中バーの更新
+                        bar1["close"] = price_f
+                        bar1["high"] = max(bar1["high"], price_f)
+                        bar1["low"] = min(bar1["low"], price_f)
+                        bar1["vol"] += float(dv)
 
                     # スパイク一時停止
                     spike_pct = float(getattr(getattr(self.cfg, "safety", object()), "spike_pct", 3.5))
@@ -324,7 +344,7 @@ class Controller:
                                 self._cooldown_until[code_s] = time.time() + pause_sec
                                 logging.warning("Spike pause: code=%s Δ=%.2f%% for %.0fs", code_s, d_pct, pause_sec)
 
-                    # ====== 特徴量（7.3 最小＋8.0用拡張） ======
+                    # ====== 特徴量 ======
                     # VWAP距離(%)
                     vwap = (h["pv"]/h["vv"]) if h["vv"] > 0 else float(cur)
                     vwap_dist_pct = abs(float(cur) - vwap) / max(1.0, vwap) * 100.0
@@ -365,45 +385,67 @@ class Controller:
                     if isinstance(bid_qty, (int, float)) and isinstance(ask_qty, (int, float)) and (bid_qty + ask_qty) > 0:
                         imbalance = bid_qty / (bid_qty + ask_qty)
 
-                    # ===== エントリー判定 =====
+                    # ===== エントリー判定（MTFロジック） =====
                     buf.append(float(cur))
-                    recent = list(buf)[-3:] if len(buf) >= 3 else list(buf)
-                    upticks = sum(1 for i in range(1, len(recent)) if recent[i] > recent[i - 1])
 
-                    # 流動性しきい値
-                    vol5 = sum(list(h.get("vol_1s", []))[-5:]) if h.get("vol_1s") else 0.0
-                    vol_hist = list(h.get("vol_1s", []))[-60:]
-                    base_med = (sorted(vol_hist)[len(vol_hist)//2] if vol_hist else 0.0)
-                    vol_thr = max(120.0, base_med * VOL_MED_FACTOR)
+                    # --- 1分足/3分足/15分足ベースの判定用バッファ ---
+                    m1_bars = h.get("m1_bars", deque())
 
-                    # ===== ミニスイング仕様のエントリー条件 =====
-                    # 条件候補:
-                    # C1: 直近のΔ価格が上向き（継続性）
-                    # C2: 板バランスが買い優勢（OBI >= 0.55）
-                    # C3: 出来高加速（vol_boost >= 1.2）
-                    # C4: VWAPより上で、乖離が許容内
-                    # C5: スプレッド1tick以内
-                    trend_up = (delta_ticks > 0.0)
-                    obi_ok_soft = (imbalance is not None and imbalance >= 0.55)
-                    vol_accel = (vol_boost >= 1.2)
-                    vwap_ok = (float(cur) >= vwap) and (vwap_dist_pct <= 0.30)
-                    spread_tight = (spread_ticks is not None and spread_ticks <= 1.0)
-                    liquidity_ok = (vol5 >= vol_thr)
+                    # 15分足フィルター（環境認識）
+                    #  - 15分足MA25 ≒ 1分足375本のMA25
+                    #  - 現在価格 > MA25 かつ MA25が上向き
+                    ma15_ok = False
+                    
+                    # ★★★ 修正箇所2: 20分溜まれば動くように緩和（テスト用） ★★★
+                    if len(m1_bars) >= 20:
+                        closes = [bar["close"] for bar in m1_bars]
+                        # データが足りないうちは、ある分だけで平均を取る（コールドスタート対応）
+                        lookback = min(375, len(closes))
+                        ma_now = sum(closes[-lookback:]) / float(lookback)
+                        
+                        # 傾き判定
+                        if lookback > 5:
+                            ma_prev = sum(closes[-(lookback+1):-1]) / float(lookback)
+                        else:
+                            ma_prev = ma_now # データ不足時は傾きなしとみなす
 
-                    score = 0
-                    if trend_up:
-                        score += 1
-                    if obi_ok_soft:
-                        score += 1
-                    if vol_accel:
-                        score += 1
-                    if vwap_ok:
-                        score += 1
-                    if spread_tight:
-                        score += 1
+                        if (float(cur) > ma_now) and (ma_now >= ma_prev):
+                            ma15_ok = True
 
-                    # 5条件中3つ以上 + 流動性クリア でエントリー候補
-                    strong_long = (score >= 3) and liquidity_ok
+                    # 3分足ロジック（執行の主軸）
+                    #  - 直近60分（≒3分足20本）から High_20 / Low_20 を計算
+                    #  - パターンA: 押し目反発 Low_20 + 10tick 以上
+                    #  - パターンB: ブレイク High_20 + 5tick 超え
+                    pattern_ok = False
+                    
+                    # ★★★ 修正箇所3: 60分なくてもある分で判定（テスト用） ★★★
+                    if len(m1_bars) >= 20: 
+                        # 直近最大60分を参照
+                        window_lookback = min(60, len(m1_bars))
+                        window_bars = list(m1_bars)[-window_lookback:]
+                        
+                        low_20 = min(bar["low"] for bar in window_bars)
+                        high_20 = max(bar["high"] for bar in window_bars)
+                        price_f = float(cur)
+
+                        patA = price_f >= low_20 + 10.0 * tick   # 押し目反発（+10tick）
+                        patB = price_f >= high_20 + 5.0 * tick   # ブレイク（+5tick）
+
+                        pattern_ok = (patA or patB)
+
+                    # 1分足フィルター（勢い）
+                    #  - 直近1分の出来高 >= 過去20分平均の1.2倍
+                    vol_filter_ok = False
+                    if len(m1_bars) >= 21:
+                        last_21 = list(m1_bars)[-21:]    # [過去20分, 直近1分]
+                        last_bar = last_21[-1]
+                        prev20 = last_21[:-1]
+                        avg20 = sum(b1["vol"] for b1 in prev20) / max(1, len(prev20))
+                        if avg20 > 0 and last_bar["vol"] >= 1.2 * avg20:
+                            vol_filter_ok = True
+
+                    # 最終エントリー条件（AND）
+                    strong_long = ma15_ok and pattern_ok and vol_filter_ok
 
                     # 共通ガード
                     allowed = True
@@ -419,30 +461,8 @@ class Controller:
                     interval_ok        = self._respect_min_order_interval(sym)
                     pos_open           = sym.code in self.brk.pos
 
-                    # サイジング＆5円刻み可否
-                    kpi = {
-                        "paid_spread": float(spread_ticks or 0.0),
-                        "exit_slip": 0.3,
-                        "ev_tick": float(delta_ticks),
-                        "rtt": float(getattr(self.api, "last_latency_ms", 0)),
-                        "streak": -int(self._streak.get(sym.code, 0)),
-                        "daily_pl": float(self._daily_pnl),
-                        "tick_value": float(tick),
-                        "time_bucket": int((datetime.datetime.now().minute // 10)),
-                    }
-                    size_dec   = self.risk_sizer.decide(code_s, kpi)
-                    decided_qty= int(size_dec["qty"])
-
-                    gate_ctx = type("C", (), {
-                        "code": code_s,
-                        "spread_ticks": float(spread_ticks or 0.0),
-                        "vol5": float(vol5),
-                        "best_bid_qty": float(bid_qty or 0.0),
-                        "board_rtt_ms": float(getattr(self.api, "last_latency_ms", 0)),
-                        "tick_value": float(tick),
-                    })()
-                    gate = self.symbol_gate.decide(gate_ctx, decided_qty)
-                    allow_5yen = bool(gate["allow_5yen"])
+                    # ロット決定: 当面は設定qty or 固定ロット
+                    decided_qty = int(getattr(sym, "qty", 100) or 100)
 
                     # ---- 戦略ルーティング ----
                     heat_for_router = float(imbalance if imbalance is not None else 0.5)
@@ -460,11 +480,9 @@ class Controller:
                     )
                     strategy = self.router.decide(cx)
 
-                    # 5円刻みの扱い：門番NGなら観測、OKでもSWINGのみ許可（spread<=2tick）
+                    # 5円刻みの扱い：SCALPは禁止、スプレッド広すぎも禁止
                     if float(tick) >= 5.0:
-                        if not allow_5yen:
-                            strategy = "OBSERVE"
-                        elif strategy == "SCALP":
+                        if strategy == "SCALP":
                             strategy = "OBSERVE"  # 5円刻みのSCALPは禁止
                         elif (spread_ticks is not None) and (spread_ticks > SWING["max_spread_ticks"]):
                             strategy = "OBSERVE"
@@ -492,13 +510,9 @@ class Controller:
                         and market_hot_enough
                     ):
 
-                        # 戦略別のサイズ調整：MINI_SWING は0.5倍（必要なら）
-                        if strategy == "MINI_SWING":
-                            decided_qty = max(100, int(decided_qty * 0.5))
-
                         if self.cfg.paper_trading:
                             logging.info(
-                                "PAPER BUY %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f score=%d",
+                                "PAPER BUY %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f",
                                 sym.code,
                                 sym.exchange,
                                 decided_qty,
@@ -507,7 +521,6 @@ class Controller:
                                 regime,
                                 heat_for_router,
                                 market_heat,
-                                score,
                             )
                             self.brk.pos[sym.code] = {
                                 "entry": float(cur),
@@ -519,7 +532,7 @@ class Controller:
                             self.brk.last_order_ts[sym.code] = time.time()
                         else:
                             logging.info(
-                                "LIVE BUY  %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f score=%d",
+                                "LIVE BUY  %s@%s x%d cur=%s strategy=%s regime=%s heat=%.2f mt=%.2f",
                                 sym.code,
                                 sym.exchange,
                                 decided_qty,
@@ -528,7 +541,6 @@ class Controller:
                                 regime,
                                 heat_for_router,
                                 market_heat,
-                                score,
                             )
                             res = self.brk.buy(sym, b, cur)
                             if not res or res.get("Result") != 0:
@@ -699,4 +711,3 @@ class Controller:
                 logging.exception("controller main loop error: %s", e)
                 time.sleep(0.2)
                 continue
-
