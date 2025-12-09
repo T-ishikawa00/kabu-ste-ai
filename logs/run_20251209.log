@@ -49,3 +49,14 @@
 2025-12-09 18:44:11,632 [INFO] HB i=30 paper=True kill_exists=False latency_ms=6
 2025-12-09 18:44:12,648 [INFO] HB i=31 paper=True kill_exists=False latency_ms=1
 2025-12-09 18:44:13,167 [INFO] KeyboardInterrupt: stopping controller...
+2025-12-09 19:06:12,812 [INFO] ==== Session Start 2025-12-09 19:06:12 ====
+2025-12-09 19:06:12,813 [INFO] === 通常取引モード起動 ===
+2025-12-09 19:06:12,813 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-12-09 19:06:12,814 [INFO] HB i=1 paper=True kill_exists=False latency_ms=0
+2025-12-09 19:06:12,819 [INFO] token OK
+2025-12-09 19:06:12,820 [INFO] register OK (1件)
+2025-12-09 19:06:12,820 [INFO] 起動 mode=PAPER / symbols=['9501']
+2025-12-09 19:06:13,823 [INFO] HB i=2 paper=True kill_exists=False latency_ms=2
+2025-12-09 19:06:14,835 [INFO] HB i=3 paper=True kill_exists=False latency_ms=5
+2025-12-09 19:06:15,850 [INFO] HB i=4 paper=True kill_exists=False latency_ms=2
+2025-12-09 19:06:16,559 [INFO] KeyboardInterrupt: stopping controller...
