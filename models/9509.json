@@ -1,0 +1,15 @@
+{
+  "theta": 0.62,
+  "w_buy": 1.0,
+  "w_sell": 1.0,
+  "online": {
+    "trade_count": 4,
+    "win_count": 0,
+    "loss_count": 0,
+    "cum_pnl": 0.0,
+    "ev_per_trade": 0.0,
+    "last_pnl": 0.0,
+    "last_side": "",
+    "last_updated": 1765844852.5935485
+  }
+}

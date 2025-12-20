@@ -3,13 +3,13 @@
   "w_buy": 1.0,
   "w_sell": 1.0,
   "online": {
-    "trade_count": 52,
+    "trade_count": 58,
     "win_count": 0,
     "loss_count": 0,
     "cum_pnl": 0.0,
     "ev_per_trade": 0.0,
     "last_pnl": 0.0,
     "last_side": "",
-    "last_updated": 1764733473.1852312
+    "last_updated": 1765858844.68761
   }
 }

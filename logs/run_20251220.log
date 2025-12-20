@@ -1,0 +1,16 @@
+2025-12-20 12:42:44,501 [INFO] ==== Session Start 2025-12-20 12:42:44 ====
+2025-12-20 12:42:44,502 [INFO] === 通常取引モード起動 ===
+2025-12-20 12:42:44,502 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2025-12-20 12:42:45,170 [INFO] 🤖 AIモデル (v4) をロードしました！ [北電特化型]
+2025-12-20 12:42:45,171 [INFO] HB i=1 paper=True kill_exists=False latency_ms=0
+2025-12-20 12:42:46,132 [INFO] token OK
+2025-12-20 12:42:46,176 [INFO] HB i=2 paper=True kill_exists=False latency_ms=0
+2025-12-20 12:42:46,244 [INFO] register OK (5件)
+2025-12-20 12:42:46,246 [INFO] 起動 mode=PAPER / symbols=['9509', '9501', '6920', '8306', '9984']
+2025-12-20 12:42:47,183 [INFO] HB i=3 paper=True kill_exists=False latency_ms=861
+2025-12-20 12:42:48,197 [INFO] HB i=4 paper=True kill_exists=False latency_ms=1051
+2025-12-20 12:42:49,211 [INFO] HB i=5 paper=True kill_exists=False latency_ms=1051
+2025-12-20 12:42:50,223 [INFO] HB i=6 paper=True kill_exists=False latency_ms=1051
+2025-12-20 12:42:51,237 [INFO] HB i=7 paper=True kill_exists=False latency_ms=1051
+2025-12-20 12:42:52,240 [INFO] HB i=8 paper=True kill_exists=False latency_ms=1051
+2025-12-20 12:42:53,191 [INFO] KeyboardInterrupt: stopping controller...
