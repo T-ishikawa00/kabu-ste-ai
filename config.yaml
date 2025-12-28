@@ -1,5 +1,5 @@
 # ==========================================
-#  Kabu-Ste-AI Config (Future Expansion)
+#  Kabu-Ste-AI Config (v6 Guru Swing Mode)
 # ==========================================
 
 api:
@@ -9,7 +9,7 @@ api:
 
 telemetry_path: runtime/telemetry.json
 
-# ★本番！ ...ではなく月曜はテストなので true になっています (Good!)
+# ★AI育成・乱射モードのため Paper Trading ON
 paper_trading: true
 
 # 注文設定
@@ -17,12 +17,12 @@ orders:
   style: "marketable_limit"
   ioc: true
   cap_ticks_entry: 2
-  cap_ticks_exit: 3
+  cap_ticks_exit: 5      # 余裕を持たせる
   cap_pct_entry: 0.30
   cap_pct_exit: 0.50
   retry:
     enabled: true
-    max_attempts: 2
+    max_attempts: 3      # 粘る
     widen_ticks_each: 1
     wait_ms_between: 200
   forbid_market_on_5yen: true
@@ -32,63 +32,197 @@ orders:
 risk:
   no_new_entry_after: "14:50"
   force_close_time: "14:55"
+  max_daily_loss_jpy: 50000 
 
-# ★★★ 5銘柄体制へ拡張 ★★★
+# ★★★ 師匠対応: どっしりスイング設定へ変更 ★★★
 symbols:
-  # --- エース: 北海道電力 (AI参謀つき) ---
-  - code: "9509"
+  # --- [Group A] 電力・インフラ (エース) ---
+  - code: "9509" # 北海道電力
     exchange: 1
     qty: 300
     min_order_interval_sec: 5
-    tp_ticks_cap: 25   # 利確: 25tick
-    sl_ticks_cap: 12   # 損切: 12tick
-    max_hold_sec: 300  # 時間: 5分
+    tp_ticks_cap: 60      # 25 -> 60 (大きく狙う)
+    sl_ticks_cap: 20      # 12 -> 20 (耐える)
+    max_hold_sec: 3600    # 5分 -> 60分
 
-  # --- サブ: 東京電力 ---
-  - code: "9501"
+  - code: "9501" # 東京電力
+    exchange: 1
+    qty: 1000
+    min_order_interval_sec: 5
+    tp_ticks_cap: 60
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+  # --- [Group B] 半導体・ハイテク (暴れ馬) ---
+  - code: "6920" # レーザーテック
     exchange: 1
     qty: 100
     min_order_interval_sec: 5
-    tp_ticks_cap: 25
-    sl_ticks_cap: 12
-    max_hold_sec: 300
+    tp_ticks_cap: 100     # 値がさ株なので大きく
+    sl_ticks_cap: 50
+    max_hold_sec: 3600
 
-  # --- [NEW] 半導体ラスボス: レーザーテック ---
-  # 値動きが激しいのでデータ収集に最適
-  - code: "6920"
+  - code: "6146" # ディスコ
     exchange: 1
-    qty: 100           # 単元が高い(200万~)のでPaperでも100推奨
+    qty: 100
     min_order_interval_sec: 5
-    tp_ticks_cap: 30   # ボラが巨大なので少し広め
+    tp_ticks_cap: 100
+    sl_ticks_cap: 50
+    max_hold_sec: 3600
+
+  - code: "6526" # ソシオネクスト
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 50
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+  - code: "6758" # ソニーグループ
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 50
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+    
+  - code: "285A" # キオクシアHD
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 50
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+  # --- [Group C] 重工・造船・機械 (トレンド) ---
+  - code: "7014" # 名村造船所
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 50
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+  - code: "7011" # 三菱重工業
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 50
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+  - code: "7003" # 三井E&S
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 50
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+  - code: "6954" # ファナック
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 50
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+  - code: "6506" # 安川電機
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 40
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+  # --- [Group D] 自動車 (輸出・円安) ---
+  - code: "7203" # トヨタ自動車
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 40
     sl_ticks_cap: 15
-    max_hold_sec: 300
+    max_hold_sec: 3600
 
-  # --- [NEW] 金融代表: 三菱UFJ ---
-  # 金利で動く重厚な銘柄
-  - code: "8306"
+  - code: "7267" # ホンダ
     exchange: 1
     qty: 100
     min_order_interval_sec: 5
-    tp_ticks_cap: 20   # 刻みが細かいので標準的設定
+    tp_ticks_cap: 40
+    sl_ticks_cap: 15
+    max_hold_sec: 3600
+
+  # --- [Group E] 商社・銀行 (バリュー) ---
+  - code: "8058" # 三菱商事
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 40
+    sl_ticks_cap: 15
+    max_hold_sec: 3600
+
+  - code: "8031" # 三井物産
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 40
+    sl_ticks_cap: 15
+    max_hold_sec: 3600
+
+  - code: "8306" # 三菱UFJ
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 30
     sl_ticks_cap: 10
-    max_hold_sec: 300
+    max_hold_sec: 3600
 
-  # --- [NEW] 日経連動: ソフトバンクG ---
-  # AI投資の代表格
-  - code: "9984"
+  - code: "8411" # みずほFG
     exchange: 1
     qty: 100
     min_order_interval_sec: 5
-    tp_ticks_cap: 25
-    sl_ticks_cap: 12
-    max_hold_sec: 300
+    tp_ticks_cap: 30
+    sl_ticks_cap: 10
+    max_hold_sec: 3600
 
-# ★重要: 同時に監視する銘柄数を5に増やす
-max_concurrent_symbols: 5
+  # --- [Group F] その他注目 (材料・IPO・ゲーム) ---
+  - code: "9984" # ソフトバンクG
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 60
+    sl_ticks_cap: 25
+    max_hold_sec: 3600
+    
+  - code: "5803" # フジクラ
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 60
+    sl_ticks_cap: 25
+    max_hold_sec: 3600
+
+  - code: "9107" # 川崎汽船
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 60
+    sl_ticks_cap: 25
+    max_hold_sec: 3600
+
+  - code: "7974" # 任天堂
+    exchange: 1
+    qty: 100
+    min_order_interval_sec: 5
+    tp_ticks_cap: 50
+    sl_ticks_cap: 20
+    max_hold_sec: 3600
+
+
+max_concurrent_symbols: 25
 
 portfolio:
-  # ★重要: 同時に持てるポジション数も増やす（データ取り逃がし防止）
-  max_open_positions: 5
+  max_open_positions: 25
 
 safety:
   api_latency_ms_limit: 1500
@@ -110,7 +244,7 @@ entry:
 exit:
   trail_back_pct: 0.008
   trail_start_pct: 0.02
-  max_hold_sec: 120
+  max_hold_sec: 3600 # ★ここも一応合わせておく
   rules:
     max_spread_ticks_mean_5m: 1.0
     min_vol_1m_mean_5m: 8000
@@ -128,13 +262,32 @@ learning:
   challenger_share: 0.10
 
 gatekeeper:
-  enabled: false
+  enabled: true
   allowed_symbols:
-    - "9501"
-    - "9509"
-    - "6920"
-    - "8306"
-    - "9984"
+    # 22銘柄全部許可
+    - "9501" 
+    - "9509" 
+    - "8306" 
+    - "8411" 
+    - "7014" 
+    - "7003" 
+    - "7011" 
+    - "7203" 
+    - "7267" 
+    - "5401" 
+    - "9107" 
+    - "6526" 
+    - "6506" 
+    - "5803" 
+    - "6758" 
+    - "8058" 
+    - "8031" 
+    - "285A" 
+    - "7974" 
+    - "9984" 
+    - "6920" 
+    - "6146" 
+    - "6954" 
 
 rotation:
   enabled: false
@@ -144,18 +297,19 @@ rotation:
 
 strategies:
   SCALP:
-    tp_ticks: 1
-    sl_ticks: 1
-    max_hold_sec: 25
-    max_spread_ticks: 3
+    tp_ticks: 2
+    sl_ticks: 2
+    max_hold_sec: 60
+    max_spread_ticks: 5
     heat_entry: 0.64
     exit_drop: 0.45
 
   MINI_SWING:
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
-    max_spread_ticks: 3
+    # ★ここも師匠設定に合わせる
+    tp_ticks_cap: 60     # 20 -> 60
+    sl_ticks_cap: 25     # 10 -> 25
+    max_hold_sec: 3600   # 300 -> 3600
+    max_spread_ticks: 5
     heat_exit_drop: 0.20
     obi_flip: 0.10
     vwap_distance_max: 0.40
