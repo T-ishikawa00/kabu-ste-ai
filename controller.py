@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 import os, time, logging, json
 import datetime
+import random 
 from collections import deque
 from typing import Deque, Dict, Any, List
 
-# ★追加: AI用ライブラリ
+# ★AI・データ分析用ライブラリ
 import numpy as np
+import pandas as pd
+import pandas_ta as ta  # テクニカル指標計算用
 from stable_baselines3 import PPO
 
 from utils_common import now, ensure_dir, jst_iso, tick_size
@@ -14,31 +17,29 @@ from broker import Broker
 from kabus_api import KabusAPI
 from model_registry import ModelRegistry
 
-# Lv7.3: 戦略分離用
+# データ収集機
+from data_collector import DataCollector
+
+# 戦略分離用
 from strategy_router import StrategyRouter, Context
 
-# Lv7.3: オンライン学習（戦略別・pnl_ticks）
-from train_policy_online import update_after_trade
-
 # ===== パラメータ（デフォルト値） =====
-# config.yaml で銘柄ごとに指定がない場合、この値が使われます
 SWING = dict(
-    tp_ticks_cap=25,         # デフォルト利確幅
-    sl_ticks_cap=12,         # デフォルト損切幅
-    max_hold_sec=300,        # デフォルト保有秒数
-    max_spread_ticks=3,
+    tp_ticks_cap=60,
+    sl_ticks_cap=25,
+    max_hold_sec=3600,
+    max_spread_ticks=5,
     heat_exit_drop=0.20,
     obi_flip=0.10,
     vwap_distance_max=0.40,
 )
 
-# ルーター閾値（初期）
 ROUTER_PREF = dict(
-    heat=0.72,
-    vwap_distance=0.25,   # %
+    heat=0.70,
+    vwap_distance=0.30,
     spread_ticks=2,
-    vol_boost_ratio=1.5,
-    market_temp=0.60,
+    vol_boost_ratio=1.2,
+    market_temp=0.50,
 )
 ROUTER_FORBID = dict(
     spread_ticks=6,
@@ -47,8 +48,45 @@ ROUTER_FORBID = dict(
 )
 
 LOOP_SLEEP_SEC  = 0.05
-FAST_CHECK_SEC  = 0.3
-GRACE_SEC       = 30.0        # 猶予期間（ただしSL/TPはこれを無視して優先発動）
+GRACE_SEC       = 30.0
+
+# ==========================================
+# ★追加: RCI計算用関数 (step3_trainと同じロジック)
+# ==========================================
+def calc_rci_series(series: pd.Series, period=9) -> pd.Series:
+    """
+    リアルタイム運用用のRCI計算関数
+    """
+    rci_values = []
+    # 処理速度優先のため、直近のデータのみ計算してもよいが、
+    # ここではpandasのapply等を使わず愚直に回す（データ数が少ないため高速）
+    # リアルタイム用には「最後の行だけ」計算すれば良いが、念のためSeriesで返す
+    
+    # 計算に必要な長さがない場合はNaN埋め
+    if len(series) < period:
+        return pd.Series([np.nan] * len(series), index=series.index)
+
+    # 全体を計算すると遅いので、直近1点だけ計算する簡易版ではなく、
+    # windowを使って計算する
+    # ※ controller内ではデータ量が少ない(max 600)ので全計算しても一瞬です
+    
+    time_rank = np.arange(1, period + 1)
+    
+    # ループ計算
+    for i in range(len(series)):
+        if i < period - 1:
+            rci_values.append(np.nan)
+            continue
+        
+        s = series.iloc[i - period + 1 : i + 1]
+        price_rank = s.rank(method='max').values
+        
+        d_sq = np.sum((time_rank - price_rank) ** 2)
+        val = (1 - (6 * d_sq) / (period**3 - period)) * 100
+        rci_values.append(val)
+        
+    return pd.Series(rci_values, index=series.index)
+
 
 def _hhmm() -> str:
     return now().strftime("%H:%M")
@@ -77,13 +115,33 @@ class Controller:
         self.models.load_all(self.syms)
         self._last_tele_write = 0.0
 
-        # ★追加: AIモデル (v4) のロード
-        try:
-            self.ai_model = PPO.load("model_9509_v4")
-            logging.info("🤖 AIモデル (v4) をロードしました！ [北電特化型]")
-        except Exception as e:
-            logging.warning(f"⚠️ AIモデルのロードに失敗 (ファイルがない場合はStep3を実行してください): {e}")
-            self.ai_model = None
+        # データ収集機の起動
+        self.collector = DataCollector()
+        logging.info("💾 DataCollector initialized")
+
+        # ==========================================
+        # AIモデルのロード (v30から探索)
+        # ==========================================
+        self.ai_models = {}
+        logging.info("🤖 AIモデルのロードを開始します...")
+        
+        for s in self.syms:
+            code = str(s.code)
+            loaded = False
+            # v30 から v1 まで順番に探す（最新優先）
+            for v in range(30, 0, -1):
+                model_path = f"model_{code}_v{v}"
+                if os.path.exists(model_path + ".zip"):
+                    try:
+                        self.ai_models[code] = PPO.load(model_path)
+                        logging.info(f"  ✅ [{code}] AI搭載完了 (v{v})")
+                        loaded = True
+                        break 
+                    except Exception as e:
+                        logging.warning(f"  ⚠️ [{code}] v{v} ロード失敗: {e}")
+            
+            if not loaded:
+                logging.info(f"  ⚪ [{code}] AIなし (ルールベースのみで稼働)")
 
         self._next_board_at = {str(s.code): 0.0 for s in self.syms}
         self._backoff       = {str(s.code): 0.0 for s in self.syms}
@@ -117,7 +175,7 @@ class Controller:
                 "last_bid_qty": 0.0,
                 "last_ask_qty": 0.0,
                 "m1_cur": None,
-                "m1_bars": deque(maxlen=600)
+                "m1_bars": deque(maxlen=600) # RCI計算用に少し長めに保持
             }
 
         self._cooldown_until: Dict[str, float] = {}
@@ -134,16 +192,6 @@ class Controller:
                 "forbid_entry_if": ROUTER_FORBID,
             }
         })
-
-    def _append_trade_log(self, rec: dict):
-        os.makedirs("logs", exist_ok=True)
-        ymd = datetime.datetime.now().strftime("%Y%m%d")
-        path = os.path.join("logs", f"trades_{ymd}.jsonl")
-        try:
-            with open(path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-        except Exception as e:
-            logging.warning(f"[TRADES_LOG] write failed: {e}")
 
     def _can_new_entry_now(self) -> bool:
         naa = getattr(getattr(self.cfg, "risk", object()), "no_new_entry_after", None)
@@ -162,17 +210,12 @@ class Controller:
         max_pos = int(getattr(getattr(self.cfg, "portfolio", object()), "max_open_positions", 1))
         return len(self.brk.pos) < max_pos
 
-    # --- パラメータ取得ヘルパー ---
     def _get_sym_param(self, sym, key, default_val):
-        """銘柄個別設定があればそれを使い、なければデフォルト値を返す"""
-        # 1. 素直に属性として持っているか？
         val = getattr(sym, key, None)
         if val is not None: return val
-        # 2. 辞書として持っているか？
         if isinstance(sym, dict):
             val = sym.get(key)
             if val is not None: return val
-        # 3. 救済策
         try:
             raw_symbols = getattr(self.cfg, "symbols", [])
             target_code = str(getattr(sym, "code", "") or sym.get("code", ""))
@@ -220,6 +263,7 @@ class Controller:
                     try:
                         b = self.api.board(sym.code, sym.exchange)
                         self._next_board_at[code_s] = nowt + self._board_min_iv
+                        self.collector.log_board(code_s, b)
                     except Exception as e:
                         msg = str(e)
                         if "429" in msg or "API実行回数エラー" in msg:
@@ -294,7 +338,7 @@ class Controller:
                         if old_px > 0 and (abs(cur - old_px) / old_px * 100.0) >= spike_pct:
                             self._cooldown_until[code_s] = time.time() + float(getattr(getattr(self.cfg, "safety", object()), "pause_after_spike_sec", 60))
 
-                    # Features
+                    # Features (Simple)
                     vwap = (h["pv"]/h["vv"]) if h["vv"] > 0 else float(cur)
                     vwap_dist_pct = abs(float(cur) - vwap) / max(1.0, vwap) * 100.0
                     vol1m = sum(list(h["vol_1s"])[-60:])
@@ -306,127 +350,174 @@ class Controller:
                     depth_ratio = cur_bid_qty / max(1.0, cur_ask_qty)
                     market_heat = max(0.0, min(1.0, 0.5 * min(2.0, vol_boost) / 2.0 + 0.5 * (depth_ratio/(1.0+depth_ratio))))
                     regime = _regime_now()
-                    
                     imbalance = cur_bid_qty / (cur_bid_qty + cur_ask_qty) if (cur_bid_qty + cur_ask_qty) > 0 else None
+                    obi_val = imbalance if imbalance is not None else 0.5
 
-                    # Entry Logic
                     self.buf[sym.code].append(float(cur))
                     m1_bars = h.get("m1_bars", deque())
 
-                    # ★★★ AIアドバイザーの処理開始 (北電のみ) ★★★
-                    if self.ai_model and code_s == "9509": 
+                    # ==========================================
+                    # ★★★ AI処理: 師匠対応版 (RCI, PSAR等計算) ★★★
+                    # ==========================================
+                    ai_model = self.ai_models.get(code_s)
+                    ai_buy = False
+                    ai_exit = False
+                    
+                    # 最低でもテクニカル指標計算用に十分な足数が必要 (RCI52などあるため60本くらい欲しい)
+                    # 起動直後はデータがないのでAIは動かないが、DataCollectorが溜めるので時間とともに動き出す
+                    if ai_model and len(m1_bars) >= 10: 
                         try:
-                            # 少なくとも2本分のデータがあれば特徴量を作れる
-                            if len(m1_bars) >= 2:
-                                bars = list(m1_bars)
-                                cur_bar = bars[-1]
-                                prev_bar = bars[-2]
-                                
-                                # 特徴量作成 (step2_env.py の _next_observation を簡易再現)
-                                # [Close変化率, MA乖離, Volatility, 出来高倍率, RSI, ポジション, 含み損益]
-                                
-                                # 1. Close変化率
-                                close_pct = (cur_bar["close"] - prev_bar["close"]) / prev_bar["close"] * 100
-                                
-                                # 2. MA15乖離
-                                lookback = min(15, len(bars))
-                                ma15 = sum([b["close"] for b in bars[-lookback:]]) / lookback
-                                dist_ma15 = (cur_bar["close"] - ma15) / ma15 * 100
-                                
-                                # 3. Volatility
-                                volatility = (cur_bar["high"] - cur_bar["low"]) / cur_bar["open"] * 100
-                                
-                                # 4. Vol Ratio
-                                # 簡易的に vol_boost を利用
-                                v_ratio = vol_boost
-                                
-                                # 5. RSI (簡易計算: 直近14本で計算)
-                                rsi_val = 50.0 # データ不足時のデフォルト
-                                if len(bars) >= 15:
-                                    deltas = np.diff([b["close"] for b in bars[-15:]])
-                                    gains = deltas[deltas > 0]
-                                    losses = -deltas[deltas < 0]
-                                    avg_gain = np.mean(gains) if len(gains) > 0 else 0
-                                    avg_loss = np.mean(losses) if len(losses) > 0 else 0
-                                    if avg_loss == 0: rsi_val = 100.0
-                                    else:
-                                        rs = avg_gain / avg_loss
-                                        rsi_val = 100 - (100 / (1 + rs))
-                                
-                                # 6. ポジション状態 (0 or 1)
-                                is_pos = 1.0 if sym.code in self.brk.pos else 0.0
-                                
-                                # 7. 含み損益率
-                                pnl_pct = 0.0
-                                if is_pos:
-                                    entry_p = float(self.brk.pos[sym.code]["entry"])
-                                    pnl_pct = (float(cur) - entry_p) / entry_p * 100
+                            # 1. リアルタイム・テクニカル計算
+                            # dequeをDataFrameに変換 (直近100本あれば十分)
+                            bars_list = list(m1_bars)
+                            recent_bars = bars_list[-100:] 
+                            df = pd.DataFrame(recent_bars)
+                            
+                            # 最新の未確定足(Current)も含めて計算してOK（リアルタイム判断なので）
+                            
+                            # --- A. 基本データ ---
+                            close_series = df["close"]
+                            cur_price = float(cur)
+                            prev_close = float(df.iloc[-2]["close"]) if len(df) >= 2 else cur_price
+                            
+                            pct_change = 0.0
+                            if prev_close > 0:
+                                pct_change = (cur_price - prev_close) / prev_close * 100.0
 
-                                # AI入力作成
-                                ai_obs = np.array([
-                                    close_pct, 
-                                    dist_ma15, 
-                                    volatility, 
-                                    v_ratio,
-                                    rsi_val / 100.0, # 正規化
-                                    is_pos,
-                                    pnl_pct
-                                ], dtype=np.float32)
+                            # --- B. 師匠指標の計算 (pandas_ta利用) ---
+                            
+                            # MACD (12, 26, 9)
+                            macd_df = df.ta.macd(close='close', fast=12, slow=26, signal=9)
+                            # 最新のヒストグラムを取得 (列名: MACDh_12_26_9)
+                            if macd_df is not None and not macd_df.empty:
+                                macd_hist = macd_df.iloc[-1].get("MACDh_12_26_9", 0.0)
+                            else:
+                                macd_hist = 0.0
 
-                                # AIに判断させる
-                                action, _ = self.ai_model.predict(ai_obs, deterministic=True)
-                                
-                                # ログに出す (Wait以外なら)
-                                if action != 0:
-                                    ai_msg = "BUY 🔥" if action == 1 else "EXIT 💨"
-                                    # ログがうるさくなりすぎないよう、たまに出すか、変化があった時だけ出すのが理想だが
-                                    # とりあえずAIがやる気になったら表示する
-                                    logging.info(f"🤖 [AI参謀] {sym.code} 推奨: {ai_msg} (現在値:{cur:.0f})")
+                            # Bollinger Bands (20, 2)
+                            bb_df = df.ta.bbands(close='close', length=20, std=2)
+                            if bb_df is not None and not bb_df.empty:
+                                bb_p = bb_df.iloc[-1].get("BBP_20_2.0", 0.5) # %B
+                            else:
+                                bb_p = 0.5
+
+                            # Parabolic SAR (0.02, 0.2)
+                            psar_df = df.ta.psar(high='high', low='low', close='close', af0=0.02, af=0.2)
+                            # PSARは Long(PSARl) と Short(PSARs) に分かれるので合体
+                            sar_dist = 0.0
+                            if psar_df is not None and not psar_df.empty:
+                                last_row = psar_df.iloc[-1]
+                                psar_l = last_row.get("PSARl_0.02_0.2", np.nan)
+                                psar_s = last_row.get("PSARs_0.02_0.2", np.nan)
+                                sar_val = psar_l if not pd.isna(psar_l) else (psar_s if not pd.isna(psar_s) else cur_price)
+                                if sar_val > 0:
+                                    sar_dist = (cur_price - sar_val) / sar_val * 100.0
+
+                            # RCI (9, 26) - 自作関数
+                            # 処理速度のため、直近データに対して実行
+                            rci9_s = calc_rci_series(close_series, 9)
+                            rci26_s = calc_rci_series(close_series, 26)
+                            rci9 = rci9_s.iloc[-1] if not rci9_s.empty else 0.0
+                            rci26 = rci26_s.iloc[-1] if not rci26_s.empty else 0.0
+                            
+                            # RSI (14)
+                            rsi_df = df.ta.rsi(close='close', length=14)
+                            rsi_val = rsi_df.iloc[-1] if rsi_df is not None and not rsi_df.empty else 50.0
+
+                            # SMA25 乖離
+                            sma25_df = df.ta.sma(close='close', length=25)
+                            sma25 = sma25_df.iloc[-1] if sma25_df is not None and not sma25_df.empty else cur_price
+                            dist_sma25 = (cur_price - sma25) / sma25 * 100.0 if sma25 > 0 else 0.0
+
+                            # --- C. ポジション情報 ---
+                            is_pos = 1.0 if sym.code in self.brk.pos else 0.0
+                            pnl_pct = 0.0
+                            if is_pos:
+                                entry_p = float(self.brk.pos[sym.code]["entry"])
+                                pnl_pct = (cur_price - entry_p) / entry_p * 100.0
+
+                            # 旧指標 (互換性のため維持)
+                            ma15_val = df["close"].rolling(15).mean().iloc[-1] if len(df) >= 15 else cur_price
+                            dist_ma15 = (cur_price - ma15_val) / ma15_val * 100.0 if ma15_val > 0 else 0.0
+                            volatility = (df.iloc[-1]["high"] - df.iloc[-1]["low"]) / df.iloc[-1]["open"] * 100.0 if df.iloc[-1]["open"] > 0 else 0.0
+
+                            # --- D. AI入力データの作成 (15次元) ---
+                            # step2_env.py の observation_space と完全に一致させる
+                            ai_obs = np.array([
+                                pct_change,          # 1. 変化率
+                                obi_val,             # 2. OBI
+                                macd_hist,           # 3. MACDヒスト
+                                bb_p,                # 4. BB %B
+                                rci9 / 100.0,        # 5. RCI短期 (正規化)
+                                rci26 / 100.0,       # 6. RCI中期 (正規化)
+                                sar_dist,            # 7. PSAR乖離
+                                rsi_val / 100.0,     # 8. RSI (正規化)
+                                vol_boost,           # 9. 出来高倍率 (vol_ratio)
+                                dist_sma25,          # 10. SMA25乖離
+                                is_pos,              # 11. ポジション有無
+                                pnl_pct,             # 12. 含み損益率
+                                dist_ma15,           # 13. 旧MA乖離
+                                volatility,          # 14. ボラティリティ
+                                0.0                  # 15. 予備
+                            ], dtype=np.float32)
+                            
+                            # NaN対策
+                            ai_obs = np.nan_to_num(ai_obs, nan=0.0, posinf=0.0, neginf=0.0)
+
+                            # 推論実行
+                            action, _ = ai_model.predict(ai_obs, deterministic=True)
+                            
+                            if action == 1:
+                                ai_buy = True
+                                logging.info(f"🤖 [{code_s}] AI指示: BUY 🔥 (RCI9:{rci9:.0f} MACD:{macd_hist:.1f})")
+                            elif action == 2:
+                                ai_exit = True
+                                logging.info(f"🤖 [{code_s}] AI指示: EXIT 💨 (PnL:{pnl_pct:.2f}%)")
 
                         except Exception as e:
-                            # AIエラーで本体を止めない
+                            # logging.warning(f"AI predict error: {e}") # うるさいのでコメントアウト可
                             pass
                     # ★★★ AI処理終了 ★★★
 
-                    # MA15
-                    ma15_long_ok, ma15_short_ok = False, False
-                    # ★修正: データ不足許容（コールドスタート対応）
-                    bars_len = len(m1_bars)
-                    if bars_len >= 1:
-                        closes = [bar["close"] for bar in m1_bars]
-                        lookback = min(20, bars_len) 
-                        ma_now = sum(closes[-lookback:]) / float(lookback)
-                        if float(cur) > ma_now: ma15_long_ok = True
-                        if float(cur) < ma_now: ma15_short_ok = True
-                    else:
-                        ma15_long_ok = True
-                        ma15_short_ok = True
 
-                    # 3min Breakout (修正済み)
-                    pattern_long_ok, pattern_short_ok = False, False
-                    if bars_len >= 1: 
-                        window_lookback = min(60, bars_len)
-                        window_bars = list(m1_bars)[-window_lookback:]
-                        low_20, high_20 = min(b["low"] for b in window_bars), max(b["high"] for b in window_bars)
+                    # ==========================================
+                    # エントリー判断ロジック
+                    # ==========================================
+                    
+                    # 1. AIの判断 (AIが自信満々なら従う)
+                    if ai_buy:
+                        strong_long = True
+                        logging.info(f"🚀 [{code_s}] Entry by AI Decision (v6 Hybrid)")
+                    
+                    else:
+                        # 2. ルールベース判定 (AI未稼働時のバックアップ)
+                        # 千鳥足廃止。簡単なトレンドフォローのみ。
                         
-                        pattern_long_ok = (float(cur) >= low_20 + 10.0 * tick) or (float(cur) >= high_20 + 5.0 * tick)
-                        pattern_short_ok = (float(cur) <= high_20 - 10.0 * tick) or (float(cur) <= low_20 - 5.0 * tick)
-
-                    # Vol Filter (修正済み)
-                    vol_filter_ok = False
-                    if bars_len < 5:
-                        vol_filter_ok = True
-                    else:
-                        last_n = list(m1_bars)[-min(21, bars_len):]
-                        if len(last_n) > 1:
-                            prev_bars = last_n[:-1]
-                            avg_vol = sum(b1["vol"] for b1 in prev_bars) / len(prev_bars)
-                            if avg_vol > 0 and last_n[-1]["vol"] >= 0.7 * avg_vol: vol_filter_ok = True
+                        # 条件A: 1分足レベルの上昇トレンド
+                        ma15_long_ok = False
+                        if len(m1_bars) >= 15:
+                            ma_now = sum([b["close"] for b in list(m1_bars)[-15:]]) / 15.0
+                            if float(cur) > ma_now: ma15_long_ok = True
                         else:
-                            vol_filter_ok = True
+                            ma15_long_ok = True # データ不足時は許可
 
-                    strong_long  = ma15_long_ok  and pattern_long_ok  and vol_filter_ok
-                    strong_short = ma15_short_ok and pattern_short_ok and vol_filter_ok
+                        # 条件B: 買い板圧力
+                        board_ok = (obi_val >= 0.55)
+                        
+                        # 条件C: ボラティリティ
+                        vol_ok = (vol_boost > 1.0)
+
+                        if ma15_long_ok and board_ok and vol_ok:
+                            strong_long = True
+                            logging.debug(f"✨ [{code_s}] Entry by Logic (Trend+Board)")
+                        else:
+                            strong_long = False
+                    
+                    strong_short = False 
+
+                    # 3. 日足トレンドフィルター (200日線など)
+                    # ここは手動リスト(config)で管理するか、朝イチで取得したデータを使う想定
+                    # 今回はコード上では実装せず、運用ルール(人間が選別)に委ねる
 
                     # Guards
                     allowed = (not self.gk_enabled) or (code_s in self.allowed_symbols)
@@ -439,16 +530,16 @@ class Controller:
                     
                     decided_qty = int(getattr(sym, "qty", 100) or 100)
 
-                    # Router
-                    heat_for_router = float(imbalance if imbalance is not None else 0.5)
-                    cx = Context(code=code_s, price_step=int(max(1, round(float(tick)))), spread_ticks=float(spread_ticks or 0.0), heat=heat_for_router, obi=heat_for_router, vwap_distance_pct=float(vwap_dist_pct), vol_boost_ratio=float(vol_boost), vol_rank=float(vol_rank), market_temp=float(market_heat))
+                    # Router (戦略決定)
+                    cx = Context(code=code_s, price_step=int(max(1, round(float(tick)))), spread_ticks=float(spread_ticks or 0.0), heat=float(obi_val), obi=float(obi_val), vwap_distance_pct=float(vwap_dist_pct), vol_boost_ratio=float(vol_boost), vol_rank=float(vol_rank), market_temp=float(market_heat))
                     strategy = self.router.decide(cx)
 
                     if float(tick) >= 5.0 and strategy == "SCALP": strategy = "OBSERVE"
                     if (spread_ticks is not None) and (spread_ticks > SWING["max_spread_ticks"]): strategy = "OBSERVE"
-                    if strategy == "SCALP": strategy = "MINI_SWING"
-
-                    market_hot_enough = (market_heat >= (0.5 if regime == "OPEN" else 0.4))
+                    if strategy == "SCALP": strategy = "MINI_SWING" # スイング寄り設定
+                    
+                    market_hot_enough = (market_heat >= (0.3 if regime == "OPEN" else 0.4))
+                    if ai_buy: market_hot_enough = True
 
                     # Entry Execution
                     if (not pos_open) and (strong_long or strong_short) and (strategy != "OBSERVE") and can_trade_window and can_new_entry and under_max_positions and interval_ok and allowed and cool_ok and (self._daily_pnl > -self._daily_stop) and market_hot_enough:
@@ -486,7 +577,6 @@ class Controller:
                         else:
                              exit_target_px = float(cur)
 
-                        # ★★★ 銘柄個別パラメータの取得 ★★★
                         p_tp   = self._get_sym_param(sym, "tp_ticks_cap", SWING["tp_ticks_cap"])
                         p_sl   = self._get_sym_param(sym, "sl_ticks_cap", SWING["sl_ticks_cap"])
                         p_time = self._get_sym_param(sym, "max_hold_sec", SWING["max_hold_sec"])
@@ -503,31 +593,17 @@ class Controller:
                         hit_time = held_sec >= p_time
                         hit_force = bool(force_close)
 
-                        heat_now = float(imbalance if imbalance is not None else 0.5)
-                        danger_flags = []
-                        if side == "BUY":
-                            if heat_now < SWING["heat_exit_drop"]: danger_flags.append("HEAT")
-                        else:
-                            if heat_now > (1.0 - SWING["heat_exit_drop"]): danger_flags.append("HEAT")
-
-                        vol_cool = (vol_boost < 0.8)
-                        if vol_cool and regime != "PM": danger_flags.append("VOL")
-                        if market_heat < 0.35: danger_flags.append("MKT")
-
                         do_exit, reason = False, "COND"
-
-                        if hit_tp or hit_sl or hit_time or hit_force:
-                            do_exit = True
+                        
+                        # AI Exit or Hard Rules
+                        if ai_exit:
+                            do_exit, reason = True, "AI_EXIT"
+                        elif hit_tp or hit_sl or hit_time or hit_force:
+                            do_exit, reason = True, "COND"
                             if hit_tp: reason = "TP"
                             elif hit_sl: reason = "SL"
                             elif hit_time: reason = "TIME"
                             elif hit_force: reason = "FORCE"
-                        else:
-                            if held_sec < GRACE_SEC:
-                                do_exit, reason = False, "HOLD_GRACE"
-                            else:
-                                if len(danger_flags) >= 3:
-                                    do_exit, reason = True, "COND"
 
                         if do_exit:
                              if self.cfg.paper_trading:
