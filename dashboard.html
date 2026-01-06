@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>KABU-EVO Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { margin-bottom: 10px; font-size: 1.5rem; color: #888; }
+        .status-box {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 20px;
+            background: #1e1e1e;
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .metric { text-align: center; }
+        .label { font-size: 0.9rem; color: #aaa; margin-bottom: 5px; }
+        .value { font-size: 2.5rem; font-weight: bold; }
+        .plus { color: #00e676; }
+        .minus { color: #ff1744; }
+        .chart-container {
+            position: relative;
+            width: 90vw;
+            height: 60vh;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚀 KABU-EVO Monitor (Live)</h1>
+
+    <div class="status-box">
+        <div class="metric">
+            <div class="label">Daily PnL</div>
+            <div id="pnl-display" class="value">Loading...</div>
+        </div>
+        <div class="metric">
+            <div class="label">Streak (Win/Loss)</div>
+            <div id="streak-display" class="value" style="font-size: 2rem;">-</div>
+        </div>
+        <div class="metric">
+            <div class="label">Last Update</div>
+            <div id="time-display" class="value" style="font-size: 1.5rem; margin-top: 10px;">-</div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="pnlChart"></canvas>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('pnlChart').getContext('2d');
+        const pnlDisplay = document.getElementById('pnl-display');
+        const streakDisplay = document.getElementById('streak-display');
+        const timeDisplay = document.getElementById('time-display');
+
+        // チャートの初期設定
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Realized PnL (JPY)',
+                    data: [],
+                    borderColor: '#29b6f6',
+                    backgroundColor: 'rgba(41, 182, 246, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { color: '#333' }, ticks: { color: '#888' } },
+                    y: { grid: { color: '#333' }, ticks: { color: '#888' } }
+                },
+                animation: false
+            }
+        });
+
+        // データ取得関数
+        async function fetchData() {
+            try {
+                // キャッシュを防ぐためにタイムスタンプを付与
+                const response = await fetch('runtime/telemetry.json?' + new Date().getTime());
+                if (!response.ok) throw new Error("File not found");
+                
+                const data = await response.json();
+                
+                // 1. 数値の更新
+                const pnl = data.pnl || 0;
+                pnlDisplay.textContent = "¥" + pnl.toLocaleString();
+                pnlDisplay.className = "value " + (pnl >= 0 ? "plus" : "minus");
+
+                // ストリーク情報の更新
+                if (data.streak) {
+                    let sText = "";
+                    for (const [code, val] of Object.entries(data.streak)) {
+                        if (val !== 0) sText += `${code}:${val > 0 ? 'W'+val : 'L'+Math.abs(val)} `;
+                    }
+                    streakDisplay.textContent = sText || "Flat";
+                }
+
+                // 2. グラフの更新 (同じ時刻なら更新しない)
+                const ts = data.ts.split('T')[1].split('.')[0]; // HH:MM:SS
+                timeDisplay.textContent = ts;
+
+                const lastLabel = chart.data.labels[chart.data.labels.length - 1];
+                if (lastLabel !== ts) {
+                    chart.data.labels.push(ts);
+                    chart.data.datasets[0].data.push(pnl);
+
+                    // データが増えすぎたら古いものを削除 (直近100点)
+                    if (chart.data.labels.length > 100) {
+                        chart.data.labels.shift();
+                        chart.data.datasets[0].data.shift();
+                    }
+                    chart.update();
+                }
+
+            } catch (e) {
+                console.error("Data fetch error:", e);
+                timeDisplay.textContent = "Waiting for Bot...";
+            }
+        }
+
+        // 2秒ごとに更新
+        setInterval(fetchData, 2000);
+        fetchData();
+    </script>
+</body>
+</html>

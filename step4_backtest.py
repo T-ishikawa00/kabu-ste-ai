@@ -1,124 +1,117 @@
 # -*- coding: utf-8 -*-
 import os
+import glob
 import matplotlib.pyplot as plt
 import pandas as pd
 from stable_baselines3 import PPO
-from step2_env import TradingEnv
+from step2_env import TradingEnv  # v6.6の環境を読み込む
 
-# ★重要: step3で作った「データ加工機能」を再利用する
-# これにより、学習時と全く同じ指標(MACD, OBI等)でテストできる
-try:
-    from step3_train import load_and_process_data
-except ImportError:
-    print("❌ step3_train.py が見つかりません。同じフォルダにありますか？")
-    exit()
+# 設定
+DATA_DIR = "data"           # データがある場所
+MODEL_DIR = "model"         # モデルがある場所
+RESULT_DIR = "backtest_results" # グラフ保存先
 
-def backtest(code):
+def backtest():
+    # グラフ保存用フォルダ作成
+    os.makedirs(RESULT_DIR, exist_ok=True)
+
+    # dataフォルダにある merged_xxxx.csv を全部取得
+    csv_files = glob.glob(os.path.join(DATA_DIR, "merged_*.csv"))
+    
+    if not csv_files:
+        print("❌ テストデータが見つかりません。step4を実行しましたか？")
+        return
+
+    print(f"🚀 全 {len(csv_files)} 銘柄の卒業試験を開始します！")
     print("="*60)
-    print(f"🧪 AIバックテスト開始 (卒業試験): {code}")
+
+    for csv_file in csv_files:
+        try:
+            # 1. ファイル名から銘柄コードを抽出
+            filename = os.path.basename(csv_file)
+            stock_code = filename.replace("merged_", "").replace(".csv", "")
+            
+            # 2. データの読み込み
+            # (step4ですでにRCIなどの計算は終わっているので読むだけでOK)
+            df = pd.read_csv(csv_file)
+            
+            if len(df) < 50:
+                print(f"⚠️ データ不足のためスキップ: {stock_code}")
+                continue
+
+            # 3. モデルファイルの確認 (v6モデルを探す)
+            model_path = os.path.join(MODEL_DIR, f"model_{stock_code}_v6.zip")
+            if not os.path.exists(model_path):
+                print(f"⏩ モデルがないためスキップ: {stock_code} (学習していません)")
+                continue
+
+            print(f"\n🧪 テスト実行中: {stock_code} ... ", end="")
+
+            # 4. 環境の作成 (★ここで銘柄コードを渡して性格を再現！)
+            # 東電ならスキャモード、レーザーならスイングモードでテストされます
+            env = TradingEnv(df, stock_code=stock_code)
+            
+            # 5. モデルのロード
+            model = PPO.load(model_path)
+
+            # 6. シミュレーション実行
+            obs, _ = env.reset()
+            done = False
+            
+            history = []
+            actions = []
+            
+            while not done:
+                # deterministic=True で「真剣モード（確率的な遊びなし）」で予測
+                action, _ = model.predict(obs, deterministic=True)
+                
+                obs, reward, done, truncated, info = env.step(action)
+                
+                history.append(info['balance'])
+                actions.append(action)
+
+            # 7. 結果集計
+            final_balance = info['balance']
+            trade_count = info['trades']
+            buy_count = actions.count(1)
+            exit_count = actions.count(2)
+            
+            print(f"完了 ✅")
+            print(f"   💰 最終損益: {final_balance:+.0f} 円")
+            print(f"   🔢 取引回数: {trade_count} 回 (BUY: {buy_count} / EXIT: {exit_count})")
+            
+            # 判定
+            if final_balance > 0:
+                print("   🏆 合格 (黒字)")
+            else:
+                print("   💀 不合格 (赤字)")
+
+            # 8. グラフ作成・保存
+            plt.figure(figsize=(10, 5))
+            plt.plot(history, label="Balance (JPY)", color="blue")
+            plt.title(f"Backtest: {stock_code} (Model v6)")
+            plt.xlabel("Time Steps")
+            plt.ylabel("Profit (JPY)")
+            plt.axhline(0, color='red', linestyle='--', linewidth=1)
+            
+            # 最後の地点にマーカー
+            color = "green" if final_balance > 0 else "red"
+            plt.scatter(len(history)-1, history[-1], color=color, s=100)
+            
+            plt.legend()
+            plt.grid(True)
+            
+            # 画像保存
+            save_path = os.path.join(RESULT_DIR, f"result_{stock_code}.png")
+            plt.savefig(save_path)
+            plt.close() # メモリ解放
+
+        except Exception as e:
+            print(f"\n❌ エラー発生 ({stock_code}): {e}")
+            continue
+
     print("="*60)
-
-    # 1. データの読み込み & 加工 (Step3の機能を借用)
-    # これで MACD, BB, OBI などが入った状態のデータが手に入る
-    df = load_and_process_data(code)
-    
-    if df is None:
-        print("❌ データがないためテストを中止します。")
-        return
-
-    print(f"📚 テストデータ: {len(df)} 行")
-
-    # 2. 環境の作成 (v5対応)
-    env = TradingEnv(df)
-    
-    # 3. 学習済みモデルのロード
-    model_name = f"model_{code}_v5" # ★ v5に変更
-    model_path = f"{model_name}.zip"
-    
-    if not os.path.exists(model_path):
-        print(f"❌ {model_path} が見つかりません。先にStep3で学習してください。")
-        return
-
-    try:
-        model = PPO.load(model_path)
-        print(f"🤖 脳みそロード成功: {model_name}")
-    except Exception as e:
-        print(f"❌ モデル読み込みエラー: {e}")
-        return
-
-    # 4. シミュレーション実行
-    obs, _ = env.reset()
-    done = False
-    
-    print("🏃‍♂️ トレードシミュレーション中...")
-    
-    history = []
-    actions = []
-    
-    while not done:
-        # AIに「次どうする？」と聞く (真剣勝負)
-        action, _states = model.predict(obs, deterministic=True)
-        
-        # 行動を実行
-        obs, reward, done, truncated, info = env.step(action)
-        
-        # 資産状況を記録
-        history.append(info['balance'])
-        actions.append(action)
-
-    # 5. 結果発表
-    final_balance = info['balance']
-    trade_count = info['trades']
-    
-    print("-" * 60)
-    print(f"💰 最終損益: {final_balance:+.1f} 円")
-    print(f"🔢 取引回数: {trade_count} 回")
-    
-    # 勝率などの簡易分析
-    buy_count = actions.count(1)
-    exit_count = actions.count(2)
-    print(f"📊 内訳: BUY {buy_count}回 / EXIT {exit_count}回")
-
-    if final_balance > 0:
-        print("🏆 合格！ 利益が出ています！")
-    else:
-        print("💀 不合格... 赤字です。戦略かデータの見直しが必要です。")
-    print("-" * 60)
-
-    # 6. グラフ表示
-    plt.figure(figsize=(12, 6))
-    plt.plot(history, label="AI Balance (JPY)", color="blue")
-    plt.title(f"Backtest Result: {code} (Model v5)")
-    plt.xlabel("Time Steps (Minutes)")
-    plt.ylabel("Cumulative Profit (JPY)")
-    plt.axhline(0, color='red', linestyle='--', linewidth=1)
-    
-    # 最後に取引終了した地点にマーカー
-    plt.scatter(len(history)-1, history[-1], color="red" if final_balance < 0 else "green", s=100)
-    
-    plt.legend()
-    plt.grid(True)
-    
-    # 画像保存
-    img_name = f"result_{code}.png"
-    plt.savefig(img_name)
-    print(f"📊 グラフを '{img_name}' に保存しました。")
-    
-    # 画面表示 (環境によっては出ない場合もあるので保存を優先)
-    # plt.show()
+    print(f"🎉 すべてのテストが完了しました！ 結果は '{RESULT_DIR}' フォルダを確認してください。")
 
 if __name__ == "__main__":
-    # テストしたい銘柄のリスト
-    # データが溜まっているもの＆モデルを作ったものを指定してください
-    target_codes = [
-        "6146", "9501", "9509", "8031", "6758", "6954", "9107", "8411",
-        "9984", "8058", "7014", "8306", "6920", "7203", "7003", "5803"
-        "7267", "6526", "7974", "7011", "6506", "285A"
-    ]
-    
-    print(f"🚀 全 {len(target_codes)} 銘柄の卒業試験を開始します！")
-    
-    for code in target_codes:
-        backtest(code)
-        
-    print("🎉 すべてのテストが完了しました！")
+    backtest()

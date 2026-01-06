@@ -2,186 +2,93 @@
 import os
 import glob
 import pandas as pd
-import numpy as np
-import pandas_ta as ta  # ★追加: テクニカル分析用ライブラリ
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv
+# ★追加: 正規化に必要なライブラリ
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from step2_env import TradingEnv  # v7.0 (Audit対応) の環境
 import warnings
 
-# 自作の環境クラスをインポート
-from step2_env import TradingEnv
+# 警告を無視
+warnings.filterwarnings("ignore")
 
-# 警告抑制（GPU関連のワーニングがうるさい場合があるため）
-warnings.filterwarnings("ignore", category=UserWarning)
-warnings.filterwarnings("ignore", category=RuntimeWarning)
+# 設定
+DATA_DIR = "data"
+MODEL_DIR = "model"
+VERSION = "v7"  # ★重要: v6 -> v7 に変更 (心機一転)
 
-
-# ★ここが重要！RCIを計算する魔法の関数
-def calc_rci(series, period=9):
-    """
-    RCI (Rank Correlation Index) を計算する関数
-    Pythonの標準ライブラリにはないので自作します。
-    """
-    rci = []
-    # データが足りない部分はNaN
-    for i in range(len(series)):
-        if i < period - 1:
-            rci.append(np.nan)
-            continue
-        
-        # 直近 period 個のデータを取得
-        s = series.iloc[i - period + 1 : i + 1]
-        
-        # 「日付の順位」と「価格の順位」の相関を計算
-        # 日付順位: 1, 2, ..., period
-        time_rank = np.arange(1, period + 1)
-        # 価格順位: 小さい順にランク付け
-        price_rank = s.rank(method='max').values
-        
-        # RCI計算式: (1 - 6 * sum(d^2) / (n^3 - n)) * 100
-        d_sq = np.sum((time_rank - price_rank) ** 2)
-        val = (1 - (6 * d_sq) / (period**3 - period)) * 100
-        rci.append(val)
-        
-    return pd.Series(rci, index=series.index)
-
-
-def load_and_process_data(code):
-    """
-    データ収集機(DataCollector)が集めたCSV(data_raw配下)を読み込み、
-    AI用の新兵器(RCI, Parabolic, MACD, BB, OBI)を追加する
-    """
-    # data_raw フォルダ内の全日付フォルダから対象銘柄のCSVを探す
-    files = glob.glob(f"data_raw/*/{code}.csv")
+def train():
+    # step4で作った merged_xxxx.csv を全部自動で拾う
+    csv_files = glob.glob(os.path.join(DATA_DIR, "merged_*.csv"))
     
-    if not files:
-        # まだデータがない場合は、旧フォルダ(data/)も一応探してみる（移行期間用）
-        legacy_path = f"data/merged_{code}.csv"
-        if os.path.exists(legacy_path):
-            files = [legacy_path]
-        else:
-            print(f"⚠️ スキップ: {code} のデータが見つかりません。")
-            return None
-    
-    print(f"📚 {code}: {len(files)} 個のファイルを統合中...")
-    
-    df_list = []
-    for f in files:
-        try:
-            tmp = pd.read_csv(f)
-            df_list.append(tmp)
-        except Exception as e:
-            print(f"⚠️ 読み込みエラー {f}: {e}")
-            
-    if not df_list:
-        return None
-        
-    # 全日付を結合して、時系列順に並べる
-    df = pd.concat(df_list).sort_values("timestamp").reset_index(drop=True)
-    
-    # --- データ加工エリア (AIへのご馳走作り) ---
-    
-    # 0. カラム名の互換性確保
-    if 'price' in df.columns:
-        df['close'] = df['price']
-    
-    # 1. 板気配 (スキャルピング用)
-    if 'bid_qty' in df.columns and 'ask_qty' in df.columns:
-        # 0除算を防ぐために分母に微小な値を足す
-        df['obi'] = (df['bid_qty'] - df['ask_qty']) / (df['bid_qty'] + df['ask_qty'] + 1e-9)
-    else:
-        df['obi'] = 0.0
-
-    # 2. テクニカル指標の追加 (師匠たちの教えVer)
-    try:
-        # --- (A) パラボリック (トレンド転換サイン) ---
-        # 列名: PSARl_... (Long), PSARs_... (Short)
-        df.ta.psar(high='high', low='low', close='close', af0=0.02, af=0.2, append=True)
-
-        # --- (B) RCI (押し目買いの王様) ---
-        # 短期(9), 中期(26), 長期(52)
-        df['rci_9'] = calc_rci(df['close'], period=9)
-        df['rci_26'] = calc_rci(df['close'], period=26)
-        # df['rci_52'] = calc_rci(df['close'], period=52) # データ量不足ならコメントアウトしてもOK
-
-        # --- (C) ボリンジャーバンド (行き過ぎ判定) ---
-        # 列名: BBP_20_2.0 等
-        df.ta.bbands(close='close', length=20, std=2, append=True)
-        
-        # --- (D) MACD (トレンド) ---
-        # 列名: MACD_12_26_9 等
-        df.ta.macd(close='close', fast=12, slow=26, signal=9, append=True)
-
-        # --- (E) RSI (一応残す) ---
-        df.ta.rsi(close='close', length=14, append=True)
-
-    except Exception as e:
-        print(f"⚠️ 指標計算エラー: {e}")
-
-    # 3. NaN (欠損値) 対策
-    # 計算の過程で最初の数行はNaNになるので、0で埋める
-    df.fillna(0, inplace=True)
-    
-    print(f"✅ データ加工完了: {len(df)}行 (RCI, Parabolic, MACD, BB, OBI 追加済み)")
-    return df
-
-
-def train_and_save(code):
-    print("="*60)
-    print(f"🤖 AIトレーニングを開始します: 銘柄コード {code}")
-    print("="*60)
-
-    # 1. データ読み込み & 加工
-    df = load_and_process_data(code)
-    if df is None:
+    if not csv_files:
+        print("❌ データファイルが見つかりません。先に step4_process_daily_log.py を実行してください。")
         return
 
-    # 2. 環境の作成
-    # ※注意: step2_env.py の observation_space もこの指標数に合わせて修正が必要ですが、
-    #  とりあえず今の step2_env が NaN対策版(7次元)なら、余った指標は無視されて学習されます。
-    #  (本当は step2 も書き換えて、RCIやパラボリックを受け取るようにすると最強になります)
-    env = DummyVecEnv([lambda: TradingEnv(df)])
+    print(f"🔍 {len(csv_files)} 個の銘柄データを検出しました。")
+    print(f"🚀 新ルール(v7: 利益追求型 + 正規化)での学習を開始します...")
 
-    # 3. AIモデルの構築
-    # 指標とロジックが変わったので、モデルのバージョンを v6 (師匠Ver) に上げる
-    model_name = f"model_{code}_v6"
-    model_path = f"{model_name}.zip"
-
-    if os.path.exists(model_path):
-        print(f"🔄 既存の脳みそ ({model_name}) をロードして、学習を再開します...")
+    for csv_file in csv_files:
         try:
-            model = PPO.load(model_name, env=env)
+            # 1. ファイル名から銘柄コードを抽出
+            filename = os.path.basename(csv_file)
+            stock_code = filename.replace("merged_", "").replace(".csv", "")
+            
+            # 2. データを読み込む
+            df = pd.read_csv(csv_file)
+            
+            if len(df) < 50:
+                print(f"⚠️ データ不足のためスキップ: {stock_code} ({len(df)}行)")
+                continue
+
+            print(f"\n📈 学習開始: {stock_code}")
+            
+            # 3. 環境を作る (v7環境 + 正規化)
+            # ★ここが重要変更ポイント
+            raw_env = TradingEnv(df, stock_code=stock_code)
+            env = DummyVecEnv([lambda: raw_env]) # ベクトル化
+            # 正規化ラッパー: 株価の桁違いを吸収し、AIの偏差値を上げる
+            env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.)
+            
+            # 4. モデルの準備
+            model_name = f"model_{stock_code}_{VERSION}"
+            model_path = os.path.join(MODEL_DIR, model_name)
+            
+            # ★重要: 今回はルールが激変したので、基本的に「新規作成」を推奨
+            if os.path.exists(f"{model_path}.zip"):
+                print(f" 🔄 既存のv7モデルをロードして続きから学習: {model_name}")
+                # 既存モデルがある場合は、環境の統計情報もロードするのが理想だが
+                # ここでは簡易的にロードして上書き学習する
+                model = PPO.load(model_path, env=env, device='cpu')
+            else:
+                print(f" ✨ 新規モデルを作成 (スパルタ教育開始): {model_name}")
+                # ent_coef=0.01: 少し探検させて、新しい利益の出し方を見つけさせる
+                model = PPO("MlpPolicy", env, verbose=0, device='cpu', ent_coef=0.01)
+            
+            # 5. 学習実行
+            # 難易度が上がったので、練習量(steps)を増やす
+            # データ行数 x 20回 (最低 50,000回)
+            total_steps = max(len(df) * 20, 50000)
+            
+            model.learn(total_timesteps=total_steps)
+            
+            # 6. 保存
+            model.save(model_path)
+            # ★重要: 正規化の統計情報(平均・分散)も保存する
+            # これがないと、本番で「今の株価が高いか低いか」が分からなくなる
+            env.save(os.path.join(MODEL_DIR, f"{model_name}_env.pkl"))
+            
+            print(f" ✅ 学習完了・保存: {model_name} (+Env stats)")
+
         except Exception as e:
-            print(f"⚠️ ロード失敗のため新規作成: {e}")
-            model = PPO("MlpPolicy", env, verbose=1, device="auto")
-    else:
-        print(f"✨ 新しい脳みそ ({model_name}) を作成します...")
-        # 過去のモデルとは構造が違うので、新規作成推奨
-        model = PPO("MlpPolicy", env, verbose=1, device="auto")
+            print(f" ⚠️ エラー発生 ({stock_code}): {e}")
+            import traceback
+            traceback.print_exc()
+            continue
 
-    print("🔥 学習スタート！ (RTX 4060 Ti 稼働中...)")
-    print("-" * 60)
-
-    # 4. 学習実行
-    # データ量が増えてきたら step 数を増やしてもOK
-    model.learn(total_timesteps=50000)
-
-    print("-" * 60)
-    print(f"✅ {code} の学習完了！")
-
-    # 5. モデルの保存
-    model.save(model_name)
-    print(f"💾 脳みそを保存しました: {model_name}.zip")
-    print("="*60)
-
+    print("\n🎉 全銘柄の学習(v7)が終了しました！")
+    print("👉 次は step5_backtest.py を実行して、実力を確認してください。")
 
 if __name__ == "__main__":
-    # 今日のログに出てきた銘柄 + α
-    target_codes = [
-        "6146", "9501", "9509", "8031", "6758", "6954", "9107", "8411",
-        "9984", "8058", "7014", "8306", "6920", "7203", "7003", "5803"
-        "7267", "6526", "7974", "7011", "6506", "285A"
-    ]
-    
-    for code in target_codes:
-        train_and_save(code)
+    # フォルダがなければ作る
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    train()

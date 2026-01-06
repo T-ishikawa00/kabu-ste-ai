@@ -1,6 +1,7 @@
+
 # -*- coding: utf-8 -*-
 """
-main.py — Lv8.0（取引＋16:30自動学習）
+main.py — Lv8.1（取引＋16:30自動学習＋通知機能対応）
 - 市場時間帯：Controller を起動して売買
 - 稼働中でも 16:30(JST) になればバックグラウンドで train_policy.py を実行
 - 16:30 以降に起動した場合はワンショットで学習して終了
@@ -13,6 +14,7 @@ import time
 import logging
 import threading
 import subprocess
+import yaml  # ★追加: 設定ファイルを直接読むために必要
 from datetime import datetime as dt_datetime, timedelta, timezone
 
 from utils_common import ensure_dir, now
@@ -169,6 +171,27 @@ def main():
     setup_logging(getattr(cfg, "log_level", "INFO"))
     ensure_dir("runtime")
 
+    # =================================================================
+    # ★★★ ここで強制的に config.yaml を読み直して通知設定を注入する ★★★
+    # =================================================================
+    try:
+        with open("config.yaml", "r", encoding="utf-8") as f:
+            raw_data = yaml.safe_load(f)
+            if "notification" in raw_data:
+                # cfg がどんな型でも対応できるように無理やり属性セット
+                setattr(cfg, "notification", raw_data["notification"])
+                # 念のため辞書としてもアクセスできるようにする
+                if isinstance(cfg, dict):
+                    cfg["notification"] = raw_data["notification"]
+                
+                url = raw_data['notification'].get('discord_webhook_url', '')
+                logging.info(f"🔧 通知設定を強制ロードしました (URL末尾: ...{url[-5:]})")
+            else:
+                logging.warning("⚠️ config.yaml に notification セクションが見つかりません")
+    except Exception as e:
+        logging.warning(f"⚠️ 通知設定の強制ロードに失敗: {e}")
+    # =================================================================
+
     # 16:30自動学習ウォッチャ起動（学習設定が無効なら中で勝手に待機する）
     start_auto_train_watcher(cfg)
 
@@ -201,4 +224,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
