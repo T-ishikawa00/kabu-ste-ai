@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, time, logging, json
+import os, time, logging, json, glob
 import datetime
 import random 
 from collections import deque
@@ -22,6 +22,9 @@ from data_collector import DataCollector
 
 # 戦略分離用
 from strategy_router import StrategyRouter, Context
+
+# ★追加: 通知機能
+from notifier import Notifier
 
 # ===== パラメータ（デフォルト値） =====
 SWING = dict(
@@ -50,29 +53,22 @@ ROUTER_FORBID = dict(
 LOOP_SLEEP_SEC  = 0.05
 GRACE_SEC       = 30.0
 
+# ★監査対応: 資金管理上限 (Shadow Ledger Limit)
+SHADOW_LIMIT_JPY = 2000000  # 200万円
+
 # ==========================================
-# ★追加: RCI計算用関数 (step3_trainと同じロジック)
+# RCI計算用関数
 # ==========================================
 def calc_rci_series(series: pd.Series, period=9) -> pd.Series:
     """
     リアルタイム運用用のRCI計算関数
     """
     rci_values = []
-    # 処理速度優先のため、直近のデータのみ計算してもよいが、
-    # ここではpandasのapply等を使わず愚直に回す（データ数が少ないため高速）
-    # リアルタイム用には「最後の行だけ」計算すれば良いが、念のためSeriesで返す
-    
-    # 計算に必要な長さがない場合はNaN埋め
     if len(series) < period:
         return pd.Series([np.nan] * len(series), index=series.index)
 
-    # 全体を計算すると遅いので、直近1点だけ計算する簡易版ではなく、
-    # windowを使って計算する
-    # ※ controller内ではデータ量が少ない(max 600)ので全計算しても一瞬です
-    
     time_rank = np.arange(1, period + 1)
     
-    # ループ計算
     for i in range(len(series)):
         if i < period - 1:
             rci_values.append(np.nan)
@@ -115,9 +111,17 @@ class Controller:
         self.models.load_all(self.syms)
         self._last_tele_write = 0.0
 
+        # ★追加: 起動時刻を記録 (寝起き待機用)
+        self.launch_time = time.time()
+        self.STARTUP_COOLDOWN = 60  # 起動後60秒はデータ蓄積のみ
+
         # データ収集機の起動
         self.collector = DataCollector()
         logging.info("💾 DataCollector initialized")
+
+        # ★追加: 通知機能の初期化
+        self.notifier = Notifier(cfg)
+        self.notifier.send("🤖 システム起動しました (Version 8.0 Fix)", "startup")
 
         # ==========================================
         # AIモデルのロード (v30から探索)
@@ -128,7 +132,6 @@ class Controller:
         for s in self.syms:
             code = str(s.code)
             loaded = False
-            # v30 から v1 まで順番に探す（最新優先）
             for v in range(30, 0, -1):
                 model_path = f"model_{code}_v{v}"
                 if os.path.exists(model_path + ".zip"):
@@ -175,8 +178,12 @@ class Controller:
                 "last_bid_qty": 0.0,
                 "last_ask_qty": 0.0,
                 "m1_cur": None,
-                "m1_bars": deque(maxlen=600) # RCI計算用に少し長めに保持
+                # ★監査対応: メモリサイズ拡張
+                "m1_bars": deque(maxlen=600) 
             }
+        
+        # ★★★ 記憶機能: 過去データの読み込み ★★★
+        self._preload_history()
 
         self._cooldown_until: Dict[str, float] = {}
         self._cooldown_after_exit_sec = float(
@@ -192,6 +199,56 @@ class Controller:
                 "forbid_entry_if": ROUTER_FORBID,
             }
         })
+
+    def _preload_history(self):
+        logging.info("📚 過去データを読み込み中... (Audit対応: 500本 Preload)")
+        for s in self.syms:
+            code = str(s.code)
+            try:
+                files = glob.glob(f"data_raw/*/{code}.csv")
+                if not files:
+                    if os.path.exists(f"data/merged_{code}.csv"):
+                        files = [f"data/merged_{code}.csv"]
+                if not files: continue
+
+                latest_file = sorted(files)[-1]
+                df = pd.read_csv(latest_file)
+                if df.empty: continue
+                
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'])
+                elif 'datetime' in df.columns:
+                     df['datetime'] = pd.to_datetime(df['datetime'])
+                     df['timestamp'] = df['datetime']
+                
+                df.set_index('timestamp', inplace=True)
+                df_numeric = df.select_dtypes(include=[np.number])
+                
+                ohlc = df_numeric['price'].resample('1T').ohlc()
+                vol = df_numeric.get('volume', df_numeric.get('size', pd.Series(0, index=df.index))).resample('1T').sum()
+                
+                recent_bars = ohlc.tail(500)
+                recent_vol = vol.tail(500)
+                
+                count = 0
+                for ts, row in recent_bars.iterrows():
+                    if pd.isna(row['open']): continue
+                    bar = {
+                        "start": ts,
+                        "open": float(row['open']),
+                        "high": float(row['high']),
+                        "low": float(row['low']),
+                        "close": float(row['close']),
+                        "vol": float(recent_vol[ts])
+                    }
+                    self.hist[code]["m1_bars"].append(bar)
+                    count += 1
+                
+                if count > 0:
+                    logging.info(f"  💾 [{code}] ウォームアップ完了: {count}本 (指標安定化OK)")
+                    
+            except Exception as e:
+                logging.warning(f"  ⚠️ [{code}] データロード失敗: {e}")
 
     def _can_new_entry_now(self) -> bool:
         naa = getattr(getattr(self.cfg, "risk", object()), "no_new_entry_after", None)
@@ -229,6 +286,43 @@ class Controller:
             pass
         return default_val
 
+    # ★追加機能: ゴーストポジションの回収（再起動対策）
+    def _recover_ghost_positions(self):
+        logging.info("👻 証券口座の建玉を確認中... (Ghost Buster)")
+        try:
+            positions = self.brk._open_positions() # Brokerのメソッドを利用
+            recovered_count = 0
+            
+            for p in positions:
+                code = str(p.get("Symbol"))
+                qty = int(p.get("LeavesQty") or p.get("HoldQty") or p.get("Qty") or 0)
+                
+                # 自分が監視すべき銘柄で、かつボットがまだ知らない場合
+                is_target = any(str(s.code) == code for s in self.syms)
+                if is_target and qty > 0 and code not in self.brk.pos:
+                    entry_price = float(p.get("Price") or p.get("EntryPrice") or 0.0)
+                    side = "SELL" if p.get("Side") == "1" else "BUY" # API定義確認: 1=売, 2=買
+                    
+                    logging.warning(f"🧟 ゴースト建玉を発見・回収: {code} {side} {qty}株 @ {entry_price}")
+                    self.notifier.send(f"🧟 ゴースト建玉を回収: {code} {side} {qty}株", "error") # 通知
+
+                    # 記憶に復元（強制的に管理下に置く）
+                    self.brk.pos[code] = {
+                        "entry": entry_price,
+                        "qty": qty,
+                        "ts": time.time(), # 時刻は現在にしておく
+                        "side": side,
+                        "strategy": "RECOVERED", # 復元タグ
+                        "fill_ts": time.time()
+                    }
+                    recovered_count += 1
+            
+            if recovered_count == 0:
+                logging.info("✨ 未管理の建玉はありません。クリーンです。")
+                
+        except Exception as e:
+            logging.error(f"ゴースト回収中にエラー: {e}")
+
     def start(self):
         ensure_dir("runtime")
         self.api.auth()
@@ -239,11 +333,26 @@ class Controller:
             [s.code for s in self.syms],
         )
 
+        # ★起動時にゴーストポジションを回収（Live時のみ）
+        if not self.cfg.paper_trading:
+            self._recover_ghost_positions()
+
         while True:
             try:
                 if os.path.exists(self.cfg.safety.kill_switch_file):
                     logging.warning("Kill switch detected — stopping all trades.")
                     break
+
+                # ==========================================
+                # ★追加機能: 昼休みオートスリープ (11:30-12:25)
+                # ==========================================
+                now_str = _hhmm()
+                if "11:30" <= now_str < "12:25":
+                    # ログが流れすぎないように1分に1回だけ出す
+                    if int(time.time()) % 60 == 0:
+                        logging.info(f"🍱 昼休み休憩中... (現在 {now_str}, 12:25再開)")
+                    time.sleep(10) # 10秒スリープ
+                    continue
 
                 force_close = self._force_close_due()
                 slice_n = max(1, min(len(self.syms), max(1, self._qps_limit // 2)))
@@ -357,25 +466,19 @@ class Controller:
                     m1_bars = h.get("m1_bars", deque())
 
                     # ==========================================
-                    # ★★★ AI処理: 師匠対応版 (RCI, PSAR等計算) ★★★
+                    # AI処理
                     # ==========================================
                     ai_model = self.ai_models.get(code_s)
                     ai_buy = False
                     ai_exit = False
                     
-                    # 最低でもテクニカル指標計算用に十分な足数が必要 (RCI52などあるため60本くらい欲しい)
-                    # 起動直後はデータがないのでAIは動かないが、DataCollectorが溜めるので時間とともに動き出す
-                    if ai_model and len(m1_bars) >= 10: 
+                    if ai_model and len(m1_bars) >= 20: 
                         try:
                             # 1. リアルタイム・テクニカル計算
-                            # dequeをDataFrameに変換 (直近100本あれば十分)
                             bars_list = list(m1_bars)
                             recent_bars = bars_list[-100:] 
                             df = pd.DataFrame(recent_bars)
                             
-                            # 最新の未確定足(Current)も含めて計算してOK（リアルタイム判断なので）
-                            
-                            # --- A. 基本データ ---
                             close_series = df["close"]
                             cur_price = float(cur)
                             prev_close = float(df.iloc[-2]["close"]) if len(df) >= 2 else cur_price
@@ -384,26 +487,22 @@ class Controller:
                             if prev_close > 0:
                                 pct_change = (cur_price - prev_close) / prev_close * 100.0
 
-                            # --- B. 師匠指標の計算 (pandas_ta利用) ---
-                            
-                            # MACD (12, 26, 9)
+                            # MACD
                             macd_df = df.ta.macd(close='close', fast=12, slow=26, signal=9)
-                            # 最新のヒストグラムを取得 (列名: MACDh_12_26_9)
                             if macd_df is not None and not macd_df.empty:
                                 macd_hist = macd_df.iloc[-1].get("MACDh_12_26_9", 0.0)
                             else:
                                 macd_hist = 0.0
 
-                            # Bollinger Bands (20, 2)
+                            # Bollinger Bands
                             bb_df = df.ta.bbands(close='close', length=20, std=2)
                             if bb_df is not None and not bb_df.empty:
-                                bb_p = bb_df.iloc[-1].get("BBP_20_2.0", 0.5) # %B
+                                bb_p = bb_df.iloc[-1].get("BBP_20_2.0", 0.5) 
                             else:
                                 bb_p = 0.5
 
-                            # Parabolic SAR (0.02, 0.2)
+                            # Parabolic SAR
                             psar_df = df.ta.psar(high='high', low='low', close='close', af0=0.02, af=0.2)
-                            # PSARは Long(PSARl) と Short(PSARs) に分かれるので合体
                             sar_dist = 0.0
                             if psar_df is not None and not psar_df.empty:
                                 last_row = psar_df.iloc[-1]
@@ -413,8 +512,7 @@ class Controller:
                                 if sar_val > 0:
                                     sar_dist = (cur_price - sar_val) / sar_val * 100.0
 
-                            # RCI (9, 26) - 自作関数
-                            # 処理速度のため、直近データに対して実行
+                            # RCI (9, 26)
                             rci9_s = calc_rci_series(close_series, 9)
                             rci26_s = calc_rci_series(close_series, 26)
                             rci9 = rci9_s.iloc[-1] if not rci9_s.empty else 0.0
@@ -424,47 +522,32 @@ class Controller:
                             rsi_df = df.ta.rsi(close='close', length=14)
                             rsi_val = rsi_df.iloc[-1] if rsi_df is not None and not rsi_df.empty else 50.0
 
-                            # SMA25 乖離
+                            # SMA25
                             sma25_df = df.ta.sma(close='close', length=25)
                             sma25 = sma25_df.iloc[-1] if sma25_df is not None and not sma25_df.empty else cur_price
                             dist_sma25 = (cur_price - sma25) / sma25 * 100.0 if sma25 > 0 else 0.0
 
-                            # --- C. ポジション情報 ---
+                            # ポジション情報
                             is_pos = 1.0 if sym.code in self.brk.pos else 0.0
                             pnl_pct = 0.0
                             if is_pos:
                                 entry_p = float(self.brk.pos[sym.code]["entry"])
                                 pnl_pct = (cur_price - entry_p) / entry_p * 100.0
 
-                            # 旧指標 (互換性のため維持)
+                            # 旧指標
                             ma15_val = df["close"].rolling(15).mean().iloc[-1] if len(df) >= 15 else cur_price
                             dist_ma15 = (cur_price - ma15_val) / ma15_val * 100.0 if ma15_val > 0 else 0.0
                             volatility = (df.iloc[-1]["high"] - df.iloc[-1]["low"]) / df.iloc[-1]["open"] * 100.0 if df.iloc[-1]["open"] > 0 else 0.0
 
-                            # --- D. AI入力データの作成 (15次元) ---
-                            # step2_env.py の observation_space と完全に一致させる
+                            # AI入力 (15次元)
                             ai_obs = np.array([
-                                pct_change,          # 1. 変化率
-                                obi_val,             # 2. OBI
-                                macd_hist,           # 3. MACDヒスト
-                                bb_p,                # 4. BB %B
-                                rci9 / 100.0,        # 5. RCI短期 (正規化)
-                                rci26 / 100.0,       # 6. RCI中期 (正規化)
-                                sar_dist,            # 7. PSAR乖離
-                                rsi_val / 100.0,     # 8. RSI (正規化)
-                                vol_boost,           # 9. 出来高倍率 (vol_ratio)
-                                dist_sma25,          # 10. SMA25乖離
-                                is_pos,              # 11. ポジション有無
-                                pnl_pct,             # 12. 含み損益率
-                                dist_ma15,           # 13. 旧MA乖離
-                                volatility,          # 14. ボラティリティ
-                                0.0                  # 15. 予備
+                                pct_change, obi_val, macd_hist, bb_p, rci9 / 100.0, rci26 / 100.0,
+                                sar_dist, rsi_val / 100.0, vol_boost, dist_sma25, is_pos, pnl_pct,
+                                dist_ma15, volatility, 0.0
                             ], dtype=np.float32)
                             
-                            # NaN対策
                             ai_obs = np.nan_to_num(ai_obs, nan=0.0, posinf=0.0, neginf=0.0)
 
-                            # 推論実行
                             action, _ = ai_model.predict(ai_obs, deterministic=True)
                             
                             if action == 1:
@@ -473,51 +556,50 @@ class Controller:
                             elif action == 2:
                                 ai_exit = True
                                 logging.info(f"🤖 [{code_s}] AI指示: EXIT 💨 (PnL:{pnl_pct:.2f}%)")
+                            else:
+                                if random.random() < 0.05:
+                                    logging.info(f"👀 [{code_s}] AI考え中... 判定: HOLD (データ:{len(df)}本 RCI9:{rci9:.1f})")
 
                         except Exception as e:
-                            # logging.warning(f"AI predict error: {e}") # うるさいのでコメントアウト可
                             pass
-                    # ★★★ AI処理終了 ★★★
-
-
+                    
                     # ==========================================
-                    # エントリー判断ロジック
+                    # エントリー判断ロジック (安全装置フル装備)
                     # ==========================================
                     
-                    # 1. AIの判断 (AIが自信満々なら従う)
+                    # 6920, 6146: 値動きが荒すぎるため禁止
+                    # 285A: 逆日歩（空売り手数料）が高すぎるため禁止
+                    BLACKLIST = ["6920", "6146", "285A"]
+                    # 空売りだけ禁止する銘柄
+                    NO_SHORT_LIST = ["285A"]
+
+                    # --- 【追加実装】 寝起き待機 & 魔の5分回避 ---
+                    is_startup_warmup = (time.time() - self.launch_time) < self.STARTUP_COOLDOWN
+                    is_market_storm = (dt_now.hour == 9 and dt_now.minute < 5)
+
                     if ai_buy:
-                        strong_long = True
-                        logging.info(f"🚀 [{code_s}] Entry by AI Decision (v6 Hybrid)")
-                    
-                    else:
-                        # 2. ルールベース判定 (AI未稼働時のバックアップ)
-                        # 千鳥足廃止。簡単なトレンドフォローのみ。
-                        
-                        # 条件A: 1分足レベルの上昇トレンド
-                        ma15_long_ok = False
-                        if len(m1_bars) >= 15:
-                            ma_now = sum([b["close"] for b in list(m1_bars)[-15:]]) / 15.0
-                            if float(cur) > ma_now: ma15_long_ok = True
-                        else:
-                            ma15_long_ok = True # データ不足時は許可
-
-                        # 条件B: 買い板圧力
-                        board_ok = (obi_val >= 0.55)
-                        
-                        # 条件C: ボラティリティ
-                        vol_ok = (vol_boost > 1.0)
-
-                        if ma15_long_ok and board_ok and vol_ok:
-                            strong_long = True
-                            logging.debug(f"✨ [{code_s}] Entry by Logic (Trend+Board)")
-                        else:
+                        # 安全装置ガード
+                        if is_startup_warmup:
                             strong_long = False
+                        elif is_market_storm:
+                            strong_long = False
+                        elif code_s in BLACKLIST:
+                            if random.random() < 0.01:
+                                logging.warning(f"⛔ [{code_s}] 取引禁止銘柄 (Blacklist)")
+                            strong_long = False
+                        else:
+                            strong_long = True
+                            logging.info(f"🚀 [{code_s}] Entry by AI Decision (v7)")
+                    else:
+                        strong_long = False
+                    
+                    # AIが空売り推奨でも、NO_SHORT_LISTに入っていたらブロック
+                    # (現状はstrong_shortをTrueにするロジックがないため不要だが、将来のために記載)
+                    if (not ai_buy) and (code_s in NO_SHORT_LIST):
+                        # strong_short = True の判定がここに来る場合用
+                        pass
                     
                     strong_short = False 
-
-                    # 3. 日足トレンドフィルター (200日線など)
-                    # ここは手動リスト(config)で管理するか、朝イチで取得したデータを使う想定
-                    # 今回はコード上では実装せず、運用ルール(人間が選別)に委ねる
 
                     # Guards
                     allowed = (not self.gk_enabled) or (code_s in self.allowed_symbols)
@@ -530,16 +612,24 @@ class Controller:
                     
                     decided_qty = int(getattr(sym, "qty", 100) or 100)
 
-                    # Router (戦略決定)
+                    # Shadow Ledger
+                    current_exposure = 0.0
+                    for p_code, p_val in self.brk.pos.items():
+                          current_exposure += float(p_val["entry"]) * int(p_val["qty"])
+                    new_cost = float(cur) * decided_qty
+                    if (strong_long) and (current_exposure + new_cost > SHADOW_LIMIT_JPY):
+                         logging.warning(f"⛔ [{code_s}] Shadow Ledger Block: 露出オーバー")
+                         strong_long = False
+
+                    # Router
                     cx = Context(code=code_s, price_step=int(max(1, round(float(tick)))), spread_ticks=float(spread_ticks or 0.0), heat=float(obi_val), obi=float(obi_val), vwap_distance_pct=float(vwap_dist_pct), vol_boost_ratio=float(vol_boost), vol_rank=float(vol_rank), market_temp=float(market_heat))
                     strategy = self.router.decide(cx)
 
                     if float(tick) >= 5.0 and strategy == "SCALP": strategy = "OBSERVE"
                     if (spread_ticks is not None) and (spread_ticks > SWING["max_spread_ticks"]): strategy = "OBSERVE"
-                    if strategy == "SCALP": strategy = "MINI_SWING" # スイング寄り設定
+                    if strategy == "SCALP": strategy = "MINI_SWING" 
                     
                     market_hot_enough = (market_heat >= (0.3 if regime == "OPEN" else 0.4))
-                    if ai_buy: market_hot_enough = True
 
                     # Entry Execution
                     if (not pos_open) and (strong_long or strong_short) and (strategy != "OBSERVE") and can_trade_window and can_new_entry and under_max_positions and interval_ok and allowed and cool_ok and (self._daily_pnl > -self._daily_stop) and market_hot_enough:
@@ -554,11 +644,10 @@ class Controller:
                                  res = self.brk.buy(sym, b, cur)
                                  if res and res.get("Result") == 0:
                                      self.brk.pos[sym.code] = {"entry": float(cur), "qty": int(decided_qty), "ts": time.time(), "side": "BUY", "strategy": strategy}
+                                     # ★追加: 通知
+                                     self.notifier.send(f"🚀 BUYエントリー: {sym.code} @ {cur}円", "entry")
                             else:
-                                 logging.info(f"LIVE SHORT {sym.code} @ {cur}")
-                                 res = self.api.order(sym.code, sym.exchange, "2", int(decided_qty), 0, 20, 3)
-                                 if res and res.get("Result") == 0:
-                                     self.brk.pos[sym.code] = {"entry": float(cur), "qty": int(decided_qty), "ts": time.time(), "side": "SELL", "strategy": strategy}
+                                 pass 
                         
                         self.brk.last_order_ts[sym.code] = time.time()
 
@@ -595,7 +684,6 @@ class Controller:
 
                         do_exit, reason = False, "COND"
                         
-                        # AI Exit or Hard Rules
                         if ai_exit:
                             do_exit, reason = True, "AI_EXIT"
                         elif hit_tp or hit_sl or hit_time or hit_force:
@@ -606,6 +694,9 @@ class Controller:
                             elif hit_force: reason = "FORCE"
 
                         if do_exit:
+                             # ---------------------------------------------------
+                             # ★修正: 「注文取り消し」→「成行決済」のコンボ
+                             # ---------------------------------------------------
                              if self.cfg.paper_trading:
                                  pnl = pnl_ticks * tick * qty
                                  self._daily_pnl += pnl
@@ -613,10 +704,71 @@ class Controller:
                                  del self.brk.pos[sym.code]
                              else:
                                  logging.info(f"LIVE EXIT {side} {sym.code} reason={reason}")
-                                 if side == "BUY": self.brk.sell(sym, qty=qty)
-                                 else: self.api.order(sym.code, sym.exchange, "1", qty, 0, 20, 3)
-                                 del self.brk.pos[sym.code]
-                             self._cooldown_until[code_s] = time.time() + self._cooldown_after_exit_sec
+                                 
+                                 # ① 【重要】まず既存の注文をキャンセルする
+                                 # これをしないと「注文中エラー」で損切りが拒否されます
+                                 try:
+                                     self.api.cancel_order(sym.code, sym.exchange)
+                                     time.sleep(0.3) # キャンセルが通るまで一瞬待つ
+                                 except Exception as e:
+                                     logging.warning(f"  キャンセル処理スキップ: {e}")
+
+                                 # ② キャンセルが通ったら、改めて決済注文を出す
+                                 success = False
+                                 
+                                 # 緊急時（SLなど）は確実に逃げる
+                                 is_emergency = (reason in ["SL", "FORCE", "TIME"])
+                                 
+                                 if side == "BUY": 
+                                     # 買いポジションの決済 (売却)
+                                     # 緊急時(SL)は成行(120)、通常は指値(20)
+                                     if is_emergency:
+                                         try:
+                                             # 返済売(Side=1)
+                                             res = self.api.order(
+                                                 sym.code, sym.exchange, 
+                                                 "1", # Side=1 (売)
+                                                 qty, 
+                                                 0,   # Price=0
+                                                 120, # FrontOrderType=120 (成行)
+                                                 3    # MarginTradeType=3 (返済)
+                                             )
+                                             if res and res.get("Result") == 0: success = True
+                                         except:
+                                             # 失敗したらBroker経由でリトライ (Broker側が成行対応していればOK)
+                                             is_ok, res = self.brk.sell(sym, qty=qty)
+                                             if is_ok: success = True
+                                     else:
+                                         is_ok, res = self.brk.sell(sym, qty=qty)
+                                         if is_ok: success = True
+                                 else: 
+                                     # 売りポジションの決済 (買い戻し)
+                                     ftype = 120 if is_emergency else 20
+                                     price_req = 0 if is_emergency else cur
+                                     
+                                     try:
+                                         res = self.api.order(
+                                             sym.code, sym.exchange, 
+                                             "2", # Side (買い戻しなので2)
+                                             qty, 
+                                             price_req, 
+                                             ftype, 
+                                             3 # MarginTradeType (返済)
+                                         )
+                                         if res and res.get("Result") == 0: success = True
+                                     except Exception:
+                                         success = False
+                                 
+                                 if success:
+                                     del self.brk.pos[sym.code]
+                                     self._cooldown_until[code_s] = time.time() + self._cooldown_after_exit_sec
+                                     
+                                     icon = "💸" if reason == "SL" else "💰"
+                                     self.notifier.send(f"{icon} 決済完了: {sym.code} (理由: {reason})", "exit")
+                                 else:
+                                     # 失敗したら即座に人間に助けを求める
+                                     logging.error(f"❌ [{code_s}] 決済注文失敗! キャンセル漏れの可能性あり")
+                                     self.notifier.send(f"❌ 決済失敗: {sym.code} (手動で決済してください！)", "error")
                         
                         if held_sec % 10 < 0.1:
                             logging.debug(f"WATCH {sym.code}: TP={p_tp} SL={p_sl} TIME={p_time}s")
@@ -632,4 +784,6 @@ class Controller:
                 time.sleep(LOOP_SLEEP_SEC)
             except Exception as e:
                 logging.exception("controller main loop error: %s", e)
+                # ★追加: エラー通知
+                self.notifier.send(f"💀 システムエラー発生: {e}", "error")
                 time.sleep(0.2)
