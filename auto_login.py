@@ -12,13 +12,9 @@ from googleapiclient.discovery import build
 # ==========================================
 # ★【最終奥義】IPv4 強制化パッチ
 # ==========================================
-# Googleへの接続が IPv6 で迷子になるのを防ぎ、
-# 強制的に IPv4 を使わせるための設定です。
-# ------------------------------------------
 orig_getaddrinfo = socket.getaddrinfo
 
 def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
-    # 強制的に AF_INET (IPv4) を指定
     return orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
 
 socket.getaddrinfo = getaddrinfo_ipv4
@@ -63,8 +59,9 @@ def get_gmail_service():
 def find_latest_otp():
     service = get_gmail_service()
     
-    # 件名指定をやめて「kabu.comから来たメール」全体を探す
-    query = 'from:kabu.com'
+    # ★変更点: 「1分以内に受信したメール」だけを探す条件を追加
+    # newer_than:1m をつけることで、古いメールを絶対に拾わなくなります
+    query = 'from:kabu.com newer_than:1m'
     
     try:
         # 最新の1件を取得
@@ -72,21 +69,20 @@ def find_latest_otp():
         messages = results.get('messages', [])
         
         if not messages:
-            print("   (API応答: メールが1件も見つかりません)")
+            # まだメールが届いていない場合はここに来る
             return None
 
         # メールの詳細情報を取得
         msg = service.users().messages().get(userId='me', id=messages[0]['id']).execute()
         
         snippet = msg.get('snippet', '')
-        print(f"   (メール受信データ: {snippet[:20]}...)") # デバッグ用
+        # print(f"   (メール受信データ: {snippet[:20]}...)") # デバッグ用(うるさいのでオフ)
 
         # 6桁の数字を抽出
         match = re.search(r'(\d{6})', snippet)
         return match.group(1) if match else None
 
     except Exception as e:
-        # エラーが出ても詳細を表示
         print(f"   (通信エラー詳細: {e})")
         return None
 
@@ -94,7 +90,7 @@ def find_latest_otp():
 # メイン処理
 # ==========================================
 def main():
-    print("🚀 自動ログイン（IPv4強制版）を開始")
+    print("🚀 自動ログイン（IPv4強制版・最新メール限定）を開始")
 
     # 1. Kabuステーションを起動
     print("1. Kabuステーションを起動")
@@ -113,7 +109,7 @@ def main():
     time.sleep(0.5)
     pyautogui.click(x=LOGIN_BTN_X, y=LOGIN_BTN_Y)
     
-    print("   🖱️ クリック完了。メールを待機します...")
+    print("   🖱️ クリック完了。最新のメールを待機します...")
 
     # 3. メール認証コードを待機
     otp_code = None
@@ -121,20 +117,21 @@ def main():
     max_retries = 30
     
     for i in range(max_retries):
+        # 進行状況を見やすく表示
         print(f"\r   ⏳ メール確認中... ({i+1}/{max_retries}) ", end="")
         
         otp_code = find_latest_otp()
         
         if otp_code:
-            print(f"\n   ✅ コード発見！: {otp_code}")
+            print(f"\n   ✅ 最新コード発見！: {otp_code}")
             time.sleep(2) 
             break
         
-        # 次のチェックまで少し待つ
-        time.sleep(2)
+        # 次のチェックまで待つ
+        time.sleep(3)
     
     if not otp_code:
-        print("\n❌ 失敗: メールが見つからないか、通信エラーが解消されませんでした。")
+        print("\n❌ タイムアウト: 5分以内に新しいメールが見つかりませんでした。")
         return
 
     # 4. コード入力

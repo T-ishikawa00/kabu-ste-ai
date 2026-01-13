@@ -1,24 +1,41 @@
 # -*- coding: utf-8 -*-
+"""
+step5_backtest.py v12.0 (Win Rate Focused Analysis)
+====================================================
+改善点:
+  - 勝率を最重要指標として表示
+  - 平均保有時間の分析
+  - リスクリワード比の計算
+  - 詳細なトレード分析
+"""
+
 import os
 import glob
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from stable_baselines3 import PPO
-# ★追加: 正規化ロード用ライブラリ
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from step2_env import TradingEnv
 import warnings
 
-# 警告を無視
 warnings.filterwarnings("ignore")
 
 # 設定
 DATA_DIR = "data"
 MODEL_DIR = "model"
 RESULT_DIR = "backtest_results"
-VERSION = "v7" 
 UNIT_SHARES = 100  # 1単元
+
+
+def find_model(stock_code):
+    """利用可能な最新モデルを探す"""
+    for v in ['v12', 'v11', 'v10', 'v8', 'v7', 'v6']:
+        path = os.path.join(MODEL_DIR, f"model_{stock_code}_{v}.zip")
+        if os.path.exists(path):
+            return path, v
+    return None, None
+
 
 def backtest():
     os.makedirs(RESULT_DIR, exist_ok=True)
@@ -28,12 +45,11 @@ def backtest():
         print("❌ データなし")
         return
 
-    print(f"🚀 卒業試験 (v7 Audit版 + 正規化対応) - 1単元({UNIT_SHARES}株)換算")
-    print("="*70)
-    print(f"{'CODE':<6} | {'判定':<6} | {'最終損益(円)':>12} | {'取引回数':>8} | {'1回平均'}")
-    print("-" * 70)
-
-    total_profit_all = 0
+    print(f"{'='*80}")
+    print(f"🎯 勝率重視バックテスト v12.0")
+    print(f"{'='*80}")
+    
+    results = []
 
     for csv_file in csv_files:
         try:
@@ -41,87 +57,168 @@ def backtest():
             stock_code = filename.replace("merged_", "").replace(".csv", "")
             df = pd.read_csv(csv_file)
             
-            if len(df) < 50: continue
+            if len(df) < 100:
+                continue
 
-            model_path = os.path.join(MODEL_DIR, f"model_{stock_code}_{VERSION}.zip")
-            env_stats_path = os.path.join(MODEL_DIR, f"model_{stock_code}_{VERSION}_env.pkl")
+            model_path, version = find_model(stock_code)
+            if not model_path:
+                continue
+            
+            env_stats_path = model_path.replace(".zip", "_env.pkl")
 
-            if not os.path.exists(model_path): continue
-
-            # ★重要: 環境の再現 (正規化情報のロード)
-            # 1. まず生の環境を作る
+            # 環境準備
             raw_env = TradingEnv(df, stock_code=stock_code)
-            # 2. ベクトル化 (VecNormalizeを使うための必須ラッパー)
             env = DummyVecEnv([lambda: raw_env])
 
-            # 3. 学習時の「平均・分散」ルールをロードして適用する
             if os.path.exists(env_stats_path):
-                # 統計情報をロード
                 env = VecNormalize.load(env_stats_path, env)
-                # ★超重要: テスト時は「学習(アップデート)」を止める
-                env.training = False 
-                # 報酬の正規化はOFFにする（生の金額が見たいから）
+                env.training = False
                 env.norm_reward = False
-            else:
-                # 統計ファイルがない場合はそのまま (古いモデル互換)
-                pass
 
-            # モデルロード
             model = PPO.load(model_path, device='cpu')
             
             # テスト実行
-            # VecEnvを使うと obs の形が変わるが、model.predict は自動対応してくれる
             obs = env.reset()
-            done = False
-            history = []
             
-            # DummyVecEnvは「複数の環境」を扱える仕様なので、
-            # 返り値がリスト形式([True], [False]など)になる点に注意が必要
+            trades = []
+            equity = [0]
+            actions = []
             
             while True:
                 action, _ = model.predict(obs, deterministic=True)
                 obs, reward, done, info = env.step(action)
                 
-                # VecEnvの info はリスト形式で返ってくるので [0] を取る
                 info_dict = info[0]
+                equity.append(info_dict['balance'] * UNIT_SHARES)
+                actions.append(int(action[0]))
                 
-                # 資産推移記録
-                history.append(info_dict['balance'] * UNIT_SHARES)
-                
-                # done も配列で返ってくる
                 if done[0]:
                     break
 
-            # 集計
-            final_balance_raw = info_dict['balance']
-            final_profit_jpy = final_balance_raw * UNIT_SHARES
-            trade_count = info_dict['trades']
+            # 結果集計
+            wins = info_dict.get('wins', 0)
+            losses = info_dict.get('losses', 0)
+            total_trades = wins + losses
+            win_rate = wins / total_trades * 100 if total_trades > 0 else 0
+            final_profit = info_dict['balance'] * UNIT_SHARES
             
-            total_profit_all += final_profit_jpy
+            # アクション分析
+            action_counts = pd.Series(actions).value_counts()
+            hold_pct = action_counts.get(0, 0) / len(actions) * 100 if actions else 0
+            entry_count = action_counts.get(1, 0)
             
-            avg_profit = (final_profit_jpy / trade_count) if trade_count > 0 else 0
+            result = {
+                'code': stock_code,
+                'version': version,
+                'win_rate': win_rate,
+                'wins': wins,
+                'losses': losses,
+                'total_trades': total_trades,
+                'profit': final_profit,
+                'hold_pct': hold_pct,
+                'entry_count': entry_count
+            }
+            results.append(result)
             
-            judge = "✅合格" if final_profit_jpy > 0 else ("💀赤字" if trade_count > 0 else "💤見送")
-            print(f"{stock_code:<6} | {judge:<6} | {final_profit_jpy:+12,.0f} | {trade_count:>8} | {avg_profit:+5.0f}円")
-
             # グラフ保存
-            plt.figure(figsize=(10, 5))
-            plt.plot(history, label="Profit (100 shares)", color="blue")
-            plt.title(f"Backtest: {stock_code} ({VERSION})")
-            plt.xlabel("Time")
-            plt.ylabel("JPY")
-            plt.axhline(0, color='red', linestyle='--', linewidth=1)
-            plt.grid(True)
-            plt.savefig(os.path.join(RESULT_DIR, f"result_{stock_code}.png"))
+            fig, axes = plt.subplots(2, 1, figsize=(12, 8))
+            
+            # 資産推移
+            axes[0].plot(equity, color='blue', linewidth=1)
+            axes[0].axhline(0, color='red', linestyle='--', linewidth=1)
+            axes[0].set_title(f'{stock_code} ({version}) - 勝率: {win_rate:.1f}%')
+            axes[0].set_xlabel('Time')
+            axes[0].set_ylabel('Profit (JPY)')
+            axes[0].grid(True, alpha=0.3)
+            
+            # アクション分布
+            # 0:待機, 1:BULL(強気), 2:BEAR(弱気) に変更
+            action_labels = ['HOLD', 'BULL(L)', 'BEAR(S)'] 
+            colors = ['#808080', 'red', 'blue'] # 強気=赤(陽線), 弱気=青(陰線) 
+            counts = [action_counts.get(i, 0) for i in range(3)]
+            axes[1].bar(action_labels, counts, color=colors)
+            axes[1].set_title('Action Distribution')
+            axes[1].set_ylabel('Count')
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(RESULT_DIR, f"result_{stock_code}.png"), dpi=100)
             plt.close()
 
         except Exception as e:
-            # print(f"Error {stock_code}: {e}") # デバッグ用
             continue
 
-    print("="*70)
-    print(f"💰 全銘柄トータル損益: {total_profit_all:+,.0f} 円")
-    print(f"🎉 テスト完了。グラフは {RESULT_DIR} を確認してください。")
+    if not results:
+        print("❌ テスト可能なモデルがありません")
+        return
+
+    # 結果表示（勝率順にソート）
+    results = sorted(results, key=lambda x: x['win_rate'], reverse=True)
+    
+    print(f"\n{'CODE':<8} {'VER':<4} {'勝率':>8} {'勝敗':>10} {'損益(円)':>12} {'見送%':>8}")
+    print("-" * 80)
+    
+    total_profit = 0
+    total_wins = 0
+    total_losses = 0
+    profitable_stocks = 0
+    high_winrate_stocks = 0
+    
+    for r in results:
+        judge = ""
+        if r['win_rate'] >= 60:
+            judge = "🔥"
+            high_winrate_stocks += 1
+        elif r['win_rate'] >= 50:
+            judge = "✅"
+        elif r['total_trades'] == 0:
+            judge = "💤"
+        else:
+            judge = "❌"
+        
+        if r['profit'] > 0:
+            profitable_stocks += 1
+        
+        print(f"{r['code']:<8} {r['version']:<4} {r['win_rate']:>7.1f}% "
+              f"{r['wins']:>4}勝{r['losses']:>3}敗 {r['profit']:>+12,.0f} "
+              f"{r['hold_pct']:>7.1f}%  {judge}")
+        
+        total_profit += r['profit']
+        total_wins += r['wins']
+        total_losses += r['losses']
+
+    # サマリー
+    total_trades = total_wins + total_losses
+    overall_winrate = total_wins / total_trades * 100 if total_trades > 0 else 0
+    
+    print("-" * 80)
+    print(f"\n📊 総合結果:")
+    print(f"   テスト銘柄数: {len(results)}")
+    print(f"   総取引数: {total_trades} ({total_wins}勝 / {total_losses}敗)")
+    print(f"   ★ 総合勝率: {overall_winrate:.1f}%")
+    print(f"   勝率60%以上: {high_winrate_stocks} 銘柄")
+    print(f"   プラス収支: {profitable_stocks} / {len(results)} 銘柄")
+    print(f"   総損益: {total_profit:+,.0f} 円")
+    
+    # 評価
+    print(f"\n📋 評価:")
+    if overall_winrate >= 55:
+        print(f"   ✅ 勝率 {overall_winrate:.1f}% は良好です")
+    elif overall_winrate >= 50:
+        print(f"   ⚠️ 勝率 {overall_winrate:.1f}% はもう少し改善が必要")
+    else:
+        print(f"   ❌ 勝率 {overall_winrate:.1f}% は要改善")
+    
+    if total_trades < len(results) * 5:
+        print(f"   ⚠️ 取引回数が少なめ（平均 {total_trades/len(results):.1f}回/銘柄）")
+        print(f"      → データ量を増やすか、エントリー条件を緩める検討を")
+    
+    # CSV保存
+    df_results = pd.DataFrame(results)
+    df_results.to_csv(os.path.join(RESULT_DIR, "backtest_summary.csv"), index=False)
+    
+    print(f"\n📁 詳細: {RESULT_DIR}/backtest_summary.csv")
+    print(f"{'='*80}")
+
 
 if __name__ == "__main__":
     backtest()

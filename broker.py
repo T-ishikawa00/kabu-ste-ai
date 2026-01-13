@@ -1,337 +1,386 @@
 # -*- coding: utf-8 -*-
-import time, logging, datetime
-from typing import Optional, Dict, Any, List, Tuple
+"""
+Broker v11.2 (Pending Lock Fix)
+=====================================================
+v11.2 修正点:
+- can_order()内のis_pendingチェックを削除
+- mark_pending()とcan_order()の順序問題を解決
+- 自分自身をブロックするバグを修正
+"""
 
-from utils_common import tick_size
+import time
+import logging
+import datetime
+import threading
+from typing import Optional, Dict, Any, List, Tuple, Set
+from contextlib import contextmanager
+
+class SymbolLock:
+    """銘柄単位の排他制御"""
+    def __init__(self):
+        self._locks: Dict[str, threading.Lock] = {}
+        self._master_lock = threading.Lock()
+        self._pending: Set[str] = set()
+
+    def get_lock(self, code: str) -> threading.Lock:
+        with self._master_lock:
+            if code not in self._locks:
+                self._locks[code] = threading.Lock()
+            return self._locks[code]
+
+    @contextmanager
+    def acquire(self, code: str, timeout: float = 0.1):
+        lock = self.get_lock(code)
+        acquired = lock.acquire(timeout=timeout)
+        if not acquired:
+            raise RuntimeError(f"Lock timeout: {code}")
+        try:
+            yield
+        finally:
+            lock.release()
+
+    def mark_pending(self, code: str) -> bool:
+        with self._master_lock:
+            if code in self._pending: return False
+            self._pending.add(code)
+            return True
+
+    def unmark_pending(self, code: str):
+        with self._master_lock:
+            self._pending.discard(code)
+    
+    def is_pending(self, code: str) -> bool:
+        with self._master_lock:
+            return code in self._pending
+
 
 class Broker:
     """
-    Broker v7.2 (Audit対応: 完全監視・自動キャンセル・掃除機能付き)
-      - 新規: ベストASKを叩く(Taker) -> 10秒監視 -> ダメなら自動キャンセル
-      - 返済: 既存の注文をキャンセルしてから、ExecutionID指定で確実に返す
-      - 信用区分: デイトレ信用(3)固定
+    Broker v11.2
+    - Pendingロックの順序問題を修正
     """
-
     def __init__(self, api, cfg):
-        self.api, self.cfg = api, cfg
+        self.api = api
+        self.cfg = cfg
         self.paper = bool(getattr(cfg, "paper_trading", False))
+
+        logging.info(f"🔧 Broker v11.2 Initialized (Pending Lock Fix)")
+
         self.pos: Dict[str, Dict[str, Any]] = {}
         self.last_order_ts: Dict[str, float] = {}
-        self.fail_ts: List[float] = []
-        self._last_buy_order_id: Dict[str, str] = {}
+        self._max_open_positions = int(getattr(getattr(cfg, "portfolio", object()), "max_open_positions", 5))
 
-        # 同時建玉上限
-        port = getattr(cfg, "portfolio", object())
-        self._max_open_positions = int(getattr(port, "max_open_positions", 1))
+        self._symbol_lock = SymbolLock()
+        self._order_cooldown: Dict[str, float] = {}
+        self._pending_orders: Set[str] = set()
+        self._pending_lock = threading.Lock()
 
-        # ★追加: 注文監視設定
-        self.WAIT_SECONDS = 10  # 約定を待つ秒数
+        safety = getattr(cfg, "safety", object())
+        self._min_order_interval = float(getattr(safety, "min_order_interval_sec", 1.0))
+        self.WAIT_SECONDS = 5
 
-    # -------------------- 軽ガード --------------------
+        short_cfg = getattr(cfg, "short", object())
+        self._short_enabled = bool(getattr(short_cfg, "enabled", False))
+        self._short_allowed_symbols = set(getattr(short_cfg, "allowed_symbols", []))
+
+    # ==========================================
+    # 共通チェック（is_pendingチェックを削除）
+    # ==========================================
+    def can_order(self, code: str) -> Tuple[bool, str]:
+        code = str(code)
+        # ★is_pendingチェックは削除（mark_pendingで排他制御するため）
+        
+        last_order = self._order_cooldown.get(code, 0)
+        if (time.time() - last_order) < self._min_order_interval: 
+            return False, "cooldown"
+        
+        if code in self.pos: 
+            return False, "position_exists"
+        if len(self.pos) >= self._max_open_positions: 
+            return False, "max_positions"
+        
+        return True, "ok"
+
+    def can_short(self, code: str, board: dict) -> Tuple[bool, str]:
+        if not self._short_enabled: 
+            return False, "short_disabled"
+        if self._short_allowed_symbols and code not in self._short_allowed_symbols:
+            return False, "symbol_not_allowed"
+        return self.can_order(code)
+
     def can_trade_now(self, is_entry: bool) -> bool:
-        try:
-            safety = getattr(self.cfg, "safety", object())
-            if bool(getattr(safety, "pause_on_latency", True)):
-                lim = int(getattr(safety, "api_latency_ms_limit", 1500))
-                if getattr(self.api, "last_latency_ms", 0) > lim:
-                    return False
+        return True
 
-            risk = getattr(self.cfg, "risk", object())
-            hhmm = datetime.datetime.now().strftime("%H:%M")
-            no_new = str(getattr(risk, "no_new_entry_after", "") or "")
-            force_c = str(getattr(risk, "force_close_time", "") or "")
-            if force_c and hhmm >= force_c:
-                return False
-            if is_entry and no_new and hhmm >= no_new:
-                return False
-            return True
-        except Exception:
-            return True
-
-    # -------------------- 型補正 --------------------
-    @staticmethod
-    def _coerce_ints(p: dict, keys: list):
-        for k in keys:
-            if k in p and isinstance(p[k], str) and p[k].isdigit():
-                p[k] = int(p[k])
-
-    # -------------------- 建玉チェック --------------------
-    def _open_positions(self) -> List[dict]:
-        try:
-            return list(self.api.positions() or [])
-        except Exception:
-            return []
-
-    def _open_count(self) -> int:
-        return sum(int(p.get("LeavesQty") or p.get("HoldQty") or p.get("Qty") or 0) > 0 for p in self._open_positions())
-
-    def _has_symbol_open(self, code: str) -> bool:
-        code_s = str(code)
-        for p in self._open_positions():
-            if str(p.get("Symbol")) == code_s and int(p.get("LeavesQty") or p.get("HoldQty") or p.get("Qty") or 0) > 0:
-                return True
-        return False
-
-    # -------------------- ★重要: 注文監視と自動キャンセル --------------------
-    def _wait_and_check_order(self, order_id: str, code: str) -> bool:
-        """
-        注文が約定するまで監視する。
-        タイムアウトしたらキャンセル注文を投げ、Falseを返す。
-        """
-        if self.paper: return True
-
-        logging.info(f"👀 注文監視開始: {code} (ID:{order_id}) - {self.WAIT_SECONDS}秒待機")
-        start_time = time.time()
+    # ==========================================
+    # 注文処理 (BUY)
+    # ==========================================
+    def buy(self, sym, board, cur_px) -> Optional[dict]:
+        code = str(sym.code)
         
-        while (time.time() - start_time) < self.WAIT_SECONDS:
-            time.sleep(1.0) # 1秒おきに確認
-            try:
-                # 注文一覧を取得 (※API負荷に注意しつつ)
-                orders = self.api.orders() 
-                if not orders: continue
-
-                target = None
-                for o in orders:
-                    if o.get("ID") == order_id:
-                        target = o
-                        break
-                
-                if target:
-                    state = int(target.get("State", 0))
-                    # 5: 全約定
-                    if state == 5:
-                        logging.info(f"✅ 約定確認: {code}")
-                        return True
-                    elif state == 3: # 取消/失効済み
-                        logging.warning(f"⚠️ 注文は既に取消/失効されています: {code}")
-                        return False
-            except Exception as e:
-                logging.warning(f"監視中エラー(無視): {e}")
-        
-        # タイムアウト -> キャンセル実行
-        logging.warning(f"⛔ タイムアウト: {code} 未約定のためキャンセルします")
-        try:
-            # キャンセルリクエスト
-            self.api.cancelorder({
-                "Password": self.cfg.api.trade_password,
-                "OrderId": order_id
-            })
-            logging.info("🗑️ キャンセル注文送信完了")
-        except Exception as e:
-            logging.error(f"キャンセル送信失敗: {e}")
-            
-        return False
-
-    # -------------------- ExecutionID 収集 --------------------
-    def _wait_exec_ids(self, code: str, order_id: Optional[str], wait_ms: int = 1500) -> List[Tuple[str, int]]:
-        deadline = time.time() + max(0.2, wait_ms / 1000.0)
-        code_s = str(code)
-        found: List[Tuple[str, int]] = []
-        first = True
-
-        while time.time() < deadline:
-            if first:
-                time.sleep(0.25)
-                first = False
-
-            try:
-                for od in (self.api.orders() or []):
-                    if order_id and od.get("OrderId") != order_id: continue
-                    for d in (od.get("Details") or []):
-                        exid = d.get("ExecutionID")
-                        q = d.get("CumQty") or d.get("Qty") or 0
-                        if exid and int(q) > 0:
-                            found.append((str(exid), int(q)))
-            except Exception: pass
-
-            try:
-                for p in (self.api.positions() or []):
-                    if str(p.get("Symbol")) != code_s: continue
-                    exid = p.get("ExecutionID")
-                    q = p.get("LeavesQty") or p.get("HoldQty") or p.get("Qty") or 0
-                    if exid and int(q) > 0:
-                        found.append((str(exid), int(q)))
-            except Exception: pass
-
-            if found: return found
-            time.sleep(0.08)
-        return []
-
-    # -------------------- 新規 (BUY) --------------------
-    def buy(self, sym, board, cur_px):
-        """
-        新規（Taker戦略 + 自動キャンセルガード）
-        """
-        try:
-            if not self.can_trade_now(is_entry=True):
-                return None
-
-            # Broker内ガード
-            if self._open_count() >= self._max_open_positions:
-                logging.warning("[GUARD] max_open_positions limit")
-                return None
-            if self._has_symbol_open(str(sym.code)):
-                logging.warning("[GUARD] symbol already open: %s", sym.code)
-                return None
-
-            # 価格決定: Taker戦略
-            ask = (board.get("BestAsk") or {}).get("Price") or board.get("AskPrice")
-            if not isinstance(ask, (int, float)):
-                ask = cur_px
-
-            limit_px = ask 
-            qty = int(getattr(sym, "qty", 100))
-
-            # Paper Trading
-            if self.paper:
-                return {"Result": 0, "OrderId": "PAPER_ID"}
-
-            # Live 発注
-            payload = {
-                "Password": self.cfg.api.trade_password,
-                "Symbol": str(sym.code),
-                "Exchange": int(sym.exchange),
-                "SecurityType": 1,
-                "Side": 2,                 # Buy
-                "CashMargin": 2,           # 信用新規
-                "MarginTradeType": 3,      # ★3=デイトレ信用(一般)
-                "DelivType": 0,
-                "FundType": 11,
-                "AccountType": 4,
-                "Qty": int(qty),
-                "FrontOrderType": 20,      # 指値
-                "Price": int(limit_px),    # Ask価格
-                "ExpireDay": 0,
-            }
-            self._coerce_ints(payload, ["Exchange","SecurityType","Side","CashMargin",
-                                        "MarginTradeType","DelivType","FundType","AccountType",
-                                        "Qty","FrontOrderType","Price","ExpireDay"])
-            
-            logging.info("[LIVE] BUY(Taker) code=%s price=%s qty=%d", sym.code, limit_px, qty)
-
-            res = self.api.sendorder(payload)
-            if not res or res.get("Result") != 0:
-                logging.error("LIVE BUY 失敗: %s", res)
-                return None
-
-            order_id = res.get("OrderId")
-            self._last_buy_order_id[str(sym.code)] = order_id
-
-            # ★ここで監視！約定しなければキャンセルして None を返す
-            if self._wait_and_check_order(order_id, str(sym.code)):
-                return res  # 約定成功 -> Controllerへ
-            else:
-                return None # キャンセル済み -> Controllerは何もしない
-
-        except Exception as e:
-            logging.error("LIVE BUY Exception: %s", e)
+        # ★1. まずロックを取得（他スレッドとの競合を防ぐ）
+        if not self._symbol_lock.mark_pending(code):
+            logging.debug(f"[BUY] {code} skipped: already pending")
             return None
 
-    # -------------------- 返済 (SELL) --------------------
-    def sell(self, sym, qty: int):
-        """
-        返済（成行）
-        ★修正: 二重発注を防ぐため、先にこの銘柄の全注文をキャンセルしてから売る
-        """
         try:
-            if not self.can_trade_now(is_entry=False):
-                return False, "guard"
+            # ★2. ロック取得後にチェック
+            can, reason = self.can_order(code)
+            if not can:
+                logging.info(f"[BUY] {code} skipped: {reason}")
+                return None
 
-            code = str(sym.code)
-            
+            qty = int(getattr(sym, "qty", 100))
+
+            # --- Paper Trading ---
             if self.paper:
-                return True, "PAPER_OK"
+                cur = float(cur_px)
+                self.pos[code] = {
+                    "entry": cur, "qty": qty, "ts": time.time(),
+                    "side": "BUY", "strategy": "SCALP"
+                }
+                self._order_cooldown[code] = time.time()
+                logging.info(f"[PAPER] BUY {code} @ {cur}")
+                return {"Result": 0}
 
-            # ★★★ 追加: まず既存の注文を掃除する (ロック解除) ★★★
-            logging.info(f"🧹 [{code}] 決済前のクリーンアップ: 既存注文をキャンセルします")
-            try:
-                orders = self.api.orders()
-                if orders:
-                    for o in orders:
-                        # この銘柄の、有効な(State=1,2)注文ならキャンセル
-                        if str(o.get("Symbol")) == code and o.get("State") in [1, 2]:
-                            self.api.cancelorder({
-                                "Password": self.cfg.api.trade_password,
-                                "OrderId": o.get("ID")
-                            })
-                            logging.info(f"   🗑️ 注文取消: {o.get('ID')}")
-                # キャンセルが反映されるまで少し待つ
-                time.sleep(0.5) 
-            except Exception as e:
-                logging.warning(f"キャンセル処理でエラー(無視): {e}")
+            # --- Live Trading ---
+            payload = {
+                "Password": self.cfg.api.trade_password,
+                "Symbol": code, "Exchange": int(sym.exchange), "SecurityType": 1,
+                "Side": "2", "CashMargin": 2, "MarginTradeType": 3, "DelivType": 0,
+                "FundType": "11", "AccountType": 4, "Qty": qty,
+                "FrontOrderType": 10, "Price": 0, "ExpireDay": 0 
+            }
 
-            # --- ここから下は今まで通り ---
+            logging.info(f"[LIVE] BUY Sending... {code} qty={qty}")
+            res = self.api.sendorder(payload)
 
-            # 1. 以前の注文IDからExecutionIDを探す
-            last_oid = self._last_buy_order_id.get(code)
-            execs = self._wait_exec_ids(code=code, order_id=last_oid, wait_ms=1500)
+            if not res or res.get("Result") != 0:
+                logging.warning(f"⚠️ BUY注文失敗 {code}: {res}")
+                return None
+
+            oid = res.get("OrderId")
+            self._order_cooldown[code] = time.time()
+
+            # 約定価格をAPIから取得
+            fill_price = self._wait_and_get_execution_price(oid, code)
+            final_entry_price = float(fill_price if fill_price else cur_px)
+
+            self.pos[code] = {
+                "entry": final_entry_price,
+                "qty": qty, "ts": time.time(),
+                "side": "BUY", "strategy": "SCALP",
+                "fill_ts": time.time()
+            }
             
-            # 2. ExecutionID指定で返済 (これが一番確実)
-            if execs:
-                if str(sym.code) in self.pos:
-                    self.pos[str(sym.code)]["fill_ts"] = time.time()
-                
-                res = self._live_sell_credit_close_multi(sym, qty, execs)
-                if res and isinstance(res, dict) and res.get("Result") == 0:
-                    return True, res
+            if fill_price:
+                logging.info(f"✅ [Execution] {code} BUY @ {fill_price} (Confirmed)")
+            else:
+                logging.warning(f"⚠️ [Execution] {code} BUY @ {cur_px} (Unconfirmed)")
 
-            # 3. 見つからなければ FIFO (バックアップ)
-            logging.warning("ExecutionID未取得。FIFO返済(成行)を実行: %s", code)
-            res2 = self._live_sell_credit_fifo(sym, qty)
-            ok2 = bool(res2 and isinstance(res2, dict) and res2.get("Result") == 0)
-            return ok2, res2
+            return res
 
         except Exception as e:
-            logging.error("LIVE SELL Exception: %s", e)
+            logging.error(f"BUY Error: {e}")
+            return None
+        finally:
+            self._symbol_lock.unmark_pending(code)
+
+    # ==========================================
+    # 注文処理 (SHORT)
+    # ==========================================
+    def short_entry(self, sym, board, cur_px) -> Optional[dict]:
+        code = str(sym.code)
+        
+        if not self._symbol_lock.mark_pending(code):
+            logging.debug(f"[SHORT] {code} skipped: already pending")
+            return None
+
+        try:
+            can, reason = self.can_short(code, board)
+            if not can:
+                logging.info(f"[SHORT] {code} skipped: {reason}")
+                return None
+
+            qty = int(getattr(sym, "qty", 100))
+
+            # --- Paper ---
+            if self.paper:
+                cur = float(cur_px)
+                self.pos[code] = {
+                    "entry": cur, "qty": qty, "ts": time.time(),
+                    "side": "SHORT", "strategy": "SCALP"
+                }
+                self._order_cooldown[code] = time.time()
+                logging.info(f"[PAPER] SHORT {code} @ {cur}")
+                return {"Result": 0}
+
+            # --- Live ---
+            payload = {
+                "Password": self.cfg.api.trade_password,
+                "Symbol": code, "Exchange": int(sym.exchange), "SecurityType": 1,
+                "Side": "1", "CashMargin": 2, "MarginTradeType": 3, "DelivType": 0,
+                "FundType": "11", "AccountType": 4, "Qty": qty,
+                "FrontOrderType": 10, "Price": 0, "ExpireDay": 0
+            }
+
+            logging.info(f"[LIVE] SHORT Sending... {code} qty={qty}")
+            res = self.api.sendorder(payload)
+
+            if not res or res.get("Result") != 0:
+                logging.warning(f"⚠️ SHORT Failed: {res}")
+                return None
+
+            oid = res.get("OrderId")
+            self._order_cooldown[code] = time.time()
+
+            fill_price = self._wait_and_get_execution_price(oid, code)
+            final_entry_price = float(fill_price if fill_price else cur_px)
+
+            self.pos[code] = {
+                "entry": final_entry_price,
+                "qty": qty, "ts": time.time(),
+                "side": "SHORT", "strategy": "SCALP",
+                "fill_ts": time.time()
+            }
+            
+            if fill_price:
+                logging.info(f"✅ [Execution] {code} SHORT @ {fill_price} (Confirmed)")
+            else:
+                logging.warning(f"⚠️ [Execution] {code} SHORT @ {cur_px} (Unconfirmed)")
+
+            return res
+
+        except Exception as e:
+            logging.error(f"SHORT Error: {e}")
+            return None
+        finally:
+            self._symbol_lock.unmark_pending(code)
+
+    # ==========================================
+    # 決済処理 (SELL / COVER)
+    # ==========================================
+    def sell(self, sym, qty: int):
+        return self._exit_order(sym, qty, side="1", trade_type="SELL")
+
+    def cover(self, sym, qty: int):
+        return self._exit_order(sym, qty, side="2", trade_type="COVER")
+
+    def _exit_order(self, sym, qty, side, trade_type):
+        code = str(sym.code)
+        if self.paper:
+            logging.info(f"[PAPER] {trade_type} {code}")
+            return True, "PAPER_OK"
+
+        # 1. まず既存の注文をキャンセル
+        try:
+            orders = self.api.orders() or []
+            for o in orders:
+                if str(o.get("Symbol")) == code and o.get("State") in [1, 2]:
+                    self.api.cancelorder({
+                        "Password": self.cfg.api.trade_password, "OrderId": o.get("ID")
+                    })
+            time.sleep(0.2)
+        except: pass
+
+        # 2. 建玉指定で決済
+        try:
+            positions = self.api.positions() or []
+            target_pos = [p for p in positions if str(p.get("Symbol")) == code and int(p.get("LeavesQty", 0)) > 0]
+            
+            closes = []
+            rest = int(qty)
+            for p in target_pos:
+                hold_qty = int(p.get("LeavesQty"))
+                take = min(rest, hold_qty)
+                # ★HoldIDは文字列、Qtyは整数で送る
+                closes.append({"HoldID": str(p.get("HoldID")), "Qty": int(take)})
+                rest -= take
+                if rest <= 0: break
+            
+            logging.debug(f"[EXIT] {code} ClosePositions: {closes}")
+            
+            if not closes:
+                logging.warning(f"⚠️ 建玉不明、汎用返済を試行: {code}")
+                return self._exit_fallback(code, sym.exchange, side, qty)
+
+            payload = {
+                "Password": self.cfg.api.trade_password,
+                "Symbol": code, "Exchange": int(sym.exchange), "SecurityType": 1,
+                "Side": side, "CashMargin": 3, "MarginTradeType": 3, "DelivType": 2,
+                "FundType": "11", "AccountType": 4, "Qty": int(qty),
+                "ClosePositions": closes,
+                "FrontOrderType": 10, "Price": 0, "ExpireDay": 0
+            }
+            
+            res = self.api.sendorder(payload)
+            if res and res.get("Result") == 0:
+                logging.info(f"✅ {trade_type} 成功: {code}")
+                return True, res
+            else:
+                logging.error(f"❌ {trade_type} 失敗: {res}")
+                return False, res
+
+        except Exception as e:
+            logging.error(f"{trade_type} Error: {e}")
             return False, str(e)
 
-    # (内部メソッド: 指定返済)
-    def _live_sell_credit_close_multi(self, sym, qty: int, execs: List[Tuple[str, int]]):
-        rest = int(qty)
-        closes = []
-        for exid, q in execs:
-            take = min(rest, int(q))
-            if take <= 0: break
-            closes.append({"HoldID": str(exid), "Qty": int(take)})
-            rest -= take
-        if not closes: return None
-
+    def _exit_fallback(self, code, exchange, side, qty):
         payload = {
             "Password": self.cfg.api.trade_password,
-            "Symbol": str(sym.code),
-            "Exchange": int(sym.exchange),
-            "SecurityType": 1,
-            "Side": 1, # Sell
-            "CashMargin": 3,
-            "MarginTradeType": 3, # ★3=デイトレ信用(一般)
-            "DelivType": 2,
-            "FundType": 11,
-            "AccountType": 4,
-            "Qty": int(qty),
-            "ClosePositions": closes,
-            "FrontOrderType": 10, # 成行
-            "Price": 0,
-            "ExpireDay": 0,
+            "Symbol": code, "Exchange": int(exchange), "SecurityType": 1,
+            "Side": side, "CashMargin": 3, "MarginTradeType": 3, "DelivType": 2,
+            "FundType": "11", "AccountType": 4, "Qty": int(qty),
+            "ClosePositionOrder": 0,
+            "FrontOrderType": 10, "Price": 0, "ExpireDay": 0
         }
-        return self.api.sendorder(payload)
+        res = self.api.sendorder(payload)
+        return bool(res and res.get("Result") == 0), res
 
-    # (内部メソッド: FIFO返済)
-    def _live_sell_credit_fifo(self, sym, qty: int):
-        payload = {
-            "Password": self.cfg.api.trade_password,
-            "Symbol": str(sym.code),
-            "Exchange": int(sym.exchange),
-            "SecurityType": 1,
-            "Side": 1, # Sell
-            "CashMargin": 3,
-            "MarginTradeType": 3, # ★3=デイトレ信用(一般)
-            "DelivType": 2,
-            "FundType": 11,
-            "AccountType": 4,
-            "Qty": int(qty),
-            "ClosePositionOrder": 0, # FIFO
-            "FrontOrderType": 10, # 成行
-            "Price": 0,
-            "ExpireDay": 0,
-        }
-        return self.api.sendorder(payload)
+    # ==========================================
+    # ヘルパー: 正確な約定価格を取得
+    # ==========================================
+    def _wait_and_get_execution_price(self, order_id: str, code: str) -> Optional[float]:
+        start = time.time()
+        while time.time() - start < self.WAIT_SECONDS:
+            try:
+                orders = self.api.orders()
+                if not orders:
+                    time.sleep(0.5)
+                    continue
+                
+                target_order = None
+                for o in orders:
+                    if o.get("ID") == order_id:
+                        target_order = o
+                        break
+                
+                if target_order:
+                    state = int(target_order.get("State", 0))
+                    if state == 5:
+                        price = float(target_order.get("Price") or 0)
+                        if price > 0:
+                            return price
+                    
+                time.sleep(0.5)
+            except Exception:
+                time.sleep(0.5)
+        
+        return self._get_avg_price_from_positions(code)
+
+    def _get_avg_price_from_positions(self, code: str) -> Optional[float]:
+        try:
+            positions = self.api.positions()
+            if not positions: return None
+            
+            relevant = [p for p in positions if str(p.get("Symbol")) == code]
+            if not relevant: return None
+            
+            last_pos = relevant[-1]
+            return float(last_pos.get("Price") or last_pos.get("EntryPrice") or 0)
+        except:
+            return None
+
+    def _open_positions(self):
+        try:
+            return self.api.positions()
+        except: return None

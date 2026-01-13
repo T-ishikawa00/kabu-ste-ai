@@ -6,24 +6,27 @@ import logging
 
 class DataCollector:
     """
-    全銘柄の市場データをCSVに高速保存するクラス
-    Phase 1: 教師データ蓄積用 (High-Resolution)
+    全銘柄の市場データをCSVに高速保存するクラス (Phase 1: Deep Market Depth対応版)
+    OverSellQty / UnderBuyQty を記録し、隠れた需給バランスを可視化する
     """
     def __init__(self, save_dir="data_raw"):
         self.save_dir = save_dir
         # 保存するデータの項目（カラム名）
-        # step3_train.py と完全に一致させる
         self.columns = [
             "timestamp", "code", "price", "volume", 
             "bid_price", "bid_qty", 
             "ask_price", "ask_qty", 
-            "vwap"
+            "vwap",
+            # ★追加: 深層板情報 (Deep Market Depth)
+            "over_sell_qty",   # 成行売りなど、板の上に見えない売り圧力
+            "under_buy_qty",   # 成行買いなど、板の下に見えない買い圧力
+            "market_cap"       # 時価総額 (銘柄規模の正規化用)
         ]
         self.current_dir = None
         self._ensure_daily_dir()
 
     def _ensure_daily_dir(self):
-        """今日の日付フォルダを作成 (data_raw/20251226/...)"""
+        """今日の日付フォルダを作成 (data_raw/20260106/...)"""
         today_str = datetime.datetime.now().strftime("%Y%m%d")
         self.current_dir = os.path.join(self.save_dir, today_str)
         if not os.path.exists(self.current_dir):
@@ -32,7 +35,7 @@ class DataCollector:
 
     def log_board(self, code: str, board: dict):
         """
-        Kabuステーションの板情報(board)を受け取り、必要な数値だけをCSVに追記する
+        Kabuステーションの板情報(board)を受け取り、Deep Depth情報を含めてCSVに追記する
         """
         try:
             # 日付が変わったらフォルダを作り直すチェック
@@ -47,27 +50,31 @@ class DataCollector:
             # 出来高
             vol = board.get("TradingVolume") or board.get("Volume") or board.get("CurrentVolume")
             
-            # ★最重要: 板情報の抽出
+            # 板情報の抽出
             best_bid = board.get("BestBid") or {}
             best_ask = board.get("BestAsk") or {}
             
             bid_price = best_bid.get("Price") or board.get("BidPrice")
-            bid_qty   = best_bid.get("Qty")   or board.get("BidQty") # 買い板の厚さ
+            bid_qty   = best_bid.get("Qty")   or board.get("BidQty")
             
             ask_price = best_ask.get("Price") or board.get("AskPrice")
-            ask_qty   = best_ask.get("Qty")   or board.get("AskQty") # 売り板の厚さ
+            ask_qty   = best_ask.get("Qty")   or board.get("AskQty")
             
             vwap = board.get("VWAP")
+
+            # ★追加: 深層情報の抽出
+            # KabuステーションAPI固有のフィールド
+            over_sell = board.get("OverSellQty")
+            under_buy = board.get("UnderBuyQty")
+            market_cap = board.get("TotalMarketValue")
 
             # データが欠けている場合は保存しない（ゴミデータ防止）
             if price is None:
                 return
 
             # --- CSVへの書き込み ---
-            # ファイル名: code.csv (日付フォルダの中に入れる)
             file_path = os.path.join(self.current_dir, f"{code}.csv")
             
-            # ファイルがまだなければ、ヘッダー（項目名）を書き込む
             file_exists = os.path.exists(file_path)
             
             # 毎回open/closeすることで、途中で落ちてもデータが消えにくいようにする
@@ -84,7 +91,11 @@ class DataCollector:
                     ts, code, price, vol,
                     bid_price, bid_qty,
                     ask_price, ask_qty,
-                    vwap
+                    vwap,
+                    # ★追加分
+                    over_sell,
+                    under_buy,
+                    market_cap
                 ]
                 writer.writerow(row)
 

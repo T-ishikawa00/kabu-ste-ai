@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-step4_process_daily_log.py (v7.4 PSAR Fix)
-パラボリック(PSAR)の交互NaNによる全行削除バグを修正したバージョン
+step4_process_daily_log.py v12.0
+================================
+既存の merged_*.csv を v12 形式に再加工する
 """
 
 import os
@@ -10,31 +11,24 @@ import pandas as pd
 import numpy as np
 import pandas_ta as ta
 import warnings
-import logging
 
-# 不要な警告を消す
 warnings.simplefilter('ignore')
 
-# ログ設定
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
-)
-
 # 設定
-DATA_RAW_DIR = "data_raw"  # 生ログの場所
-DATA_OUT_DIR = "data"      # 加工済みデータの保存先
+DATA_RAW_DIR = "data_raw"
+DATA_OUT_DIR = "data"
 
-# ==========================================
-# ★共通ロジック: RCI計算関数
-# ==========================================
+
 def calc_rci_series(series: pd.Series, period=9) -> pd.Series:
+    """RCI（順位相関指数）を計算"""
     rci_values = []
     if len(series) < period:
         return pd.Series([np.nan] * len(series), index=series.index)
+    
     time_rank = np.arange(1, period + 1)
     values = series.values
     n = len(values)
+    
     for i in range(n):
         if i < period - 1:
             rci_values.append(np.nan)
@@ -44,199 +38,177 @@ def calc_rci_series(series: pd.Series, period=9) -> pd.Series:
         d_sq = np.sum((time_rank - price_rank) ** 2)
         val = (1 - (6 * d_sq) / (period**3 - period)) * 100
         rci_values.append(val)
+    
     return pd.Series(rci_values, index=series.index)
 
-def process_data(code):
-    """
-    1銘柄分のデータを統合・加工する
-    """
-    files = glob.glob(f"{DATA_RAW_DIR}/*/{code}.csv")
-    
-    if not files:
-        legacy = f"{DATA_OUT_DIR}/merged_{code}.csv"
-        if os.path.exists(legacy):
-            files = [legacy]
-        else:
-            return None
 
-    logging.info(f"📚 {code}: {len(files)} 個のファイルを処理中...")
-
-    df_list = []
-    for f in files:
-        try:
-            df_tmp = pd.read_csv(f)
-            
-            # カラム名統一
-            df_tmp.columns = [c.lower() for c in df_tmp.columns]
-            rename_map = {
-                "price": "close", "currentprice": "close", "current_price": "close", "lasttradedprice": "close",
-                "size": "volume", "volume": "volume", "tradingvolume": "volume", "trading_volume": "volume", "currentvolume": "volume",
-                "bid": "bid_price", "bidprice": "bid_price",
-                "ask": "ask_price", "askprice": "ask_price",
-                "bid_qty": "bid_qty", "bidqty": "bid_qty",
-                "ask_qty": "ask_qty", "askqty": "ask_qty"
-            }
-            df_tmp.rename(columns=rename_map, inplace=True)
-            
-            # Timestamp処理
-            time_col = None
-            for cand in ["timestamp", "datetime", "time"]:
-                if cand in df_tmp.columns:
-                    time_col = cand
-                    break
-            
-            if time_col:
-                df_tmp["timestamp"] = pd.to_datetime(df_tmp[time_col], format='mixed')
-            else:
-                continue 
-            
-            df_tmp.set_index("timestamp", inplace=True)
-            
-            # 1分足にリサンプリング
-            if "close" not in df_tmp.columns: continue
-            
-            # 数値変換
-            for col in ["close", "volume", "bid_qty", "ask_qty"]:
-                if col in df_tmp.columns:
-                    df_tmp[col] = pd.to_numeric(df_tmp[col], errors='coerce')
-
-            df_resampled = df_tmp["close"].resample("1T").ohlc()
-            
-            if "volume" in df_tmp.columns:
-                df_resampled["volume"] = df_tmp["volume"].resample("1T").sum()
-            else:
-                df_resampled["volume"] = 0
-
-            # 板情報
-            if "bid_qty" in df_tmp.columns and "ask_qty" in df_tmp.columns:
-                bid_q = df_tmp["bid_qty"].resample("1T").mean()
-                ask_q = df_tmp["ask_qty"].resample("1T").mean()
-                df_resampled["obi"] = bid_q / (bid_q + ask_q + 1e-9)
-            else:
-                df_resampled["obi"] = 0.5
-
-            df_list.append(df_resampled)
-            
-        except Exception as e:
-            continue
-    
-    if not df_list:
-        return None
-
-    # 結合 & ソート
-    df = pd.concat(df_list).sort_index()
-    df = df[~df.index.duplicated(keep='last')]
-    
-    # 欠損埋め (価格は直前値、出来高は0)
-    df["close"] = df["close"].ffill()
-    df["open"] = df["open"].fillna(df["close"])
-    df["high"] = df["high"].fillna(df["close"])
-    df["low"] = df["low"].fillna(df["close"])
-    df["volume"] = df["volume"].fillna(0)
-    df["obi"] = df["obi"].fillna(0.5)
-
-    # ==========================================
-    # ★ テクニカル指標計算
-    # ==========================================
+def process_existing_merged(filepath):
+    """既存の merged_*.csv を読み込んで指標を再計算"""
     try:
+        df = pd.read_csv(filepath)
+        
+        # インデックスをリセット
+        if 'timestamp' in df.columns:
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df.set_index('timestamp', inplace=True)
+        elif 'Unnamed: 0' in df.columns:
+            df['timestamp'] = pd.to_datetime(df['Unnamed: 0'])
+            df.set_index('timestamp', inplace=True)
+            df.drop(columns=['Unnamed: 0'], errors='ignore', inplace=True)
+        
+        # 必須カラムの確認
+        if 'close' not in df.columns:
+            print(f"  ❌ 'close' カラムがありません")
+            return None
+        
+        # 欠損埋め
+        df["close"] = pd.to_numeric(df["close"], errors='coerce').ffill()
+        
+        if "open" not in df.columns:
+            df["open"] = df["close"]
+        if "high" not in df.columns:
+            df["high"] = df["close"]
+        if "low" not in df.columns:
+            df["low"] = df["close"]
+        if "volume" not in df.columns:
+            df["volume"] = 0
+            
+        df["open"] = pd.to_numeric(df["open"], errors='coerce').fillna(df["close"])
+        df["high"] = pd.to_numeric(df["high"], errors='coerce').fillna(df["close"])
+        df["low"] = pd.to_numeric(df["low"], errors='coerce').fillna(df["close"])
+        df["volume"] = pd.to_numeric(df["volume"], errors='coerce').fillna(0)
+        
+        # 板情報（なければデフォルト値）
+        if "obi" not in df.columns:
+            df["obi"] = 0.5
+        if "ndbi" not in df.columns:
+            df["ndbi"] = 0.0
+        if "hsr" not in df.columns:
+            df["hsr"] = 0.0
+
+        # ==========================================
+        # テクニカル指標計算
+        # ==========================================
+        
         # 1. MACD
-        df.ta.macd(close='close', fast=12, slow=26, signal=9, append=True)
-        
-        # 2. BB
-        df.ta.bbands(close='close', length=20, std=2, append=True)
-        
-        # 3. PSAR (ここが問題児)
         try:
-            df.ta.psar(high='high', low='low', close='close', af0=0.02, af=0.2, append=True)
+            macd = ta.macd(df['close'], fast=12, slow=26, signal=9)
+            if macd is not None:
+                df = pd.concat([df, macd], axis=1)
+        except Exception as e:
+            print(f"  ⚠️ MACD計算エラー: {e}")
+        
+        # 2. Bollinger Bands
+        try:
+            bb = ta.bbands(df['close'], length=20, std=2)
+            if bb is not None:
+                df = pd.concat([df, bb], axis=1)
+        except Exception as e:
+            print(f"  ⚠️ BB計算エラー: {e}")
+        
+        # 3. Parabolic SAR
+        try:
+            psar = ta.psar(df['high'], df['low'], df['close'], af0=0.02, af=0.2)
+            if psar is not None:
+                df = pd.concat([df, psar], axis=1)
         except:
             pass
 
-        # 4. RCI
+        # 4. RCI (順位相関指数)
         df['rci_9'] = calc_rci_series(df['close'], period=9)
         df['rci_26'] = calc_rci_series(df['close'], period=26)
         
-        # 5. Others
-        df.ta.rsi(close='close', length=14, append=True)
-        df.ta.sma(close='close', length=25, append=True)
+        # 5. RSI
+        try:
+            rsi = ta.rsi(df['close'], length=14)
+            if rsi is not None:
+                df['RSI_14'] = rsi
+        except:
+            df['RSI_14'] = 50.0
         
+        # 6. SMA
+        try:
+            sma = ta.sma(df['close'], length=25)
+            if sma is not None:
+                df['SMA_25'] = sma
+        except:
+            df['SMA_25'] = df['close']
+        
+        # 7. 出来高比率
         vol_ma = df['volume'].rolling(20).mean()
         df['vol_ratio'] = df['volume'] / (vol_ma + 1e-9)
+        df['vol_ratio'] = df['vol_ratio'].replace([np.inf, -np.inf], 1.0).fillna(1.0)
         
+        # 8. MA15乖離率
         ma15 = df['close'].rolling(15).mean()
         df['dist_ma15'] = (df['close'] - ma15) / (ma15 + 1e-9)
         
+        # 9. ボラティリティ
         df['volatility'] = (df['high'] - df['low']) / (df['open'] + 1e-9)
         
+        # 10. SMA25乖離率
         if 'SMA_25' in df.columns:
             df['dist_sma25'] = (df['close'] - df['SMA_25']) / (df['SMA_25'] + 1e-9) * 100
 
-        # ★修正: 全削除(dropna)ではなく、計算に必要な「最初の30行」だけを削除する
-        # PSARのNaNは残しておかないと、TradingEnvで読み込めない
+        # NaN行を削除（最初の30行程度）
+        df = df.iloc[30:].dropna(subset=['close'])
         
-        # 必須指標(MACD, RCI26, SMA25)が計算できていない行だけを削除
-        essential_cols = ['rci_26', 'SMA_25']
-        # MACDの列名は環境によって変わる可能性があるため、存在チェック
-        for c in df.columns:
-            if "MACD" in c and "12_26" in c:
-                essential_cols.append(c)
-                break
-        
-        # 念のためカラムが存在するかチェックしてから削除
-        target_cols = [c for c in essential_cols if c in df.columns]
-        
-        if target_cols:
-            df.dropna(subset=target_cols, inplace=True)
-        else:
-            # 万が一カラムが見つからない場合は最初の30行を一律削除
-            df = df.iloc[30:]
+        return df
         
     except Exception as e:
-        logging.error(f"指標計算エラー {code}: {e}")
+        print(f"  ❌ 処理エラー: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
-    return df
-
-def get_code_from_filename(filename):
-    parts = filename.replace(".csv", "").split("_")
-    if filename.startswith("board_") and len(parts) >= 3:
-        if parts[1].isdigit() or (len(parts[1])==4): 
-            return parts[1]
-    if parts[0].isdigit() or (len(parts[0])==4 and parts[0][0].isdigit()):
-        return parts[0]
-    return None
 
 def main():
-    if not os.path.exists(DATA_OUT_DIR):
-        os.makedirs(DATA_OUT_DIR)
-
-    all_files = glob.glob(os.path.join(DATA_RAW_DIR, "**/*.csv"), recursive=True)
-    target_codes = set()
+    """メイン処理"""
+    print("=" * 60)
+    print("🚀 データ加工プロセス v12.0")
+    print("=" * 60)
     
-    for f in all_files:
-        code = get_code_from_filename(os.path.basename(f))
-        if code:
-            target_codes.add(code)
-            
-    existing_merged = glob.glob(os.path.join(DATA_OUT_DIR, "merged_*.csv"))
-    for f in existing_merged:
-        code = os.path.basename(f).replace("merged_", "").replace(".csv", "")
-        target_codes.add(code)
-
-    print(f"🚀 データ加工プロセス開始 (Audit v7.4 PSAR Fix)")
-    print(f"📋 対象銘柄数: {len(target_codes)}")
-    print("=" * 50)
-
-    for code in sorted(target_codes):
-        df = process_data(code)
-        if df is not None and len(df) > 50:
-            out_path = f"{DATA_OUT_DIR}/merged_{code}.csv"
-            df.to_csv(out_path)
-            print(f"✅ {code}: 保存完了 ({len(df)}行) -> {out_path}")
+    os.makedirs(DATA_OUT_DIR, exist_ok=True)
+    
+    # 既存の merged_*.csv を探す
+    existing_files = glob.glob(os.path.join(DATA_OUT_DIR, "merged_*.csv"))
+    
+    if not existing_files:
+        print("❌ data/ フォルダに merged_*.csv がありません")
+        print("   先にボットを実行してデータを収集してください")
+        return
+    
+    print(f"📋 対象ファイル数: {len(existing_files)}")
+    print("-" * 60)
+    
+    success_count = 0
+    skip_count = 0
+    
+    for filepath in sorted(existing_files):
+        filename = os.path.basename(filepath)
+        stock_code = filename.replace("merged_", "").replace(".csv", "")
+        
+        print(f"\n📈 処理中: {stock_code}")
+        
+        df = process_existing_merged(filepath)
+        
+        if df is not None and len(df) > 100:
+            # 上書き保存
+            df.to_csv(filepath)
+            print(f"  ✅ 完了: {len(df)}行")
+            success_count += 1
         else:
-            print(f"⚠️ {code}: データ不足 (有効行数: {len(df) if df is not None else 0})")
+            row_count = len(df) if df is not None else 0
+            print(f"  ⚠️ スキップ: データ不足 ({row_count}行)")
+            skip_count += 1
+    
+    print("\n" + "=" * 60)
+    print(f"🎉 完了!")
+    print(f"   成功: {success_count} 銘柄")
+    print(f"   スキップ: {skip_count} 銘柄")
+    print(f"\n👉 次のステップ: py -3.12 step3_train.py")
+    print("=" * 60)
 
-    print("=" * 50)
-    print("🎉 全工程完了。これでAI学習(Step3)に進めます。")
 
 if __name__ == "__main__":
     main()

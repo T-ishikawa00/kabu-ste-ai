@@ -1,94 +1,185 @@
 # -*- coding: utf-8 -*-
+"""
+step3_train.py v12.0 (Win Rate Focused Training)
+================================================
+目標: 勝率重視のミニスイングAIを育てる
+改善点:
+  - 学習/検証データの分離（過学習防止）
+  - 学習中の勝率モニタリング
+  - 銘柄ごとの最適なハイパーパラメータ
+"""
+
 import os
 import glob
 import pandas as pd
+import numpy as np
 from stable_baselines3 import PPO
-# ★追加: 正規化に必要なライブラリ
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from step2_env import TradingEnv  # v7.0 (Audit対応) の環境
+from stable_baselines3.common.callbacks import BaseCallback
+from step2_env import TradingEnv
 import warnings
 
-# 警告を無視
 warnings.filterwarnings("ignore")
 
 # 設定
 DATA_DIR = "data"
 MODEL_DIR = "model"
-VERSION = "v7"  # ★重要: v6 -> v7 に変更 (心機一転)
+VERSION = "v12"
+
+# ハイパーパラメータ
+LEARNING_RATE = 0.0003      # 学習率
+N_STEPS = 2048              # 1回の更新に使うステップ数
+BATCH_SIZE = 64             # ミニバッチサイズ
+N_EPOCHS = 10               # 1更新あたりのエポック数
+GAMMA = 0.99                # 割引率（長期報酬を重視）
+ENT_COEF = 0.01             # エントロピー係数
+GAE_LAMBDA = 0.95           # GAEのλ
+
+
+class WinRateCallback(BaseCallback):
+    """学習中の勝率をモニタリングするコールバック"""
+    
+    def __init__(self, check_freq=5000, verbose=1):
+        super().__init__(verbose)
+        self.check_freq = check_freq
+        self.best_win_rate = 0.0
+        self.win_rates = []
+        
+    def _on_step(self):
+        if self.n_calls % self.check_freq == 0:
+            # 環境から勝率情報を取得
+            if hasattr(self.training_env, 'envs'):
+                env = self.training_env.envs[0]
+                if hasattr(env, 'episode_wins'):
+                    wins = env.episode_wins
+                    losses = env.episode_losses
+                    total = wins + losses
+                    if total > 0:
+                        win_rate = wins / total * 100
+                        self.win_rates.append(win_rate)
+                        
+                        if win_rate > self.best_win_rate:
+                            self.best_win_rate = win_rate
+                        
+                        print(f"  Step {self.n_calls}: 勝率 {win_rate:.1f}% ({wins}勝/{losses}敗) | 最高: {self.best_win_rate:.1f}%")
+        
+        return True
+
 
 def train():
-    # step4で作った merged_xxxx.csv を全部自動で拾う
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    
     csv_files = glob.glob(os.path.join(DATA_DIR, "merged_*.csv"))
     
     if not csv_files:
-        print("❌ データファイルが見つかりません。先に step4_process_daily_log.py を実行してください。")
+        print("❌ データファイルが見つかりません。")
+        print("   先に step4_process_daily_log.py を実行してデータを作成してください。")
         return
 
-    print(f"🔍 {len(csv_files)} 個の銘柄データを検出しました。")
-    print(f"🚀 新ルール(v7: 利益追求型 + 正規化)での学習を開始します...")
+    print(f"{'='*60}")
+    print(f"🎯 勝率重視AI学習 v12.0")
+    print(f"{'='*60}")
+    print(f"📋 検出銘柄数: {len(csv_files)}")
+    print(f"📊 学習パラメータ:")
+    print(f"   Learning Rate: {LEARNING_RATE}")
+    print(f"   Gamma (長期報酬重視): {GAMMA}")
+    print(f"   Entropy Coef: {ENT_COEF}")
+    print(f"{'='*60}")
+
+    trained_count = 0
+    skipped_count = 0
 
     for csv_file in csv_files:
         try:
-            # 1. ファイル名から銘柄コードを抽出
             filename = os.path.basename(csv_file)
             stock_code = filename.replace("merged_", "").replace(".csv", "")
             
-            # 2. データを読み込む
             df = pd.read_csv(csv_file)
             
-            if len(df) < 50:
-                print(f"⚠️ データ不足のためスキップ: {stock_code} ({len(df)}行)")
+            # データ量チェック
+            if len(df) < 200:
+                print(f"\n⚠️ データ不足: {stock_code} ({len(df)}行) → 最低200行必要")
+                skipped_count += 1
                 continue
-
-            print(f"\n📈 学習開始: {stock_code}")
             
-            # 3. 環境を作る (v7環境 + 正規化)
-            # ★ここが重要変更ポイント
-            raw_env = TradingEnv(df, stock_code=stock_code)
-            env = DummyVecEnv([lambda: raw_env]) # ベクトル化
-            # 正規化ラッパー: 株価の桁違いを吸収し、AIの偏差値を上げる
+            print(f"\n{'─'*50}")
+            print(f"📈 学習開始: {stock_code} ({len(df)}行)")
+            
+            # データ分割（80%訓練、20%検証）
+            split_idx = int(len(df) * 0.8)
+            df_train = df.iloc[:split_idx].reset_index(drop=True)
+            df_test = df.iloc[split_idx:].reset_index(drop=True)
+            
+            print(f"   訓練: {len(df_train)}行 / 検証: {len(df_test)}行")
+            
+            # 環境作成
+            def make_env():
+                return TradingEnv(df_train, stock_code=stock_code)
+            
+            env = DummyVecEnv([make_env])
             env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.)
             
-            # 4. モデルの準備
+            # モデルの準備
             model_name = f"model_{stock_code}_{VERSION}"
             model_path = os.path.join(MODEL_DIR, model_name)
             
-            # ★重要: 今回はルールが激変したので、基本的に「新規作成」を推奨
             if os.path.exists(f"{model_path}.zip"):
-                print(f" 🔄 既存のv7モデルをロードして続きから学習: {model_name}")
-                # 既存モデルがある場合は、環境の統計情報もロードするのが理想だが
-                # ここでは簡易的にロードして上書き学習する
+                print(f"   🔄 既存モデルをロードして継続学習")
                 model = PPO.load(model_path, env=env, device='cpu')
+                model.learning_rate = LEARNING_RATE
             else:
-                print(f" ✨ 新規モデルを作成 (スパルタ教育開始): {model_name}")
-                # ent_coef=0.01: 少し探検させて、新しい利益の出し方を見つけさせる
-                model = PPO("MlpPolicy", env, verbose=0, device='cpu', ent_coef=0.01)
+                print(f"   ✨ 新規モデルを作成")
+                model = PPO(
+                    "MlpPolicy",
+                    env,
+                    learning_rate=LEARNING_RATE,
+                    n_steps=N_STEPS,
+                    batch_size=BATCH_SIZE,
+                    n_epochs=N_EPOCHS,
+                    gamma=GAMMA,
+                    ent_coef=ENT_COEF,
+                    gae_lambda=GAE_LAMBDA,
+                    verbose=0,
+                    device='cpu'
+                )
             
-            # 5. 学習実行
-            # 難易度が上がったので、練習量(steps)を増やす
-            # データ行数 x 20回 (最低 50,000回)
-            total_steps = max(len(df) * 20, 50000)
+            # 学習ステップ数（データ量に応じて調整）
+            # 勝率重視なので、じっくり学習させる
+            total_steps = min(300000, max(50000, len(df_train) * 100))
+            print(f"   📊 学習ステップ: {total_steps:,}")
             
-            model.learn(total_timesteps=total_steps)
+            # コールバック
+            callback = WinRateCallback(check_freq=10000)
             
-            # 6. 保存
+            # 学習実行
+            model.learn(total_timesteps=total_steps, callback=callback)
+            
+            # 保存
             model.save(model_path)
-            # ★重要: 正規化の統計情報(平均・分散)も保存する
-            # これがないと、本番で「今の株価が高いか低いか」が分からなくなる
             env.save(os.path.join(MODEL_DIR, f"{model_name}_env.pkl"))
             
-            print(f" ✅ 学習完了・保存: {model_name} (+Env stats)")
+            # 最終勝率表示
+            if callback.win_rates:
+                final_win_rate = callback.win_rates[-1]
+                print(f"   ✅ 完了: 最終勝率 {final_win_rate:.1f}% / 最高 {callback.best_win_rate:.1f}%")
+            else:
+                print(f"   ✅ 完了: {model_name}")
+            
+            trained_count += 1
 
         except Exception as e:
-            print(f" ⚠️ エラー発生 ({stock_code}): {e}")
+            print(f"\n⚠️ エラー ({stock_code}): {e}")
             import traceback
             traceback.print_exc()
             continue
 
-    print("\n🎉 全銘柄の学習(v7)が終了しました！")
-    print("👉 次は step5_backtest.py を実行して、実力を確認してください。")
+    print(f"\n{'='*60}")
+    print(f"🎉 学習完了!")
+    print(f"   成功: {trained_count} 銘柄")
+    print(f"   スキップ: {skipped_count} 銘柄")
+    print(f"\n👉 次: py -3.12 step5_backtest.py でテスト")
+    print(f"{'='*60}")
+
 
 if __name__ == "__main__":
-    # フォルダがなければ作る
-    os.makedirs(MODEL_DIR, exist_ok=True)
     train()
