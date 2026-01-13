@@ -1,206 +1,208 @@
 # -*- coding: utf-8 -*-
+"""
+KabusAPI v9.1 (Error Detail Edition)
+==============================================
+変更点:
+- sendorderメソッドがエラー時に None ではなく
+  {"Result": -1, "Message": "エラー詳細"} を返すように修正。
+  これにより broker.py でエラー原因を特定可能にする。
+"""
+
 import os
 import time
 import json
 import logging
+import threading
 import requests
-from typing import Optional, Iterable
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from typing import Optional, List
+
 
 class KabusAPI:
     """
-    kabuステーションAPI v7想定
-    - すべて /kabusapi/ 配下に統一
-    - board は {symbol}@{exchange} 形式
-    - token / register / positions / sendorder / orders を提供
-    - QPSゲート/指数バックオフ/レイテンシ監視（cfg.safety）対応
+    KabusAPI v9.1
+    - レート制限の厳格化
+    - エラーハンドリングの改善
+    - sendorderの詳細エラー返却対応
     """
-
-    def orders(self):
-        """直近注文一覧を取得（Details内に HoldID が載る場合がある）"""
-        def _do():
-            self._qps_gate()
-            t0 = time.perf_counter()
-            r = self.s.get(self._url("orders"), timeout=self._to_get)
-            self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
-            self._latency_guard()
-            text = r.text
-            if r.status_code != 200:
-                logging.error(f"orders HTTP{r.status_code}: {text}")
-                r.raise_for_status()
-            return r.json()
-
-        res = self._safe_call(_do)
-        return res if isinstance(res, list) else []
-
 
     def __init__(self, cfg):
         self.cfg = cfg
 
-        # ---- ベースURL（/kabusapi付きに正規化）
+        # ベースURL
         base = getattr(cfg.api, "base", "http://localhost:18080/kabusapi").rstrip("/")
         self.host = base if base.endswith("/kabusapi") else f"{base}/kabusapi"
 
-        # ---- セッション（リトライは指数バックオフ側で面倒を見る）
+        # セッション設定（リトライ戦略）
         self.s = requests.Session()
+        retries = Retry(
+            total=3,
+            backoff_factor=0.5,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=["GET", "POST", "PUT", "DELETE"],
+            raise_on_status=False
+        )
+        adapter = HTTPAdapter(max_retries=retries, pool_connections=20, pool_maxsize=20)
+        self.s.mount("http://", adapter)
+        self.s.mount("https://", adapter)
         self.s.headers.update({"Content-Type": "application/json"})
 
-        # ---- 認証トークン
         self.token: Optional[str] = None
-
-        # ---- レート/計測
-        self._req_ts: list[float] = []
+        self._req_ts: List[float] = []
         self._board_cache: dict = {}
         self.last_latency_ms: int = 0
 
-        # ---- タイムアウト（configに無ければ既定）
-        self._to_get = getattr(getattr(cfg, "api", object()), "timeout_get_sec", 5)
-        self._to_post = getattr(getattr(cfg, "api", object()), "timeout_post_sec", 7)
+        # タイムアウト設定
+        cfg_get = getattr(getattr(cfg, "api", object()), "timeout_get_sec", 10.0)
+        cfg_post = getattr(getattr(cfg, "api", object()), "timeout_post_sec", 15.0)
+        self._to_get = max(10.0, float(cfg_get))
+        self._to_post = max(15.0, float(cfg_post))
 
-        # ---- 安全設定
+        # レイテンシ設定
         safety = getattr(cfg, "safety", object())
         self._latency_limit_ms = int(getattr(safety, "api_latency_ms_limit", 1500))
         self._pause_on_latency = bool(getattr(safety, "pause_on_latency", True))
 
-    # ======================================================
-    # 内部ユーティリティ
-    # ======================================================
+        # sendorder専用のレート制限
+        self._sendorder_lock = threading.Lock()
+        self._last_sendorder_time = 0.0
+        self._sendorder_min_interval = 1.0 
+
+        # エラー時のバックオフ
+        self._error_backoff_until = 0.0
+        self._consecutive_errors = 0
+
+        logging.info(f"🔌 KabusAPI v9.1 initialized")
+        logging.info(f"  📡 Host: {self.host}")
+
     def _qps_gate(self):
-        """1秒あたりのAPI呼び出し数を safety.api_qps_limit で制御"""
-        lim = max(1, int(getattr(self.cfg.safety, "api_qps_limit", 5)))
+        """QPS制限ゲート"""
+        lim = max(1, int(getattr(self.cfg.safety, "api_qps_limit", 2)))
         now = time.perf_counter()
         self._req_ts = [t for t in self._req_ts if now - t < 1.0]
+
         if len(self._req_ts) >= lim:
             sleep_sec = max(0.0, 1.0 - (now - self._req_ts[0]))
             if sleep_sec > 0:
                 time.sleep(sleep_sec)
+
         self._req_ts.append(time.perf_counter())
 
     def _url(self, path: str) -> str:
         return f"{self.host}/{path.lstrip('/')}"
 
+    def _check_backoff(self) -> bool:
+        if time.time() < self._error_backoff_until:
+            return True
+        return False
+
+    def _record_error(self, error_type: str):
+        self._consecutive_errors += 1
+        backoff_sec = min(30, 2 ** self._consecutive_errors)
+        self._error_backoff_until = time.time() + backoff_sec
+        logging.warning(f"[API] エラー記録: {error_type} (Wait {backoff_sec}s)")
+
+    def _record_success(self):
+        if self._consecutive_errors > 0:
+            logging.debug(f"[API] 復旧: 連続エラー{self._consecutive_errors}回からリセット")
+        self._consecutive_errors = 0
+        self._error_backoff_until = 0.0
+
     def _safe_call(self, fn, *a, **kw):
-        """requests系の一時的失敗を3回まで指数バックオフで再試行"""
-        for i in range(3):
-            try:
-                return fn(*a, **kw)
-            except requests.exceptions.RequestException as e:
-                logging.warning(f"[API] {type(e).__name__}: {e}")
-            except ValueError as e:
-                # JSON decode error等
-                logging.warning(f"[API] decode: {e}")
-            time.sleep(0.5 * (i + 1))
-        logging.error("[API] permanent failure")
+        """安全なAPI呼び出しラッパー"""
+        if self._check_backoff():
+            return None
+
+        try:
+            result = fn(*a, **kw)
+            self._record_success()
+            return result
+
+        except requests.exceptions.Timeout:
+            logging.warning("[API] Timeout発生")
+            self._record_error("timeout")
+
+        except requests.exceptions.ConnectionError as e:
+            logging.warning(f"[API] ConnectionError: {e}")
+            self._record_error("connection")
+
+        except Exception as e:
+            logging.error(f"[API] Unexpected error: {e}")
+            self._record_error("unknown")
+
         return None
 
     def _latency_guard(self):
-        """直近APIレイテンシが閾値超なら一時停止（safety.pause_on_latency）"""
         if self._pause_on_latency and self.last_latency_ms > self._latency_limit_ms:
-            # “スパイク直後に少し待って落ち着かせる”だけの軽い制御
-            time.sleep(0.25)
+            time.sleep(0.5)
 
-    # ======================================================
+    # ==========================================
     # 認証
-    # ======================================================
+    # ==========================================
     def auth(self):
-        """
-        トークン取得。
-        パスワードは環境変数優先:
-          - KABUS_API_PASSWORD を優先
-          - それが無ければ cfg.api.api_password_env (例: "KABUS_API_PASSWORD") を参照
-          - それも無ければ cfg.api.api_password（後方互換）
-        """
-        # ---- APIパスワードの解決
         env_name = getattr(self.cfg.api, "api_password_env", None)
         if env_name:
             api_pw = os.getenv(env_name)
         else:
             api_pw = os.getenv("KABUS_API_PASSWORD")
-
         if not api_pw:
-            api_pw = getattr(self.cfg.api, "api_password", None)  # 後方互換
-
+            api_pw = getattr(self.cfg.api, "api_password", None)
         if not api_pw:
-            raise RuntimeError("APIパスワードが見つかりません（環境変数 or config）")
+            raise RuntimeError("APIパスワード設定なし")
 
         def _do():
-            r = self.s.post(self._url("token"),
-                            json={"APIPassword": api_pw},
-                            timeout=self._to_post)
-            # kabuSのtokenは200以外で詳細がbodyに出ることがあるためraise前に確保
-            text = r.text
+            r = self.s.post(
+                self._url("token"),
+                json={"APIPassword": api_pw},
+                timeout=self._to_post
+            )
             r.raise_for_status()
-            try:
-                return r.json()
-            except Exception:
-                return {"_raw": text}
+            return r.json()
 
         res = self._safe_call(_do)
-        if not res or not isinstance(res, dict) or not res.get("Token"):
+        if not res or not res.get("Token"):
             raise RuntimeError(f"token取得失敗: {res}")
+
         self.token = res["Token"]
         self.s.headers.update({"X-API-KEY": self.token})
-        logging.info("token OK")
+        logging.info("🔑 API Token OK")
 
-    ...
-    # ======================================================
+    # ==========================================
     # 銘柄登録
-    # ======================================================
+    # ==========================================
     def register_symbols(self, symbols):
-        """
-        symbols: 反復可能。
-          - SymbolCfg 等: .code と .exchange を使用
-          - (code, exchange) のタプル/リスト
-          - 文字列/数値: code として扱い、exchange=1
-        """
         def _do():
             items = []
             for s in symbols:
                 if hasattr(s, "code") and hasattr(s, "exchange"):
                     items.append({"Symbol": str(s.code), "Exchange": int(s.exchange)})
-                elif isinstance(s, (list, tuple)) and len(s) >= 2:
-                    items.append({"Symbol": str(s[0]), "Exchange": int(s[1])})
                 else:
                     items.append({"Symbol": str(s), "Exchange": 1})
 
-            payload = {"Symbols": items}
             self._qps_gate()
-            r = self.s.put(self._url("register"), json=payload, timeout=self._to_post)
-            text = r.text
+            r = self.s.put(self._url("register"), json={"Symbols": items}, timeout=self._to_post)
             if r.status_code != 200:
-                logging.error(f"register HTTP{r.status_code}: {text}")
                 r.raise_for_status()
             return r.json()
 
-        res = self._safe_call(_do)
-        if res is None:
-            logging.error("register失敗: レスポンスなし")
-            return None
-        cnt = len(res.get("RegistList", []) or [])
-        logging.info(f"register OK ({cnt}件)")
-        return res
+        return self._safe_call(_do)
 
     def clear_register(self):
-        """登録クリア（空配列PUTで解除）"""
         def _do():
             self._qps_gate()
             r = self.s.put(self._url("register"), json={"Symbols": []}, timeout=self._to_post)
-            text = r.text
-            if r.status_code != 200:
-                logging.error(f"clear_register HTTP{r.status_code}: {text}")
-                r.raise_for_status()
             return r.json()
         return self._safe_call(_do)
 
-
-    # ======================================================
+    # ==========================================
     # 板情報
-    # ======================================================
+    # ==========================================
     def board(self, code: str, ex: int):
         key = (str(code), int(ex))
-        ttl = float(getattr(self.cfg.safety, "board_min_interval_ms", 200)) / 1000.0
+        ttl = float(getattr(self.cfg.safety, "board_min_interval_ms", 500)) / 1000.0
         nowp = time.perf_counter()
 
-        # キャッシュ（板は短TTLで再利用）
         if key in self._board_cache and nowp - self._board_cache[key]["ts"] < ttl:
             return self._board_cache[key]["data"]
 
@@ -209,11 +211,13 @@ class KabusAPI:
             t0 = time.perf_counter()
             r = self.s.get(self._url(f"board/{code}@{ex}"), timeout=self._to_get)
             self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
-            # レイテンシガードは“成功時のみ”かける
             self._latency_guard()
-            text = r.text
+
+            if r.status_code == 401:
+                self.auth()
+                r = self.s.get(self._url(f"board/{code}@{ex}"), timeout=self._to_get)
+
             if r.status_code != 200:
-                logging.error(f"board HTTP{r.status_code}: {text}")
                 r.raise_for_status()
             return r.json()
 
@@ -221,12 +225,11 @@ class KabusAPI:
         if isinstance(data, dict):
             self._board_cache[key] = {"ts": nowp, "data": data}
             return data
-        logging.warning("board取得失敗: レスポンス不正")
         return {}
 
-    # ======================================================
+    # ==========================================
     # 建玉照会
-    # ======================================================
+    # ==========================================
     def positions(self, symbol: Optional[str] = None):
         def _do():
             self._qps_gate()
@@ -234,59 +237,101 @@ class KabusAPI:
             r = self.s.get(self._url("positions"), timeout=self._to_get)
             self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
             self._latency_guard()
-            text = r.text
-            if r.status_code != 200:
-                logging.error(f"positions HTTP{r.status_code}: {text}")
-                r.raise_for_status()
+            if r.status_code != 200: r.raise_for_status()
             return r.json()
 
         res = self._safe_call(_do)
-        if not isinstance(res, list):
-            return []
-        if symbol is None:
-            return res
+        if res is None: return None
+        if not isinstance(res, list): return []
+        if symbol is None: return res
         s = str(symbol)
         return [p for p in res if str(p.get("Symbol")) == s]
 
-    # ======================================================
-    # 発注（/sendorder）
-    # ======================================================
+    # ==========================================
+    # ★発注 (sendorder) - 詳細エラー対応版
+    # ==========================================
     def sendorder(self, payload: dict):
         """
-        payload は /sendorder の仕様に適合していること（最小キー原則）
-        例: 現物買い
-            {"Password":"...","Symbol":"7203","Exchange":1,
-             "Side":2,"CashMargin":1,"Qty":100,"FrontOrderType":10,"Price":0,"ExpireDay":0}
+        発注（エラー時に詳細メッセージを返す）
         """
-        # 最低限の型チェック（数字が文字列で来た場合は事前補正）
-        ints = ["Exchange", "Side", "Qty", "FrontOrderType", "Price", "ExpireDay"]
+        # 型変換
+        ints = [
+            "Exchange", "Side", "Qty", "FrontOrderType", "Price",
+            "ExpireDay", "MarginTradeType", "DelivType", "AccountType",
+            "FundType", "CashMargin", "SecurityType"
+        ]
         for k in ints:
             if k in payload and isinstance(payload[k], str) and payload[k].isdigit():
                 payload[k] = int(payload[k])
 
+        with self._sendorder_lock:
+            now = time.time()
+            elapsed = now - self._last_sendorder_time
+            if elapsed < self._sendorder_min_interval:
+                time.sleep(self._sendorder_min_interval - elapsed)
+            self._last_sendorder_time = time.time()
+
+            # ★_safe_callを使わず、直接try-exceptで制御してエラー内容を返す
+            if self._check_backoff():
+                return {"Result": -1, "Message": "API Backoff Mode (Too many errors)"}
+
+            try:
+                self._qps_gate()
+                t0 = time.perf_counter()
+                r = self.s.post(self._url("sendorder"), json=payload, timeout=20.0)
+                self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
+                self._latency_guard()
+
+                # HTTPエラーのハンドリング
+                if r.status_code != 200:
+                    if r.status_code == 429:
+                        self._record_error("rate_limit")
+                        return {"Result": -1, "Message": "HTTP 429: API Rate Limit"}
+                    
+                    self._record_error(f"http_{r.status_code}")
+                    return {"Result": -1, "Message": f"HTTP {r.status_code}: {r.text}"}
+
+                # 成功時
+                self._record_success()
+                return r.json()
+
+            except Exception as e:
+                self._record_error("exception")
+                logging.error(f"[API] sendorder exception: {e}")
+                # ★ここでエラー内容を辞書として返す
+                return {"Result": -1, "Message": str(e)}
+
+    # ==========================================
+    # 注文キャンセル
+    # ==========================================
+    def cancelorder(self, payload: dict):
+        def _do():
+            self._qps_gate()
+            r = self.s.put(self._url("cancelorder"), json=payload, timeout=self._to_post)
+            return r.json()
+        return self._safe_call(_do)
+
+    # ==========================================
+    # 注文一覧
+    # ==========================================
+    def orders(self):
         def _do():
             self._qps_gate()
             t0 = time.perf_counter()
-            r = self.s.post(self._url("sendorder"), json=payload, timeout=self._to_post)
+            r = self.s.get(self._url("orders"), timeout=self._to_get)
             self.last_latency_ms = int((time.perf_counter() - t0) * 1000)
-            self._latency_guard()
-
-            # kabuSは200以外でも本文に詳細が載るのでログに残してraise
-            text = r.text
-            if r.status_code != 200:
-                logging.error(f"sendorder HTTP{r.status_code}: {text}")
-                r.raise_for_status()
-            try:
-                return r.json()
-            except Exception:
-                return {"_raw": text}
-
+            return r.json()
         res = self._safe_call(_do)
-        if res is None:
-            logging.error("sendorder失敗: レスポンスなし")
-            return None
-        logging.info(f"sendorder OK: {res}")
-        return res
+        return res if isinstance(res, list) else []
 
-
-
+    # ==========================================
+    # ステータス
+    # ==========================================
+    def get_status(self) -> dict:
+        return {
+            "host": self.host,
+            "authenticated": bool(self.token),
+            "last_latency_ms": self.last_latency_ms,
+            "consecutive_errors": self._consecutive_errors,
+            "in_backoff": time.time() < self._error_backoff_until
+        }

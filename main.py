@@ -1,11 +1,9 @@
-
 # -*- coding: utf-8 -*-
 """
-main.py — Lv8.1（取引＋16:30自動学習＋通知機能対応）
-- 市場時間帯：Controller を起動して売買
-- 稼働中でも 16:30(JST) になればバックグラウンドで train_policy.py を実行
-- 16:30 以降に起動した場合はワンショットで学習して終了
-  （常駐させたい場合はこの条件を変更）
+main.py — Lv9.0 (Websocketリアルタイム化 + 通知 + 自動学習)
+- Controller を WebsocketController に差し替え (Phase 2)
+- 市場時間帯：Websocket接続してイベント駆動で売買
+- 16:30自動学習機能は維持
 """
 
 import os
@@ -14,13 +12,16 @@ import time
 import logging
 import threading
 import subprocess
-import yaml  # ★追加: 設定ファイルを直接読むために必要
+import yaml 
 from datetime import datetime as dt_datetime, timedelta, timezone
 
 from utils_common import ensure_dir, now
 from config_loader import load_cfg
-from controller import Controller
-from model_registry import ModelRegistry  # 使う場合に備えて残す
+
+# from controller_ws import WebsocketController as Controller  <-- これをコメントアウト
+from controller_ws import WebsocketController as Controller # <-- こちら（元のREST版）を使う
+
+from model_registry import ModelRegistry
 
 JST = timezone(timedelta(hours=9))
 
@@ -41,7 +42,7 @@ def setup_logging(level: str):
         force=True,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.info(f"==== Session Start {now().strftime('%Y-%m-%d %H:%M:%S')} ====")
+    logging.info(f"==== Session Start {now().strftime('%Y-%m-%d %H:%M:%S')} (Phase 2 Websocket) ====")
 
 
 # ===== Heartbeat（1秒ごと）=====
@@ -69,9 +70,9 @@ def start_heartbeat(cfg, api_info_func=None):
                     if extra:
                         msg += " " + extra
                 except Exception:
-                    # API情報取得で死なないようにする
                     pass
 
+            # Websocket版はログが流れすぎるのを防ぐため、HBは少し控えめに (10秒に1回ログ出力とかでもいいかも)
             logging.info(msg)
             stop.wait(1.0)
 
@@ -134,7 +135,7 @@ def run_trading(cfg):
         getattr(risk_cfg, "force_close_time", None),
     )
 
-    ctrl = Controller(cfg)
+    ctrl = Controller(cfg) # ここでWebsocketControllerが起動
 
     # Heartbeat開始（ControllerがKabusAPIを持つならレイテンシも表示）
     def api_extra():
@@ -149,7 +150,7 @@ def run_trading(cfg):
     hb_stop = start_heartbeat(cfg, api_info_func=api_extra)
 
     try:
-        ctrl.start()  # 通常はブロッキング
+        ctrl.run()  # WebsocketControllerの run() を呼ぶ
     except KeyboardInterrupt:
         logging.info("KeyboardInterrupt: stopping controller...")
         if hasattr(ctrl, "stop"):
@@ -172,15 +173,13 @@ def main():
     ensure_dir("runtime")
 
     # =================================================================
-    # ★★★ ここで強制的に config.yaml を読み直して通知設定を注入する ★★★
+    # ★★★ 通知設定の強制ロード ★★★
     # =================================================================
     try:
         with open("config.yaml", "r", encoding="utf-8") as f:
             raw_data = yaml.safe_load(f)
             if "notification" in raw_data:
-                # cfg がどんな型でも対応できるように無理やり属性セット
                 setattr(cfg, "notification", raw_data["notification"])
-                # 念のため辞書としてもアクセスできるようにする
                 if isinstance(cfg, dict):
                     cfg["notification"] = raw_data["notification"]
                 
@@ -192,7 +191,7 @@ def main():
         logging.warning(f"⚠️ 通知設定の強制ロードに失敗: {e}")
     # =================================================================
 
-    # 16:30自動学習ウォッチャ起動（学習設定が無効なら中で勝手に待機する）
+    # 16:30自動学習ウォッチャ起動
     start_auto_train_watcher(cfg)
 
     now_jst = dt_datetime.now(JST)
@@ -218,7 +217,7 @@ def main():
             return
 
     # 市場時間帯は取引モード
-    logging.info("=== 通常取引モード起動 ===")
+    logging.info("=== 通常取引モード起動 (Websocket Edition) ===")
     run_trading(cfg)
 
 

@@ -1,0 +1,28 @@
+2026-01-09 10:49:49,838 [INFO] ==== Session Start 2026-01-09 10:49:49 (Phase 2 Websocket) ====
+2026-01-09 10:49:49,847 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-09 10:49:49,847 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-09 10:49:49,847 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-09 10:58:06,136 [INFO] ==== Session Start 2026-01-09 10:58:06 (Phase 2 Websocket) ====
+2026-01-09 10:58:06,144 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-09 10:58:06,144 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-09 10:58:06,145 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-09 11:12:16,711 [INFO] ==== Session Start 2026-01-09 11:12:16 (Phase 2 Websocket) ====
+2026-01-09 11:12:16,718 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-09 11:12:16,718 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-09 11:12:16,719 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-09 11:32:00,664 [INFO] ==== Session Start 2026-01-09 11:32:00 (Phase 2 Websocket) ====
+2026-01-09 11:32:00,672 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-09 11:32:00,672 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-09 11:32:00,673 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-09 11:57:22,643 [INFO] ==== Session Start 2026-01-09 11:57:22 (Phase 2 Websocket) ====
+2026-01-09 11:57:22,652 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-09 11:57:22,652 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-09 11:57:22,652 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-09 12:54:13,311 [INFO] ==== Session Start 2026-01-09 12:54:13 (Phase 2 Websocket) ====
+2026-01-09 12:54:13,319 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-09 12:54:13,319 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-09 12:54:13,319 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-09 13:36:16,323 [INFO] ==== Session Start 2026-01-09 13:36:16 (Phase 2 Websocket) ====
+2026-01-09 13:36:16,331 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-09 13:36:16,331 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-09 13:36:16,331 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55

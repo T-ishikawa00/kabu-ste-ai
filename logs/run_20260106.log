@@ -43684,3 +43684,294 @@ RuntimeError: token取得失敗: None
 2026-01-06 19:04:38,142 [INFO] HB i=35 paper=False kill_exists=False latency_ms=2
 2026-01-06 19:04:38,240 [INFO] 🤖 [8411] AI指示: EXIT 💨 (PnL:0.00%)
 2026-01-06 19:04:38,242 [INFO] KeyboardInterrupt: stopping controller...
+2026-01-06 22:51:37,304 [INFO] ==== Session Start 2026-01-06 22:51:37 (Phase 2 Websocket) ====
+2026-01-06 22:51:37,312 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-06 22:51:37,313 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-06 22:51:37,313 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-06 22:51:37,313 [INFO] 💾 DataCollector initialized
+2026-01-06 22:51:37,620 [INFO] 🤖 AIモデルのロードを開始します...
+2026-01-06 22:51:38,401 [INFO]   ✅ [9509] AI搭載完了 (v6)
+2026-01-06 22:51:38,411 [INFO]   ✅ [9501] AI搭載完了 (v6)
+2026-01-06 22:51:38,420 [INFO]   ✅ [6920] AI搭載完了 (v6)
+2026-01-06 22:51:38,427 [INFO]   ✅ [6146] AI搭載完了 (v6)
+2026-01-06 22:51:38,434 [INFO]   ✅ [6526] AI搭載完了 (v6)
+2026-01-06 22:51:38,442 [INFO]   ✅ [6758] AI搭載完了 (v6)
+2026-01-06 22:51:38,449 [INFO]   ✅ [285A] AI搭載完了 (v6)
+2026-01-06 22:51:38,457 [INFO]   ✅ [7014] AI搭載完了 (v6)
+2026-01-06 22:51:38,465 [INFO]   ✅ [7011] AI搭載完了 (v6)
+2026-01-06 22:51:38,471 [INFO]   ✅ [7003] AI搭載完了 (v6)
+2026-01-06 22:51:38,478 [INFO]   ✅ [6954] AI搭載完了 (v6)
+2026-01-06 22:51:38,485 [INFO]   ✅ [6506] AI搭載完了 (v6)
+2026-01-06 22:51:38,493 [INFO]   ✅ [7203] AI搭載完了 (v6)
+2026-01-06 22:51:38,501 [INFO]   ✅ [7267] AI搭載完了 (v4)
+2026-01-06 22:51:38,509 [INFO]   ✅ [8058] AI搭載完了 (v6)
+2026-01-06 22:51:38,517 [INFO]   ✅ [8031] AI搭載完了 (v6)
+2026-01-06 22:51:38,524 [INFO]   ✅ [8411] AI搭載完了 (v6)
+2026-01-06 22:51:38,531 [INFO]   ✅ [9984] AI搭載完了 (v6)
+2026-01-06 22:51:38,540 [INFO]   ✅ [5803] AI搭載完了 (v4)
+2026-01-06 22:51:38,547 [INFO]   ✅ [9107] AI搭載完了 (v6)
+2026-01-06 22:51:38,555 [INFO]   ✅ [7974] AI搭載完了 (v6)
+2026-01-06 22:51:38,555 [INFO] 📚 過去データを読み込み中... (Audit対応: 500本 Preload)
+2026-01-06 22:51:38,571 [INFO]   💾 [9509] ウォームアップ完了: 39本 (指標安定化OK)
+2026-01-06 22:51:38,584 [INFO]   💾 [9501] ウォームアップ完了: 39本 (指標安定化OK)
+2026-01-06 22:51:38,596 [INFO]   💾 [6920] ウォームアップ完了: 39本 (指標安定化OK)
+2026-01-06 22:51:38,609 [INFO]   💾 [6146] ウォームアップ完了: 38本 (指標安定化OK)
+2026-01-06 22:51:38,621 [INFO]   💾 [6526] ウォームアップ完了: 38本 (指標安定化OK)
+2026-01-06 22:51:38,633 [INFO]   💾 [6758] ウォームアップ完了: 37本 (指標安定化OK)
+2026-01-06 22:51:38,645 [INFO]   💾 [285A] ウォームアップ完了: 37本 (指標安定化OK)
+2026-01-06 22:51:38,658 [INFO]   💾 [7014] ウォームアップ完了: 35本 (指標安定化OK)
+2026-01-06 22:51:38,670 [INFO]   💾 [7011] ウォームアップ完了: 34本 (指標安定化OK)
+2026-01-06 22:51:38,682 [INFO]   💾 [7003] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,695 [INFO]   💾 [6954] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,709 [INFO]   💾 [6506] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,721 [INFO]   💾 [7203] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,734 [INFO]   💾 [7267] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,746 [INFO]   💾 [8058] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,758 [INFO]   💾 [8031] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,771 [INFO]   💾 [8411] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,783 [INFO]   💾 [9984] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,796 [INFO]   💾 [5803] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,808 [INFO]   💾 [9107] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,820 [INFO]   💾 [7974] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:51:38,821 [INFO] 🚀 Phase 2: Websocket Controller Starting... (Target: 21 syms)
+2026-01-06 22:51:38,821 [INFO] HB i=1 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:51:38,821 [INFO] ⏳ Initializing history buffer via REST API...
+2026-01-06 22:51:38,910 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:38,910 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/9509@1
+2026-01-06 22:51:39,414 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:39,414 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/9509@1
+2026-01-06 22:51:39,826 [INFO] HB i=2 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:51:40,418 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:40,418 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/9509@1
+2026-01-06 22:51:40,841 [INFO] HB i=3 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:51:41,855 [INFO] HB i=4 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:51:41,919 [ERROR] [API] permanent failure
+2026-01-06 22:51:41,920 [WARNING] board取得失敗: レスポンス不正
+2026-01-06 22:51:42,021 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:42,021 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/9501@1
+2026-01-06 22:51:42,523 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:42,523 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/9501@1
+2026-01-06 22:51:42,868 [INFO] HB i=5 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:51:43,528 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:43,528 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/9501@1
+2026-01-06 22:51:43,882 [INFO] HB i=6 paper=False kill_exists=False latency_ms=3
+2026-01-06 22:51:44,898 [INFO] HB i=7 paper=False kill_exists=False latency_ms=3
+2026-01-06 22:51:45,029 [ERROR] [API] permanent failure
+2026-01-06 22:51:45,029 [WARNING] board取得失敗: レスポンス不正
+2026-01-06 22:51:45,130 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:45,130 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6920@1
+2026-01-06 22:51:45,634 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:45,635 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6920@1
+2026-01-06 22:51:45,912 [INFO] HB i=8 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:51:46,636 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:46,636 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6920@1
+2026-01-06 22:51:46,926 [INFO] HB i=9 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:51:47,941 [INFO] HB i=10 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:51:48,137 [ERROR] [API] permanent failure
+2026-01-06 22:51:48,137 [WARNING] board取得失敗: レスポンス不正
+2026-01-06 22:51:48,239 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:48,239 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6146@1
+2026-01-06 22:51:48,740 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:48,740 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6146@1
+2026-01-06 22:51:48,953 [INFO] HB i=11 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:51:49,743 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:49,744 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6146@1
+2026-01-06 22:51:49,969 [INFO] HB i=12 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:51:50,984 [INFO] HB i=13 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:51:51,244 [ERROR] [API] permanent failure
+2026-01-06 22:51:51,245 [WARNING] board取得失敗: レスポンス不正
+2026-01-06 22:51:51,347 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:51,347 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6526@1
+2026-01-06 22:51:51,849 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:51,849 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6526@1
+2026-01-06 22:51:51,998 [INFO] HB i=14 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:51:52,853 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:52,853 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6526@1
+2026-01-06 22:51:53,004 [INFO] HB i=15 paper=False kill_exists=False latency_ms=3
+2026-01-06 22:51:54,004 [INFO] HB i=16 paper=False kill_exists=False latency_ms=3
+2026-01-06 22:51:54,354 [ERROR] [API] permanent failure
+2026-01-06 22:51:54,354 [WARNING] board取得失敗: レスポンス不正
+2026-01-06 22:51:54,456 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:54,456 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6758@1
+2026-01-06 22:51:54,959 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:54,959 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6758@1
+2026-01-06 22:51:55,019 [INFO] HB i=17 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:51:55,961 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:55,961 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/6758@1
+2026-01-06 22:51:56,034 [INFO] HB i=18 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:51:57,044 [INFO] HB i=19 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:51:57,462 [ERROR] [API] permanent failure
+2026-01-06 22:51:57,462 [WARNING] board取得失敗: レスポンス不正
+2026-01-06 22:51:57,566 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:57,567 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/285A@1
+2026-01-06 22:51:58,060 [INFO] HB i=20 paper=False kill_exists=False latency_ms=3
+2026-01-06 22:51:58,068 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:58,069 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/285A@1
+2026-01-06 22:51:59,070 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:51:59,070 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/285A@1
+2026-01-06 22:51:59,073 [INFO] HB i=21 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:52:00,088 [INFO] HB i=22 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:52:00,571 [ERROR] [API] permanent failure
+2026-01-06 22:52:00,571 [WARNING] board取得失敗: レスポンス不正
+2026-01-06 22:52:00,673 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:52:00,673 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/7014@1
+2026-01-06 22:52:01,099 [INFO] HB i=23 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:52:01,175 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:52:01,176 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/7014@1
+2026-01-06 22:52:02,111 [INFO] HB i=24 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:52:02,180 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:52:02,180 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/7014@1
+2026-01-06 22:52:03,124 [INFO] HB i=25 paper=False kill_exists=False latency_ms=3
+2026-01-06 22:52:03,681 [ERROR] [API] permanent failure
+2026-01-06 22:52:03,681 [WARNING] board取得失敗: レスポンス不正
+2026-01-06 22:52:03,784 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:52:03,784 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/7011@1
+2026-01-06 22:52:04,136 [INFO] HB i=26 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:52:04,286 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:52:04,287 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/7011@1
+2026-01-06 22:52:05,149 [INFO] HB i=27 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:52:05,290 [ERROR] board HTTP401: {"Code":4001009,"Message":"APIキー不一致"}
+2026-01-06 22:52:05,291 [WARNING] [API] HTTPError: 401 Client Error: Unauthorized for url: http://localhost:18080/kabusapi/board/7011@1
+2026-01-06 22:52:06,161 [INFO] HB i=28 paper=False kill_exists=False latency_ms=2
+2026-01-06 22:52:06,210 [INFO] KeyboardInterrupt: stopping controller...
+2026-01-06 22:54:09,781 [INFO] ==== Session Start 2026-01-06 22:54:09 (Phase 2 Websocket) ====
+2026-01-06 22:54:09,790 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-06 22:54:09,790 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-06 22:54:09,790 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-06 22:54:09,791 [INFO] 💾 DataCollector initialized
+2026-01-06 22:54:10,072 [INFO] 🤖 AIモデルのロードを開始します...
+2026-01-06 22:54:10,808 [INFO]   ✅ [9509] AI搭載完了 (v6)
+2026-01-06 22:54:10,818 [INFO]   ✅ [9501] AI搭載完了 (v6)
+2026-01-06 22:54:10,825 [INFO]   ✅ [6920] AI搭載完了 (v6)
+2026-01-06 22:54:10,833 [INFO]   ✅ [6146] AI搭載完了 (v6)
+2026-01-06 22:54:10,840 [INFO]   ✅ [6526] AI搭載完了 (v6)
+2026-01-06 22:54:10,847 [INFO]   ✅ [6758] AI搭載完了 (v6)
+2026-01-06 22:54:10,855 [INFO]   ✅ [285A] AI搭載完了 (v6)
+2026-01-06 22:54:10,862 [INFO]   ✅ [7014] AI搭載完了 (v6)
+2026-01-06 22:54:10,869 [INFO]   ✅ [7011] AI搭載完了 (v6)
+2026-01-06 22:54:10,877 [INFO]   ✅ [7003] AI搭載完了 (v6)
+2026-01-06 22:54:10,884 [INFO]   ✅ [6954] AI搭載完了 (v6)
+2026-01-06 22:54:10,892 [INFO]   ✅ [6506] AI搭載完了 (v6)
+2026-01-06 22:54:10,899 [INFO]   ✅ [7203] AI搭載完了 (v6)
+2026-01-06 22:54:10,906 [INFO]   ✅ [7267] AI搭載完了 (v4)
+2026-01-06 22:54:10,913 [INFO]   ✅ [8058] AI搭載完了 (v6)
+2026-01-06 22:54:10,921 [INFO]   ✅ [8031] AI搭載完了 (v6)
+2026-01-06 22:54:10,928 [INFO]   ✅ [8411] AI搭載完了 (v6)
+2026-01-06 22:54:10,935 [INFO]   ✅ [9984] AI搭載完了 (v6)
+2026-01-06 22:54:10,943 [INFO]   ✅ [5803] AI搭載完了 (v4)
+2026-01-06 22:54:10,950 [INFO]   ✅ [9107] AI搭載完了 (v6)
+2026-01-06 22:54:10,957 [INFO]   ✅ [7974] AI搭載完了 (v6)
+2026-01-06 22:54:10,957 [INFO] 📚 過去データを読み込み中... (Audit対応: 500本 Preload)
+2026-01-06 22:54:10,972 [INFO]   💾 [9509] ウォームアップ完了: 39本 (指標安定化OK)
+2026-01-06 22:54:10,984 [INFO]   💾 [9501] ウォームアップ完了: 39本 (指標安定化OK)
+2026-01-06 22:54:10,996 [INFO]   💾 [6920] ウォームアップ完了: 39本 (指標安定化OK)
+2026-01-06 22:54:11,008 [INFO]   💾 [6146] ウォームアップ完了: 38本 (指標安定化OK)
+2026-01-06 22:54:11,019 [INFO]   💾 [6526] ウォームアップ完了: 38本 (指標安定化OK)
+2026-01-06 22:54:11,031 [INFO]   💾 [6758] ウォームアップ完了: 37本 (指標安定化OK)
+2026-01-06 22:54:11,042 [INFO]   💾 [285A] ウォームアップ完了: 37本 (指標安定化OK)
+2026-01-06 22:54:11,054 [INFO]   💾 [7014] ウォームアップ完了: 35本 (指標安定化OK)
+2026-01-06 22:54:11,066 [INFO]   💾 [7011] ウォームアップ完了: 34本 (指標安定化OK)
+2026-01-06 22:54:11,078 [INFO]   💾 [7003] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,090 [INFO]   💾 [6954] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,101 [INFO]   💾 [6506] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,113 [INFO]   💾 [7203] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,125 [INFO]   💾 [7267] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,136 [INFO]   💾 [8058] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,148 [INFO]   💾 [8031] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,160 [INFO]   💾 [8411] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,172 [INFO]   💾 [9984] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,184 [INFO]   💾 [5803] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,195 [INFO]   💾 [9107] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,207 [INFO]   💾 [7974] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:54:11,208 [INFO] 🚀 Phase 2: Websocket Controller Starting... (Target: 21 syms)
+2026-01-06 22:54:11,208 [INFO] HB i=1 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:54:11,269 [INFO] token OK
+2026-01-06 22:54:11,269 [INFO] 🔑 API Auth Success
+2026-01-06 22:54:11,270 [INFO] ⏳ Initializing history buffer via REST API...
+2026-01-06 22:54:12,218 [INFO] HB i=2 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:54:13,234 [INFO] HB i=3 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:54:14,237 [INFO] HB i=4 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:54:15,242 [INFO] HB i=5 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:54:16,255 [INFO] HB i=6 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:54:16,285 [WARNING] [API] ReadTimeout: HTTPConnectionPool(host='localhost', port=18080): Read timed out. (read timeout=5)
+2026-01-06 22:54:17,141 [INFO] 🤖 [9509] AI指示: BUY 🔥 (RCI9:-70 MACD:-1.1)
+2026-01-06 22:54:17,267 [INFO] HB i=7 paper=False kill_exists=False latency_ms=3
+2026-01-06 22:54:17,661 [INFO] 🤖 [9501] AI指示: BUY 🔥 (RCI9:-70 MACD:0.8)
+2026-01-06 22:54:18,281 [INFO] HB i=8 paper=False kill_exists=False latency_ms=412
+2026-01-06 22:54:19,298 [INFO] HB i=9 paper=False kill_exists=False latency_ms=412
+2026-01-06 22:54:20,313 [INFO] HB i=10 paper=False kill_exists=False latency_ms=412
+2026-01-06 22:54:21,329 [INFO] HB i=11 paper=False kill_exists=False latency_ms=412
+2026-01-06 22:54:22,341 [INFO] HB i=12 paper=False kill_exists=False latency_ms=412
+2026-01-06 22:54:22,764 [WARNING] [API] ReadTimeout: HTTPConnectionPool(host='localhost', port=18080): Read timed out. (read timeout=5)
+2026-01-06 22:54:23,355 [INFO] HB i=13 paper=False kill_exists=False latency_ms=4
+2026-01-06 22:54:24,366 [INFO] HB i=14 paper=False kill_exists=False latency_ms=4
+2026-01-06 22:54:25,369 [INFO] HB i=15 paper=False kill_exists=False latency_ms=4
+2026-01-06 22:54:26,370 [INFO] HB i=16 paper=False kill_exists=False latency_ms=4
+2026-01-06 22:54:27,381 [INFO] HB i=17 paper=False kill_exists=False latency_ms=4
+2026-01-06 22:54:28,396 [INFO] KeyboardInterrupt: stopping controller...
+2026-01-06 22:54:28,398 [INFO] HB i=18 paper=False kill_exists=False latency_ms=4
+2026-01-06 22:59:21,917 [INFO] ==== Session Start 2026-01-06 22:59:21 (Phase 2 Websocket) ====
+2026-01-06 22:59:21,925 [INFO] 🔧 通知設定を強制ロードしました (URL末尾: ...Lrpix)
+2026-01-06 22:59:21,926 [INFO] === 通常取引モード起動 (Websocket Edition) ===
+2026-01-06 22:59:21,926 [INFO] market_now=True, no_new_entry_after=14:50, force_close_time=14:55
+2026-01-06 22:59:21,927 [INFO] 💾 DataCollector initialized
+2026-01-06 22:59:22,307 [INFO] 🤖 AIモデルのロードを開始します...
+2026-01-06 22:59:23,034 [INFO]   ✅ [9509] AI搭載完了 (v6)
+2026-01-06 22:59:23,044 [INFO]   ✅ [9501] AI搭載完了 (v6)
+2026-01-06 22:59:23,051 [INFO]   ✅ [6920] AI搭載完了 (v6)
+2026-01-06 22:59:23,059 [INFO]   ✅ [6146] AI搭載完了 (v6)
+2026-01-06 22:59:23,066 [INFO]   ✅ [6526] AI搭載完了 (v6)
+2026-01-06 22:59:23,074 [INFO]   ✅ [6758] AI搭載完了 (v6)
+2026-01-06 22:59:23,081 [INFO]   ✅ [285A] AI搭載完了 (v6)
+2026-01-06 22:59:23,090 [INFO]   ✅ [7014] AI搭載完了 (v6)
+2026-01-06 22:59:23,097 [INFO]   ✅ [7011] AI搭載完了 (v6)
+2026-01-06 22:59:23,105 [INFO]   ✅ [7003] AI搭載完了 (v6)
+2026-01-06 22:59:23,113 [INFO]   ✅ [6954] AI搭載完了 (v6)
+2026-01-06 22:59:23,120 [INFO]   ✅ [6506] AI搭載完了 (v6)
+2026-01-06 22:59:23,128 [INFO]   ✅ [7203] AI搭載完了 (v6)
+2026-01-06 22:59:23,135 [INFO]   ✅ [7267] AI搭載完了 (v4)
+2026-01-06 22:59:23,144 [INFO]   ✅ [8058] AI搭載完了 (v6)
+2026-01-06 22:59:23,151 [INFO]   ✅ [8031] AI搭載完了 (v6)
+2026-01-06 22:59:23,158 [INFO]   ✅ [8411] AI搭載完了 (v6)
+2026-01-06 22:59:23,165 [INFO]   ✅ [9984] AI搭載完了 (v6)
+2026-01-06 22:59:23,173 [INFO]   ✅ [5803] AI搭載完了 (v4)
+2026-01-06 22:59:23,180 [INFO]   ✅ [9107] AI搭載完了 (v6)
+2026-01-06 22:59:23,187 [INFO]   ✅ [7974] AI搭載完了 (v6)
+2026-01-06 22:59:23,187 [INFO] 📚 過去データを読み込み中... (Audit対応: 500本 Preload)
+2026-01-06 22:59:23,193 [WARNING]   ⚠️ [9509] データロード失敗: Error tokenizing data. C error: Expected 9 fields in line 1776, saw 12
+
+2026-01-06 22:59:23,196 [WARNING]   ⚠️ [9501] データロード失敗: Error tokenizing data. C error: Expected 9 fields in line 1776, saw 12
+
+2026-01-06 22:59:23,198 [WARNING]   ⚠️ [6920] データロード失敗: Error tokenizing data. C error: Expected 9 fields in line 1776, saw 12
+
+2026-01-06 22:59:23,212 [INFO]   💾 [6146] ウォームアップ完了: 38本 (指標安定化OK)
+2026-01-06 22:59:23,223 [INFO]   💾 [6526] ウォームアップ完了: 38本 (指標安定化OK)
+2026-01-06 22:59:23,235 [INFO]   💾 [6758] ウォームアップ完了: 37本 (指標安定化OK)
+2026-01-06 22:59:23,247 [INFO]   💾 [285A] ウォームアップ完了: 37本 (指標安定化OK)
+2026-01-06 22:59:23,259 [INFO]   💾 [7014] ウォームアップ完了: 35本 (指標安定化OK)
+2026-01-06 22:59:23,271 [INFO]   💾 [7011] ウォームアップ完了: 34本 (指標安定化OK)
+2026-01-06 22:59:23,283 [INFO]   💾 [7003] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,295 [INFO]   💾 [6954] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,306 [INFO]   💾 [6506] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,318 [INFO]   💾 [7203] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,330 [INFO]   💾 [7267] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,342 [INFO]   💾 [8058] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,353 [INFO]   💾 [8031] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,365 [INFO]   💾 [8411] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,376 [INFO]   💾 [9984] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,389 [INFO]   💾 [5803] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,400 [INFO]   💾 [9107] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,412 [INFO]   💾 [7974] ウォームアップ完了: 33本 (指標安定化OK)
+2026-01-06 22:59:23,413 [INFO] 🚀 Phase 2: Websocket Controller Starting... (Target: 21 syms)
+2026-01-06 22:59:23,413 [INFO] HB i=1 paper=False kill_exists=False latency_ms=0
+2026-01-06 22:59:23,415 [INFO] token OK
+2026-01-06 22:59:23,415 [INFO] 🔑 API Auth Success
+2026-01-06 22:59:23,415 [INFO] ⏳ Initializing history buffer...
+2026-01-06 22:59:24,413 [INFO] HB i=2 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:59:25,428 [INFO] HB i=3 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:59:26,440 [INFO] HB i=4 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:59:27,454 [INFO] HB i=5 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:59:28,468 [INFO] HB i=6 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:59:29,197 [WARNING] [API] ReadTimeout: HTTPConnectionPool(host='localhost', port=18080): Read timed out. (read timeout=5)
+2026-01-06 22:59:29,479 [INFO] HB i=7 paper=False kill_exists=False latency_ms=1
+2026-01-06 22:59:29,686 [INFO] KeyboardInterrupt: stopping controller...
