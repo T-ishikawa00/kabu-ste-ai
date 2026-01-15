@@ -1,8 +1,13 @@
+
 # ==========================================
-#   Kabu-Ste-AI Config v13.1 (Mini Swing)
-#   ★15-30ティック利確、回転重視
+#   Kabu-Ste-AI Config v14.0 (Hybrid Mode)
+#   ★固定枠7銘柄 + 日替わり枠5銘柄
 # ==========================================
 
+
+# ==========================================
+# API設定
+# ==========================================
 api:
   base: http://localhost:18080/kabusapi
   api_password: Htk050313
@@ -12,10 +17,16 @@ api:
 
 telemetry_path: runtime/telemetry.json
 
-# ★テスト中はtrue, 本番はfalse
+
+# ==========================================
+# 取引モード
+# ==========================================
 paper_trading: false
 
+
+# ==========================================
 # 注文設定
+# ==========================================
 orders:
   style: "market"
   ioc: false
@@ -27,213 +38,191 @@ orders:
     widen_ticks_each: 1
     wait_ms_between: 100
 
+
+# ==========================================
+# リスク管理
+# ==========================================
 risk:
   no_new_entry_after: "14:50"
   force_close_time: "14:55"
-  max_daily_loss_jpy: 30000 
+  max_daily_loss_jpy: 30000
+
 
 # ==========================================
-# ★★★ 空売り設定 ★★★
+# 空売り設定
 # ==========================================
 short:
   enabled: true
-  allowed_symbols:
-    - "8411"
-    - "9984"
-    - "9107"
-    - "7011"
-    - "7013"
-    - "7974"
-    - "285A"
-    - "6269"
-    - "7003"
-    - "9501"
-    - "8136"
-
+  allowed_symbols: []
   min_distance_to_limit_up_pct: 2.0
   max_dsr: 4.0
-  
   no_entry_after: "14:30"
   force_close_time: "14:50"
-  
-  # ★空売りは買いより厳しめ
-  sl_ticks: 10
-  tp_ticks: 20
-  max_hold_sec: 300
-  
+  sl_ticks: 30
+  tp_ticks: 40
+  max_hold_sec: 900
   panic_on_special_quote: true
   panic_distance_pct: 1.0
 
+
 # ==========================================
-# 銘柄設定 (ミニスイング仕様)
-# ★tp_ticks_cap: 25 (15-30の中間)
-# ★sl_ticks_cap: 15 (利確より近い = 損小利大)
+# 共通戦略設定（利確・損切）
+# ==========================================
+common:
+  tp_ticks: 40      # 利確: 40ティック
+  sl_ticks: 30      # 損切: 30ティック
+  max_hold_sec: 900 # 最大保有: 15分
+
+
+# ==========================================
+# 銘柄設定
 # ==========================================
 symbols:
-  # --- [Tier 1] 重工・造船 ---
-  - code: "7011" # 三菱重工
+
+  # ─────────────────────────────────────────
+  # 【固定枠】毎日監視する主力銘柄
+  # ─────────────────────────────────────────
+  - code: "285A"    # キオクシアHD（半導体）
     exchange: 1
     qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: true
 
-  - code: "7013" # IHI
+  - code: "6269"    # 三井海洋開発（造船）
     exchange: 1
     qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: true
 
-  - code: "7003" # 三井E&S
+  - code: "9984"    # ソフトバンクG
     exchange: 1
     qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: true
 
-  - code: "6269" # 三井海洋開発
+  - code: "6954"    # ファナック
     exchange: 1
     qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: true
 
-  # --- [Tier 2] 半導体・ハイテク ---
-  - code: "285A" # キオクシアHD
+  - code: "7011"    # 三菱重工
     exchange: 1
     qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: true
 
-  - code: "3110" # 日東紡
+  - code: "8411"    # みずほFG
     exchange: 1
     qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: true
 
-  # --- [Tier 3] 機械・電機 ---
-  - code: "6954" # ファナック
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
-
-  - code: "6506" # 安川電機
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
-
-  # --- [Tier 4] その他主力 ---
-  - code: "9984" # ソフトバンクG
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
-
-  - code: "8411" # みずほFG
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
-
-  - code: "9107" # 川崎汽船
-    exchange: 1
-    qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
-
-  - code: "9501" # 東京電力HD
+  - code: "9501"    # 東京電力HD
     exchange: 1
     qty: 500
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: true
 
-  - code: "8136" # サンリオ
+  # ─────────────────────────────────────────
+  # 【日替わり枠】朝のスクリーニングで自動更新
+  # ─────────────────────────────────────────
+  - code: "6167"    # 冨士ダイス
     exchange: 1
     qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: false
 
-  - code: "7974" # 任天堂
+  - code: "7371"    # Zenken
     exchange: 1
     qty: 100
-    min_order_interval_sec: 1
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
+    fixed: false
 
+  - code: "4406"    # 日理化
+    exchange: 1
+    qty: 100
+    fixed: false
+
+  - code: "2195"    # アミタHD
+    exchange: 1
+    qty: 100
+    fixed: false
+
+  - code: "7859"    # アルメディオ
+    exchange: 1
+    qty: 100
+    fixed: false
+
+
+# ==========================================
+# ポートフォリオ設定
+# ==========================================
 max_concurrent_symbols: 25
 
 portfolio:
   max_open_positions: 3
 
+
+# ==========================================
+# 安全設定
+# ==========================================
 safety:
   api_latency_ms_limit: 2500
   pause_on_latency: true
   api_qps_limit: 5
   board_min_interval_ms: 500
-  
   min_order_interval_sec: 1
   order_confirm_timeout_sec: 8
   api_call_interval_sec: 0.2
-  
   spike_pct: 4.0
   spike_window_sec: 3
   pause_after_spike_sec: 30
-  
   kill_switch_file: runtime/kill.txt
   holdid_wait_ms: 2000
   poll_interval_ms: 20
   cooldown_after_exit_sec: 2.0
   streak_pause_sec: 30
 
+
+# ==========================================
+# エントリー・エグジット設定
+# ==========================================
 entry:
-  theta: 0.50  # AIの判断基準（少し緩め）
+  theta: 0.60
 
 exit:
   trail_back_pct: 0.005
   trail_start_pct: 0.003
-  max_hold_sec: 300
+  max_hold_sec: 900
 
+
+# ==========================================
+# 自動学習（無効）
+# ==========================================
 learning:
   enable_auto_train: false
 
-gatekeeper:
-  enabled: false  # 全銘柄許可
 
+# ==========================================
+# Gatekeeper（取引許可リスト）
+# ==========================================
+gatekeeper:
+  enabled: true
+  whitelist:
+    # 固定枠
+    - "285A"
+    - "6269"
+    - "9984"
+    - "6954"
+    - "7011"
+    - "8411"
+    - "9501"
+    # 日替わり枠
+    - "6167"
+    - "7371"
+    - "4406"
+    - "2195"
+    - "7859"
+
+
+# ==========================================
+# 戦略設定
+# ==========================================
 strategies:
   MINI_SWING:
-    tp_ticks_cap: 20
-    sl_ticks_cap: 10
-    max_hold_sec: 300
-    max_spread_ticks: 6
-    heat_exit_drop: 0.15
-    obi_flip: 0.08
-    vwap_distance_max: 0.50
+    pass_placeholder: true
 
 router:
   prefer_swing_if:
@@ -247,6 +236,10 @@ router:
     vol_rank: 0.05
     price_step: 100
 
+
+# ==========================================
+# 通知設定（Discord）
+# ==========================================
 notification:
   discord_webhook_url: "https://discordapp.com/api/webhooks/1458028818446028851/1k7PEt4LfAn7-YSXs9_b8NTlN7Gbo74zBxofc-YbUX-n1h_uFgYhgWOzPFycQ9aLrpix"
   line_notify_token: ""

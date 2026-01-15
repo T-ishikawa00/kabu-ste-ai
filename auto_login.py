@@ -119,7 +119,7 @@ def main():
     for i in range(max_retries):
         # 進行状況を見やすく表示
         print(f"\r   ⏳ メール確認中... ({i+1}/{max_retries}) ", end="")
-        
+        time.sleep(5) 
         otp_code = find_latest_otp()
         
         if otp_code:
