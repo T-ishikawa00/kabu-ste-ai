@@ -175,8 +175,20 @@ class Controller:
         # AIモデルのロード
         # ==========================================
         self.ai_models = {}
+        self.universal_model = None  # ★汎用モデル
+        
         logging.info("🤖 AIモデルのロードを開始します...")
         
+        # ★まず汎用モデルをロード
+        universal_path = "model/model_universal_v1"
+        if os.path.exists(universal_path + ".zip"):
+            try:
+                self.universal_model = PPO.load(universal_path)
+                logging.info(f"  🌐 汎用モデル搭載完了 (universal_v1)")
+            except Exception as e:
+                logging.warning(f"  ⚠️ 汎用モデルロード失敗: {e}")
+        
+        # 銘柄別モデルをロード
         for s in self.syms:
             code = str(s.code)
             loaded = False
@@ -192,7 +204,10 @@ class Controller:
                         logging.warning(f" ⚠️ [{code}] v{v} ロード失敗: {e}")
             
             if not loaded:
-                logging.info(f"  ⚪ [{code}] AIなし (ルールベースのみで稼働)")
+                if self.universal_model:
+                    logging.info(f"  🌐 [{code}] 汎用モデルで稼働")
+                else:
+                    logging.info(f"  ⚪ [{code}] AIなし (ルールベースのみで稼働)")
 
         self._next_board_at = {str(s.code): 0.0 for s in self.syms}
         self._backoff        = {str(s.code): 0.0 for s in self.syms}
@@ -675,7 +690,8 @@ class Controller:
         
         pos_open = code_s in self.brk.pos
         
-        ai_model = self.ai_models.get(code_s)
+        # ★銘柄別モデル → 汎用モデルの順にフォールバック
+        ai_model = self.ai_models.get(code_s) or self.universal_model
         ai_buy = False
         ai_sell = False  # ★v10.0: 空売りシグナル
         ai_exit = False

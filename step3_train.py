@@ -30,8 +30,8 @@ VERSION = "v12"
 LEARNING_RATE = 0.0003      # 学習率
 N_STEPS = 2048              # 1回の更新に使うステップ数
 BATCH_SIZE = 64             # ミニバッチサイズ
-N_EPOCHS = 10               # 1更新あたりのエポック数
-GAMMA = 0.99                # 割引率（長期報酬を重視）
+N_EPOCHS = 4               # 1更新あたりのエポック数
+GAMMA = 0.80                # 割引率（長期報酬を重視）
 ENT_COEF = 0.01             # エントロピー係数
 GAE_LAMBDA = 0.95           # GAEのλ
 
@@ -143,10 +143,11 @@ def train():
                     device='cpu'
                 )
             
-            # 学習ステップ数（データ量に応じて調整）
-            # 勝率重視なので、じっくり学習させる
-            total_steps = min(300000, max(50000, len(df_train) * 100))
-            print(f"   📊 学習ステップ: {total_steps:,}")
+            # 学習ステップ数（データ不足のため、過学習を防ぐために短く固定）
+            # total_steps = min(300000, max(50000, len(df_train) * 100)) 
+            total_steps = 30000  # ★これに書き換え！
+            
+            print(f"   📊 学習ステップ: {total_steps:,} (過学習防止モード)")
             
             # コールバック
             callback = WinRateCallback(check_freq=10000)

@@ -276,11 +276,16 @@ class Broker:
             orders = self.api.orders() or []
             for o in orders:
                 if str(o.get("Symbol")) == code and o.get("State") in [1, 2]:
-                    self.api.cancelorder({
-                        "Password": self.cfg.api.trade_password, "OrderId": o.get("ID")
+                    order_id = o.get("ID")
+                    logging.debug(f"[EXIT] Cancelling order {order_id} for {code}")
+                    cancel_res = self.api.cancelorder({
+                        "Password": self.cfg.api.trade_password, "OrderId": order_id
                     })
+                    if not cancel_res:
+                        logging.warning(f"⚠️ Cancel order failed for {code}: {order_id}")
             time.sleep(0.2)
-        except: pass
+        except Exception as e:
+            logging.warning(f"⚠️ Cancel orders exception for {code}: {e}")
 
         # 2. 建玉指定で決済
         try:
@@ -290,14 +295,19 @@ class Broker:
             closes = []
             rest = int(qty)
             for p in target_pos:
+                # ★HoldIDのNoneチェック
+                hold_id = p.get("HoldID")
+                if hold_id is None:
+                    logging.warning(f"⚠️ HoldID missing for {code}, skipping this position")
+                    continue
+                    
                 hold_qty = int(p.get("LeavesQty"))
                 take = min(rest, hold_qty)
-                # ★HoldIDは文字列、Qtyは整数で送る
-                closes.append({"HoldID": str(p.get("HoldID")), "Qty": int(take)})
+                closes.append({"HoldID": str(hold_id), "Qty": int(take)})
                 rest -= take
                 if rest <= 0: break
             
-            logging.debug(f"[EXIT] {code} ClosePositions: {closes}")
+            logging.info(f"[EXIT] {code} ClosePositions: {closes}")
             
             if not closes:
                 logging.warning(f"⚠️ 建玉不明、汎用返済を試行: {code}")

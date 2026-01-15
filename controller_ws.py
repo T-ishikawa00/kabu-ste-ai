@@ -242,8 +242,20 @@ class WebsocketController(Controller):
         """
         1銘柄ぶんのトレード判断ロジック
         """
-        # ポジションがない場合のみ発注可否チェック
+        # ★追加: 時間判定用に datetime をインポート（ファイルの先頭にあれば不要）
+        import datetime
+        now = datetime.datetime.now()
+
+        # ポジションがない場合のみ発注可否チェック（＝新規エントリー判定）
         if code_s not in self.brk.pos:
+            
+            # ★追加: 9:00〜9:15 の間は、新規エントリーを強制的にスキップ
+            if now.hour == 9 and now.minute < 15:
+                # ログがうるさくなるので、デバッグ時以外はコメントアウトでもOK
+                # logging.debug(f"⏳ [WAIT] 9:15までは様子見: {code_s}")
+                return
+
+            # 既存のチェック処理
             if hasattr(self.brk, 'can_order'):
                 can, reason = self.brk.can_order(code_s)
                 if not can and reason in ["cooldown", "already_pending", "order_in_progress", "max_positions_reached"]:

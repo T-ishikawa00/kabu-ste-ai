@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+"""
+Log Analyzer v2.1 (Alpha-Numeric Code Support)
+==============================================
+変更点:
+- 正規表現を修正し、数字4桁だけでなく
+  英数字を含むコード (例: 285A) も正しく抽出できるように対応
+"""
+
 import os
 import glob
 import re
@@ -46,11 +54,13 @@ def analyze(log_file):
     with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
             line = line.strip()
+            # LIVE または PAPER の行のみ対象
             if "LIVE" not in line and "PAPER" not in line: continue
 
-            # --- 1. 時刻 ---
+            # --- 1. 時刻抽出 ---
             current_dt = None
             try:
+                # ログの先頭にある日時 (YYYY-MM-DD HH:MM:SS) を抽出
                 ts_match = re.search(r"(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})", line)
                 if ts_match:
                     current_dt = datetime.strptime(ts_match.group(1), "%Y-%m-%d %H:%M:%S")
@@ -59,26 +69,32 @@ def analyze(log_file):
             if current_dt is None: continue
             time_str = current_dt.strftime("%H:%M:%S")
 
-            # --- 2. ENTRY (BUY) ---
-            # 誤認防止: "BUY (数字4桁)" の並びを厳密にチェック
-            entry_match = re.search(r"(?:PAPER|LIVE)\s+BUY\s+(\d{4})", line)
+            # --- 2. ENTRY (BUY/SHORT) ---
+            # ★修正: 数字4桁だけでなく、数字3桁+英字1文字 (例: 285A) にも対応
+            # パターン: "BUY 285A" または "SHORT 7011" など
+            entry_match = re.search(r"(?:PAPER|LIVE)\s+(?:BUY|SHORT)\s+([0-9]{3}[0-9A-Z])", line)
             
             if entry_match:
                 code = entry_match.group(1)
                 open_positions[code] = current_dt
 
             # --- 3. EXIT (決済) ---
+            # "EXIT" と "pnl=" が含まれる行を決済ログとみなす
             if "EXIT" in line and "pnl=" in line:
-                # 銘柄コード (EXITの近くにある数字4桁)
-                code_match = re.search(r"EXIT(?:_EXEC)?\s+(?:BUY|SELL)?\s*(\d{4})", line)
+                # ★修正: アルファベットコード対応
+                code_match = re.search(r"EXIT(?:_EXEC)?\s+(?:BUY|SHORT|SELL|COVER)?\s*([0-9]{3}[0-9A-Z])", line)
                 if not code_match: continue
                 
                 code = code_match.group(1)
 
-                # 損益
+                # 損益 (カンマが入っている場合もあるので除去して変換)
                 pnl = 0.0
-                pnl_match = re.search(r"pnl=([-\d\.]+)", line)
-                if pnl_match: pnl = float(pnl_match.group(1))
+                pnl_match = re.search(r"pnl=([-\d\.,]+)", line)
+                if pnl_match:
+                    try:
+                        pnl_str = pnl_match.group(1).replace(",", "")
+                        pnl = float(pnl_str)
+                    except: pass
 
                 # 理由
                 reason = "-"
@@ -92,6 +108,7 @@ def analyze(log_file):
                     duration = (current_dt - start_dt).total_seconds()
                     hold_min = round(duration / 60, 1)
                 else:
+                    # エントリーログが見つからなかった場合
                     hold_min = 999.9
 
                 # 集計
@@ -172,8 +189,13 @@ def main():
 
     # --- ファイル保存 ---
     # ファイル名: report_YYYY-MM-DD.txt の形式にする
-    base_name = os.path.basename(log_file).replace("strategy_", "").replace(".log", "")
-    out_file = os.path.join(REPORT_DIR, f"report_{base_name}.txt")
+    # ファイル名に使えない文字が含まれている場合の対策
+    safe_name = re.sub(r'[\\/*?:"<>|]', "", os.path.basename(log_file))
+    base_name = safe_name.replace("strategy_", "").replace(".log", "")
+    
+    # タイムスタンプをつけて重複回避 (同日に何度も実行する場合のため)
+    ts = datetime.now().strftime("%H%M%S")
+    out_file = os.path.join(REPORT_DIR, f"report_{base_name}_{ts}.txt")
     
     with open(out_file, "w", encoding="utf-8") as f:
         f.write(report_text)
