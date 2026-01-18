@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-WebsocketController v9.1 (Ghost-Free Edition)
-============================================================
-v9.1 変更点:
-- ゴースト監視スレッドを無効化（誤検出問題の回避）
-- シンプルで安定した動作を優先
+WebsocketController v16.1 (Fix Config Load)
+===========================================
+修正点:
+1. config_loader から load_cfg をインポート
+2. __init__ で config.yaml を読み込み、オブジェクト化してから親クラスに渡すように修正
+   → これで 'str' object has no attribute 'api' エラーが消えます。
 """
 
 import sys
@@ -15,7 +16,15 @@ import time
 import logging
 import websocket
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Set
+from typing import Dict, Set, List, Optional
+
+# ★設定読み込みモジュールを追加
+try:
+    from config_loader import load_cfg
+except ImportError:
+    # パスが通っていない場合の対策
+    sys.path.append(os.getcwd())
+    from config_loader import load_cfg
 
 from controller import Controller
 
@@ -23,40 +32,73 @@ from controller import Controller
 class WebsocketController(Controller):
     """
     Phase 2: Websocket (PUSH API) 対応コントローラー
-    v9.1: ゴースト監視を無効化してシンプル化
+    v16.1: Config読み込み修正 & 分身モード対応
     """
 
-    def __init__(self, config_path="config.yaml"):
-        super().__init__(config_path)
+    def __init__(self, config_path="config.yaml", symbols: Optional[List[str]] = None):
+        # =========================================================
+        # ★修正: 設定ファイルを「文字列」ではなく「オブジェクト」として読み込む
+        # =========================================================
+        try:
+            cfg = load_cfg() # config.yaml をロード
+        except Exception as e:
+            # 読み込み失敗時のフォールバック（最低限のオブジェクトを作るかエラーにする）
+            logging.error(f"Config load failed: {e}")
+            raise e
+
+        # 親クラスの初期化（ロード済みの cfg オブジェクトを渡す）
+        super().__init__(cfg)
+
+        # =========================================================
+        # ★分身モード: 担当銘柄のフィルタリング
+        # =========================================================
+        if symbols is not None and len(symbols) > 0:
+            logging.info(f"🤖 [分身モード] 指定された {len(symbols)} 銘柄のみを監視します")
+            logging.debug(f"   Target: {symbols}")
+            
+            # config.yamlに定義されている設定を引き継ぎつつ、監視対象を絞る
+            subset_syms = [s for s in self.syms if str(s.code) in symbols]
+            
+            # 警告: Configにない銘柄が指定された場合
+            if len(subset_syms) < len(symbols):
+                missing = set(symbols) - set([str(s.code) for s in subset_syms])
+                logging.warning(f"⚠️ 指定銘柄の一部がConfigに見つかりません: {missing}")
+
+            # 監視対象を上書き
+            self.syms = subset_syms
+            
+            # マッピング情報も更新
+            self.target_codes = [str(s.code) for s in self.syms]
+            self.sym_map = {str(s.code): s for s in self.syms}
+            
+            logging.info(f"   -> フィルタ完了: {len(self.syms)} 銘柄をロードしました")
+            
+        else:
+            logging.info(f"🤖 [本体モード] Configの全 {len(self.syms)} 銘柄を監視します")
+        # =========================================================
+
         self.ws_url = getattr(self.cfg, "websocket_url", "ws://localhost:18080/kabusapi/websocket")
         self.ws = None
         self.is_running = False
 
-        # 銘柄別の最終処理時刻
         self._last_process_time: Dict[str, float] = {}
-        self._process_interval = 1.0  # 同一銘柄の処理間隔（秒）
-
-        # 処理中フラグ（二重実行防止）
+        self._process_interval = 1.0
         self._processing: Set[str] = set()
         self._processing_lock = threading.Lock()
-
-        # スレッドプールで並列処理を制限
         self._executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="SymbolWorker")
 
-        # ハートビート用カウンター
         self._heartbeat_count = 0
         self._last_heartbeat_log = 0
 
-        logging.info("🔧 WebsocketController v9.1 initialized (Ghost-Free)")
+        logging.info("🔧 WebsocketController v16.1 initialized")
         logging.info(f"  ⏱️ Process interval: {self._process_interval}s")
         logging.info(f"  🔢 Max workers: 3")
 
     def run(self):
-        """メインループ (Websocket + 監視スレッド起動)"""
+        """メインループ"""
         self.is_running = True
         logging.info(f"🚀 Phase 2: Websocket Controller Starting... (Target: {len(self.syms)} syms)")
 
-        # 1. 認証 (HTTP 401対策)
         try:
             self.api.auth()
             logging.info("🔑 API Auth Success")
@@ -64,17 +106,11 @@ class WebsocketController(Controller):
             logging.error(f"❌ API Auth Failed: {e}")
             return
 
-        # 2. 初期データ収集
         self._initialize_buffer()
-
-        # 3. PUSH登録
         self._register_push()
 
-        # 4. ★ゴースト回収監視スレッドは起動しない★
-        # 理由: 指値注文の約定待ち中に誤検出し、正常な取引を妨害するため
-        logging.info("🚫 Ghost-Buster thread DISABLED (v9.1)")
+        logging.info("🚫 Ghost-Buster thread DISABLED (v9.1+)")
 
-        # 5. ハートビートスレッド
         self.heartbeat_thread = threading.Thread(
             target=self._heartbeat_loop,
             name="HeartbeatWorker",
@@ -82,7 +118,6 @@ class WebsocketController(Controller):
         )
         self.heartbeat_thread.start()
 
-        # 6. Websocket接続
         self.ws = websocket.WebSocketApp(
             self.ws_url,
             on_message=self._on_message,
@@ -106,25 +141,22 @@ class WebsocketController(Controller):
                 time.sleep(5)
 
     def stop(self):
-        """停止処理"""
         self.is_running = False
         if self.ws:
             self.ws.close()
         self._executor.shutdown(wait=False)
 
     def _initialize_buffer(self):
-        """初期バッファの構築"""
         logging.info("⏳ Initializing history buffer...")
         for s in self.syms:
             code = str(s.code)
             try:
                 self.process_symbol(code)
-                time.sleep(0.2)  # API負荷軽減
+                time.sleep(0.2)
             except Exception as e:
                 logging.warning(f"  Buffer init failed for {code}: {e}")
 
     def _register_push(self):
-        """監視対象銘柄をPUSH配信に登録する"""
         logging.info("📡 Registering symbols for PUSH API...")
         try:
             self.api.register_symbols(self.syms)
@@ -132,40 +164,23 @@ class WebsocketController(Controller):
         except Exception as e:
             logging.error(f"❌ PUSH Registration failed: {e}")
 
-    # ==========================================
-    # ハートビート
-    # ==========================================
     def _heartbeat_loop(self):
-        """定期的な状態確認とログ出力"""
         while self.is_running:
             try:
                 time.sleep(1.0)
                 self._heartbeat_count += 1
-
-                # 10秒ごとに状態を出力
                 now = time.time()
                 if now - self._last_heartbeat_log >= 10.0:
                     self._last_heartbeat_log = now
-
-                    # 状態サマリー
                     pos_count = len(self.brk.pos)
                     pending = len(self.brk._symbol_lock._pending) if hasattr(self.brk, '_symbol_lock') else 0
                     latency = getattr(self.api, 'last_latency_ms', 0)
-
                     logging.info(
-                        f"HB i={self._heartbeat_count} "
-                        f"paper={self.cfg.paper_trading} "
-                        f"pos={pos_count} "
-                        f"pending={pending} "
-                        f"latency_ms={latency}"
+                        f"HB i={self._heartbeat_count} pos={pos_count} latency={latency}ms syms={len(self.syms)}"
                     )
-
             except Exception as e:
                 logging.error(f"Heartbeat Error: {e}")
 
-    # ==========================================
-    # Websocket Callbacks
-    # ==========================================
     def _on_open(self, ws):
         logging.info("🔗 Websocket Connected.")
 
@@ -176,43 +191,30 @@ class WebsocketController(Controller):
         logging.info("🔒 Websocket Closed.")
 
     def _on_message(self, ws, message):
-        """
-        Websocketメッセージ受信時の処理
-        """
         try:
             data = json.loads(message)
             code = str(data.get("Symbol"))
-
-            # 対象外の銘柄はスキップ
             if code not in self.target_codes:
                 return
-
-            # ボードキャッシュ更新
+            
             if code not in self.boards:
                 self.boards[code] = {}
             self.boards[code].update(data)
 
-            # レート制限チェック
             now = time.time()
             last_process = self._last_process_time.get(code, 0)
-
-            # ポジションがある場合は短い間隔で処理（EXIT判定のため）
             has_position = code in self.brk.pos
             interval = 0.5 if has_position else self._process_interval
 
             if now - last_process < interval:
                 return
 
-            # 処理中チェック（二重実行防止）
             with self._processing_lock:
                 if code in self._processing:
                     return
                 self._processing.add(code)
 
-            # 最終処理時刻を更新
             self._last_process_time[code] = now
-
-            # スレッドプールで処理
             try:
                 self._executor.submit(self._safe_process_symbol, code, self.boards[code])
             except Exception as e:
@@ -224,9 +226,6 @@ class WebsocketController(Controller):
             logging.error(f"Message Process Error: {e}")
 
     def _safe_process_symbol(self, code: str, board: dict):
-        """
-        安全なシンボル処理ラッパー
-        """
         try:
             self.process_symbol(code, board)
         except Exception as e:
@@ -235,31 +234,25 @@ class WebsocketController(Controller):
             with self._processing_lock:
                 self._processing.discard(code)
 
-    # ==========================================
-    # オーバーライド: process_symbol の前処理
-    # ==========================================
     def process_symbol(self, code_s: str, board: dict = None):
-        """
-        1銘柄ぶんのトレード判断ロジック
-        """
-        # ★追加: 時間判定用に datetime をインポート（ファイルの先頭にあれば不要）
         import datetime
         now = datetime.datetime.now()
-
-        # ポジションがない場合のみ発注可否チェック（＝新規エントリー判定）
+        
         if code_s not in self.brk.pos:
-            
-            # ★追加: 9:00〜9:15 の間は、新規エントリーを強制的にスキップ
             if now.hour == 9 and now.minute < 15:
-                # ログがうるさくなるので、デバッグ時以外はコメントアウトでもOK
-                # logging.debug(f"⏳ [WAIT] 9:15までは様子見: {code_s}")
                 return
-
-            # 既存のチェック処理
             if hasattr(self.brk, 'can_order'):
                 can, reason = self.brk.can_order(code_s)
                 if not can and reason in ["cooldown", "already_pending", "order_in_progress", "max_positions_reached"]:
                     return
-
-        # 親クラスのprocess_symbolを呼び出し
         super().process_symbol(code_s, board)
+
+
+if __name__ == "__main__":
+    target_codes = None
+    if len(sys.argv) > 1:
+        raw_arg = sys.argv[1]
+        target_codes = [x.strip() for x in raw_arg.split(",") if x.strip()]
+    
+    ctrl = WebsocketController(symbols=target_codes)
+    ctrl.run()
