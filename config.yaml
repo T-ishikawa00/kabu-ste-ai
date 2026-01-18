@@ -1,7 +1,6 @@
-
 # ==========================================
-#   Kabu-Ste-AI Config v14.0 (Hybrid Mode)
-#   ★固定枠7銘柄 + 日替わり枠5銘柄
+#   Kabu-Ste-AI Config v16.3 (Strict Fix)
+#   ★固定枠40銘柄 + 日替わり枠10銘柄
 # ==========================================
 
 
@@ -21,7 +20,7 @@ telemetry_path: runtime/telemetry.json
 # ==========================================
 # 取引モード
 # ==========================================
-paper_trading: false
+paper_trading: true
 
 
 # ==========================================
@@ -45,21 +44,61 @@ orders:
 risk:
   no_new_entry_after: "14:50"
   force_close_time: "14:55"
-  max_daily_loss_jpy: 30000
+  max_daily_loss_jpy: 20000
 
 
 # ==========================================
-# 空売り設定
+# 空売り設定 (固定枠のみ許可)
 # ==========================================
 short:
   enabled: true
-  allowed_symbols: []
+  allowed_symbols:
+    - "9501" 
+    - "8411" 
+    - "5803" 
+    - "9984" 
+    - "6954" 
+    - "6269" 
+    - "285A" 
+    - "5801" 
+    - "485A" 
+    - "4570" 
+    - "3110" 
+    - "7974" 
+    - "6525" 
+    - "6330" 
+    - "1662" 
+    - "3350" 
+    - "7746" 
+    - "5016" 
+    - "8306" 
+    - "4506" 
+    - "1893" 
+    - "278A" 
+    - "6702" 
+    - "464A" 
+    - "5101" 
+    - "6501" 
+    - "6758" 
+    - "7267" 
+    - "3382" 
+    - "4446" 
+    - "4082" 
+    - "7003" 
+    - "7735" 
+    - "7711" 
+    - "8135" 
+    - "186A" 
+    - "5802" 
+    - "9107" 
+    - "7453" 
+    - "9227" 
   min_distance_to_limit_up_pct: 2.0
   max_dsr: 4.0
   no_entry_after: "14:30"
   force_close_time: "14:50"
-  sl_ticks: 30
-  tp_ticks: 40
+  sl_ticks: 20
+  tp_ticks: 30
   max_hold_sec: 900
   panic_on_special_quote: true
   panic_distance_pct: 1.0
@@ -69,9 +108,9 @@ short:
 # 共通戦略設定（利確・損切）
 # ==========================================
 common:
-  tp_ticks: 40      # 利確: 40ティック
-  sl_ticks: 30      # 損切: 30ティック
-  max_hold_sec: 900 # 最大保有: 15分
+  tp_ticks: 30      # 利確
+  sl_ticks: 20      # 損切
+  max_hold_sec: 900 # 最大保有
 
 
 # ==========================================
@@ -80,76 +119,248 @@ common:
 symbols:
 
   # ─────────────────────────────────────────
-  # 【固定枠】毎日監視する主力銘柄
+  # 【固定枠】毎日監視する主力銘柄 (スキャルピング寄り)
   # ─────────────────────────────────────────
-  - code: "285A"    # キオクシアHD（半導体）
+  - code: "9501"
     exchange: 1
     qty: 100
     fixed: true
-
-  - code: "6269"    # 三井海洋開発（造船）
+  - code: "8411"
     exchange: 1
     qty: 100
     fixed: true
-
-  - code: "9984"    # ソフトバンクG
+  - code: "5803"
     exchange: 1
     qty: 100
     fixed: true
-
-  - code: "6954"    # ファナック
+  - code: "9984"
     exchange: 1
     qty: 100
     fixed: true
-
-  - code: "7011"    # 三菱重工
+  - code: "6954"
     exchange: 1
     qty: 100
     fixed: true
-
-  - code: "8411"    # みずほFG
+  - code: "6269"
     exchange: 1
     qty: 100
     fixed: true
-
-  - code: "9501"    # 東京電力HD
+  - code: "285A"
     exchange: 1
-    qty: 500
+    qty: 100
+    fixed: true
+  - code: "5801"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "485A"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "4570"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "3110"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "7974"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "6525"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "6330"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "1662"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "3350"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "7746"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "5016"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "8306"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "4506"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "1893"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "278A"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "6702"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "464A"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "5101"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "6501"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "6758"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "7267"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "3382"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "4446"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "4082"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "7003"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "7735"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "7711"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "8135"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "186A"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "5802"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "9107"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "7453"
+    exchange: 1
+    qty: 100
+    fixed: true
+  - code: "9227"
+    exchange: 1
+    qty: 100
     fixed: true
 
   # ─────────────────────────────────────────
-  # 【日替わり枠】朝のスクリーニングで自動更新
+  # 【日替わり枠】汎用AIによるデイスイング (ゆったり設定)
   # ─────────────────────────────────────────
-  - code: "6167"    # 冨士ダイス
+  - code: "9107"
     exchange: 1
     qty: 100
     fixed: false
-
-  - code: "7371"    # Zenken
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "7701"
     exchange: 1
     qty: 100
     fixed: false
-
-  - code: "4406"    # 日理化
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "8086"
     exchange: 1
     qty: 100
     fixed: false
-
-  - code: "2195"    # アミタHD
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "9501"
     exchange: 1
     qty: 100
     fixed: false
-
-  - code: "7859"    # アルメディオ
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "9104"
     exchange: 1
     qty: 100
     fixed: false
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "4889"
+    exchange: 1
+    qty: 100
+    fixed: false
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "4901"
+    exchange: 1
+    qty: 100
+    fixed: false
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "6770"
+    exchange: 1
+    qty: 100
+    fixed: false
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "9830"
+    exchange: 1
+    qty: 100
+    fixed: false
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
+  - code: "2503"
+    exchange: 1
+    qty: 100
+    fixed: false
+    tp_ticks_cap: 60
+    sl_ticks_cap: 30
+    max_hold_sec: 3600 # 60分
 
 
 # ==========================================
 # ポートフォリオ設定
 # ==========================================
-max_concurrent_symbols: 25
+max_concurrent_symbols: 60
 
 portfolio:
   max_open_positions: 3
@@ -161,7 +372,7 @@ portfolio:
 safety:
   api_latency_ms_limit: 2500
   pause_on_latency: true
-  api_qps_limit: 5
+  api_qps_limit: 3
   board_min_interval_ms: 500
   min_order_interval_sec: 1
   order_confirm_timeout_sec: 8
@@ -202,19 +413,57 @@ gatekeeper:
   enabled: true
   whitelist:
     # 固定枠
-    - "285A"
-    - "6269"
-    - "9984"
-    - "6954"
-    - "7011"
-    - "8411"
-    - "9501"
+    - "9501" 
+    - "8411" 
+    - "5803" 
+    - "9984" 
+    - "6954" 
+    - "6269" 
+    - "285A" 
+    - "5801" 
+    - "485A" 
+    - "4570" 
+    - "3110" 
+    - "7974" 
+    - "6525" 
+    - "6330" 
+    - "1662" 
+    - "3350" 
+    - "7746" 
+    - "5016" 
+    - "8306" 
+    - "4506" 
+    - "1893" 
+    - "278A" 
+    - "6702" 
+    - "464A" 
+    - "5101" 
+    - "6501" 
+    - "6758" 
+    - "7267" 
+    - "3382" 
+    - "4446" 
+    - "4082" 
+    - "7003" 
+    - "7735" 
+    - "7711" 
+    - "8135" 
+    - "186A" 
+    - "5802" 
+    - "9107" 
+    - "7453" 
+    - "9227" 
     # 日替わり枠
-    - "6167"
-    - "7371"
-    - "4406"
-    - "2195"
-    - "7859"
+    - "9107" 
+    - "7701" 
+    - "8086" 
+    - "9501" 
+    - "9104" 
+    - "4889" 
+    - "4901" 
+    - "6770" 
+    - "9830" 
+    - "2503" 
 
 
 # ==========================================
@@ -232,7 +481,7 @@ router:
     vol_boost_ratio: 1.0
     market_temp: 0.40
   forbid_entry_if:
-    spread_ticks: 8
+    spread_ticks: 5
     vol_rank: 0.05
     price_step: 100
 

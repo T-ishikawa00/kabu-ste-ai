@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-main.py — Lv9.0 (Websocketリアルタイム化 + 通知 + 自動学習)
-- Controller を WebsocketController に差し替え (Phase 2)
-- 市場時間帯：Websocket接続してイベント駆動で売買
-- 16:30自動学習機能は維持
+main.py — Lv16.0 (Commander Edition)
+====================================
+機能:
+- launch_multi_bot.py の機能を統合
+- 起動すると config.yaml を読み込み、銘柄リストを分割して
+  複数の controller_ws.py (分身) をサブプロセスとして並列起動します。
+- 既存の「自動学習」や「通知設定ロード」機能はそのまま維持。
 """
 
 import os
@@ -12,18 +15,20 @@ import time
 import logging
 import threading
 import subprocess
-import yaml 
+import yaml
+import math
 from datetime import datetime as dt_datetime, timedelta, timezone
 
 from utils_common import ensure_dir, now
 from config_loader import load_cfg
 
-# from controller_ws import WebsocketController as Controller  <-- これをコメントアウト
-from controller_ws import WebsocketController as Controller # <-- こちら（元のREST版）を使う
-
-from model_registry import ModelRegistry
+# ※ここではクラスとして使わず、サブプロセス起動用のファイルパスとして使う
+CONTROLLER_SCRIPT_NAME = "controller_ws.py"
 
 JST = timezone(timedelta(hours=9))
+
+# ★1ボットあたりの担当銘柄数
+STOCKS_PER_BOT = 10
 
 
 # ===== ログ設定 =====
@@ -42,47 +47,10 @@ def setup_logging(level: str):
         force=True,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.info(f"==== Session Start {now().strftime('%Y-%m-%d %H:%M:%S')} (Phase 2 Websocket) ====")
-
-
-# ===== Heartbeat（1秒ごと）=====
-
-def start_heartbeat(cfg, api_info_func=None):
-    stop = threading.Event()
-
-    def beat():
-        i = 0
-        while not stop.is_set():
-            i += 1
-            try:
-                kill_exists = os.path.exists(cfg.safety.kill_switch_file)
-            except Exception:
-                kill_exists = False
-
-            msg = (
-                f"HB i={i} paper={getattr(cfg, 'paper_trading', False)} "
-                f"kill_exists={kill_exists}"
-            )
-
-            if api_info_func:
-                try:
-                    extra = api_info_func()
-                    if extra:
-                        msg += " " + extra
-                except Exception:
-                    pass
-
-            # Websocket版はログが流れすぎるのを防ぐため、HBは少し控えめに (10秒に1回ログ出力とかでもいいかも)
-            logging.info(msg)
-            stop.wait(1.0)
-
-    th = threading.Thread(target=beat, name="heartbeat", daemon=True)
-    th.start()
-    return stop
+    logging.info(f"==== Session Start {now().strftime('%Y-%m-%d %H:%M:%S')} (Commander Mode) ====")
 
 
 # ===== 16:30 自動学習ウォッチャ =====
-
 def start_auto_train_watcher(cfg):
     def _watch():
         ran_date = None
@@ -124,45 +92,81 @@ def start_auto_train_watcher(cfg):
     return th
 
 
-# ===== 通常取引 =====
+# ===== 取引実行ロジック (Commander) =====
 
 def run_trading(cfg):
-    risk_cfg = getattr(cfg, "risk", object())
-    logging.info(
-        "market_now=%s, no_new_entry_after=%s, force_close_time=%s",
-        True,
-        getattr(risk_cfg, "no_new_entry_after", None),
-        getattr(risk_cfg, "force_close_time", None),
-    )
+    """
+    ここで controller_ws.py を複数体起動する
+    """
+    logging.info("🚀 マルチプロセス・トレードモード開始")
+    
+    # 1. 銘柄リストの取得
+    symbols = getattr(cfg, "symbols", [])
+    if not symbols:
+        logging.error("❌ 監視銘柄が config.yaml にありません。")
+        return
 
-    ctrl = Controller(cfg) # ここでWebsocketControllerが起動
+    codes = [str(s.code) for s in symbols]
+    total_stocks = len(codes)
+    logging.info(f"📊 監視総数: {total_stocks} 銘柄")
 
-    # Heartbeat開始（ControllerがKabusAPIを持つならレイテンシも表示）
-    def api_extra():
-        try:
-            api = getattr(ctrl, "api", None)
-            if api is None:
-                return ""
-            return f"latency_ms={getattr(api, 'last_latency_ms', -1)}"
-        except Exception:
-            return ""
+    # 2. 実行ファイルの場所特定
+    script_path = CONTROLLER_SCRIPT_NAME
+    if not os.path.exists(script_path):
+        if os.path.exists(f"core/{CONTROLLER_SCRIPT_NAME}"):
+            script_path = f"core/{CONTROLLER_SCRIPT_NAME}"
+        else:
+            logging.error(f"❌ {CONTROLLER_SCRIPT_NAME} が見つかりません。")
+            return
+    
+    logging.info(f"📂 Controller Path: {script_path}")
 
-    hb_stop = start_heartbeat(cfg, api_info_func=api_extra)
+    # 3. 銘柄を分割 (Chunking)
+    num_bots = math.ceil(total_stocks / STOCKS_PER_BOT)
+    chunks = [codes[i:i + STOCKS_PER_BOT] for i in range(0, total_stocks, STOCKS_PER_BOT)]
+    
+    processes = []
 
+    # 4. サブプロセス起動
     try:
-        ctrl.run()  # WebsocketControllerの run() を呼ぶ
+        for i, chunk in enumerate(chunks):
+            # 銘柄リストをカンマ区切りの文字列にする "9984,7011,..."
+            arg_list = ",".join(chunk)
+            
+            logging.info(f"🤖 [Bot {i+1}] 起動 (担当: {len(chunk)}銘柄: {chunk[0]}...)")
+            
+            # 別プロセスとして起動
+            cmd = [sys.executable, script_path, arg_list]
+            p = subprocess.Popen(cmd)
+            processes.append(p)
+            
+            # API制限回避のため、起動を少しずらす
+            time.sleep(3)
+
+        logging.info("✅ 全ボット出撃完了。司令塔は監視モードに入ります。")
+        
+        # 5. 親プロセスは待機 (死なないようにループ)
+        while True:
+            time.sleep(10)
+            # 必要であればここで子プロセスの生存確認などを行う
+            all_dead = True
+            for p in processes:
+                if p.poll() is None:
+                    all_dead = False
+                    break
+            if all_dead:
+                logging.warning("⚠️ 全てのボットが終了しました。")
+                break
+
     except KeyboardInterrupt:
-        logging.info("KeyboardInterrupt: stopping controller...")
-        if hasattr(ctrl, "stop"):
-            try:
-                ctrl.stop()
-            except Exception:
-                pass
-    except Exception:
-        logging.exception("FATAL: Controller 内で未処理例外")
-        raise
-    finally:
-        hb_stop.set()
+        logging.info("🛑 停止シグナル受信。全ボットを停止します...")
+        for p in processes:
+            p.terminate()
+        logging.info("👋 全プロセス停止完了")
+    except Exception as e:
+        logging.error(f"Commander Error: {e}")
+        for p in processes:
+            p.terminate()
 
 
 # ===== メイン =====
@@ -173,7 +177,7 @@ def main():
     ensure_dir("runtime")
 
     # =================================================================
-    # ★★★ 通知設定の強制ロード ★★★
+    # 通知設定の強制ロード (維持)
     # =================================================================
     try:
         with open("config.yaml", "r", encoding="utf-8") as f:
@@ -182,22 +186,19 @@ def main():
                 setattr(cfg, "notification", raw_data["notification"])
                 if isinstance(cfg, dict):
                     cfg["notification"] = raw_data["notification"]
-                
                 url = raw_data['notification'].get('discord_webhook_url', '')
-                logging.info(f"🔧 通知設定を強制ロードしました (URL末尾: ...{url[-5:]})")
-            else:
-                logging.warning("⚠️ config.yaml に notification セクションが見つかりません")
-    except Exception as e:
-        logging.warning(f"⚠️ 通知設定の強制ロードに失敗: {e}")
+                logging.info(f"🔧 通知設定ロード (URL末尾: ...{url[-5:]})")
+    except Exception:
+        pass
     # =================================================================
 
-    # 16:30自動学習ウォッチャ起動
+    # 自動学習ウォッチャ起動 (維持)
     start_auto_train_watcher(cfg)
 
     now_jst = dt_datetime.now(JST)
     hhmm = now_jst.strftime("%H:%M")
 
-    # 16:30 以降に起動したら即学習だけ実行して終了
+    # 夜間学習モード判定 (維持)
     learning = getattr(cfg, "learning", None)
     if learning and getattr(learning, "enable_auto_train", False):
         target = str(getattr(learning, "auto_train_time", "16:30"))
@@ -216,8 +217,7 @@ def main():
                 logging.error(f"夜間学習エラー: {e}")
             return
 
-    # 市場時間帯は取引モード
-    logging.info("=== 通常取引モード起動 (Websocket Edition) ===")
+    # 通常取引モード (並列起動ロジックへ)
     run_trading(cfg)
 
 

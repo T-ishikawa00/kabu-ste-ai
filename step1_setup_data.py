@@ -15,7 +15,7 @@ import time
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# ★v12.0 Aggressive Portfolio (全16銘柄)
+# ★v13.0 Aggressive Portfolio (全16銘柄)
 TARGET_CODES = [
     # Tier 1: 重工・造船
     "7011", "7013", "7003", "6269",

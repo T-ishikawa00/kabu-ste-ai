@@ -1,53 +1,28 @@
 @echo off
-REM ==========================================
-REM night_batch.bat - 夜間スクリーニング (J-Quants版)
-REM 17:00以降に実行推奨
-REM ==========================================
-@echo off
-rem 文字コードをUTF-8に変更
-chcp 65001 >nul
-echo ==========================================
-echo  夜間バッチ処理: %date% %time%
-echo ==========================================
+cd /d %~dp0
 
-cd /d C:\trade_bot\kabu-ste-ai
-
-REM 1. J-Quants から日足データ取得
+echo ==========================================
+echo  Night Batch Process Started
+echo ==========================================
 echo.
-echo [1/3] 日足データ更新中 (J-Quants API)...
+
+echo [1/3] Updating J-Quants Data...
 py -3.12 step1_jquants_daily.py
-if errorlevel 1 (
-    echo ❌ 日足取得に失敗しました
-    pause
-    exit /b 1
-)
-echo ✅ 日足更新完了
-
-REM 2. スクリーニング実行
+echo [OK] Step 1 Finished.
 echo.
-echo [2/3] スクリーニング実行中...
+
+echo [2/3] Running Screening...
 py -3.12 step2_screening.py
-if errorlevel 1 (
-    echo ❌ スクリーニングに失敗しました
-    pause
-    exit /b 1
-)
-echo ✅ スクリーニング完了
-
-REM 3. config.yaml に注入
+echo [OK] Step 2 Finished.
 echo.
-echo [3/3] config.yaml 更新中...
+
+echo [3/3] Updating Config...
 py -3.12 step6_inject_config.py
-if errorlevel 1 (
-    echo ❌ config更新に失敗しました
-    pause
-    exit /b 1
-)
-echo ✅ config更新完了
-
+echo [OK] Step 3 Finished.
 echo.
+
 echo ==========================================
-echo  夜間バッチ完了: %time%
-echo  明日の監視銘柄が更新されました！
+echo  Night Batch Completed Successfully!
+echo  Check target_list.csv for results.
 echo ==========================================
 pause

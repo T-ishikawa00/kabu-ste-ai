@@ -1,234 +1,173 @@
 # -*- coding: utf-8 -*-
 """
-step1_jquants_daily.py (J-Quants V2 Official Spec)
-===================================================
-J-Quants API V2 公式仕様準拠版
-・認証: x-api-key ヘッダー
-・銘柄一覧: /v2/equities/master
-・株価: /v2/equities/bars/daily
-・カラム: O, H, L, C, Vo, Va -> open, high...
+step1_jquants_daily.py v4.0 (Fixed)
+===================================
+J-Quants V2 API 全銘柄一括取得
+
+修正点:
+- 5桁コード(13010)を4桁(1301)に変換
+- 調整後価格(AdjO, AdjC等)を使用
 """
 
 import requests
 import pandas as pd
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # ==========================================
-# ★ここにあなたのAPI Keyを貼る
-# (ダッシュボードから取得した x-api-key)
+# ★API Key (設定済み)
 # ==========================================
 MY_API_KEY = "4tRpsBOq_cEf9yo6Db19OwS-3yeange8-saImd0mzCc"
 
-# 保存先
 DATA_DIR = "data_archive_daily"
 os.makedirs(DATA_DIR, exist_ok=True)
-
-# 基準日（ファイルがない場合にここから取得）
-DEFAULT_START_DATE = "20230101"
-
-# API設定
 BASE_URL = "https://api.jquants.com/v2"
 
 def get_headers():
-    """V2 APIキー認証用ヘッダー"""
     return {"x-api-key": MY_API_KEY}
 
-def get_listed_info():
-    """上場銘柄一覧を取得 (/v2/equities/master)"""
-    print("📋 [V2] 上場銘柄一覧を取得中 (/v2/equities/master)...")
-    url = f"{BASE_URL}/equities/master"
-    
-    # 過去の日付を指定するとその時点の銘柄が取れるが、
-    # 今日現在の上場銘柄を知りたいので日付指定なし（または当日）でリクエスト
-    params = {"date": datetime.now().strftime("%Y%m%d")}
-    
-    try:
-        res = requests.get(url, headers=get_headers(), params=params)
-        
-        if res.status_code == 403:
-            print("\n❌ 認証エラー (403): API Keyが間違っています。")
-            return []
-        
-        if res.status_code != 200:
-            print(f"⚠️ 銘柄一覧取得エラー: {res.status_code} {res.text}")
-            return []
-
-        data = res.json()
-        
-        # V2のレスポンス形式: {"lists": [...]} または {"data": [...]} の可能性
-        # 公式ドキュメントではリストが直接返るケースや、特定のキーに入るケースがあるため柔軟に対応
-        targets = []
-        if "lists" in data:
-            targets = data["lists"]
-        elif "data" in data:
-            targets = data["data"]
-        elif isinstance(data, list):
-            targets = data
-            
-        if targets:
-             # V2は "Code" (大文字C)
-             return [item['Code'] for item in targets if 'Code' in item]
-             
-        return []
-    except Exception as e:
-        print(f"❌ 銘柄一覧の取得失敗: {e}")
-        return []
-
-def get_daily_quotes(code, from_date, to_date):
+def convert_code(code_5digit):
     """
-    日足データを取得 (/v2/equities/bars/daily)
-    ページネーション対応
+    5桁コードを4桁に変換
+    J-Quants: 13010 → 銘柄コード: 1301
     """
-    if from_date > to_date:
-        return []
+    code_str = str(code_5digit)
+    if len(code_str) == 5 and code_str.endswith('0'):
+        return code_str[:-1]
+    return code_str
 
+def get_all_quotes_for_date(target_date_str):
+    print(f"📡 [J-Quants] {target_date_str} の全銘柄データを一括取得中...")
     url = f"{BASE_URL}/equities/bars/daily"
-    all_quotes = []
-    
-    params = {
-        "code": code,
-        "from": from_date,
-        "to": to_date
-    }
+    params = {"date": target_date_str}
+    all_data = []
     
     while True:
         try:
             res = requests.get(url, headers=get_headers(), params=params)
-            
-            if res.status_code == 429: # レートリミット対策
-                time.sleep(2)
-                continue
-                
             if res.status_code != 200:
+                print(f"❌ Error: {res.status_code} {res.text}")
                 break
-
             data = res.json()
-            
-            # レスポンスからデータリストを抽出
             quotes = []
-            if "lists" in data:
-                quotes = data["lists"]
-            elif "data" in data:
-                quotes = data["data"]
-            elif isinstance(data, list):
-                quotes = data
+            if "data" in data: quotes = data["data"]
+            elif "lists" in data: quotes = data["lists"]
+            elif isinstance(data, list): quotes = data
             
-            if quotes:
-                all_quotes.extend(quotes)
+            if quotes: all_data.extend(quotes)
             
-            # ページネーション (pagination_key)
             if "pagination_key" in data and data["pagination_key"]:
                 params["pagination_key"] = data["pagination_key"]
                 time.sleep(0.05)
             else:
                 break
-        except Exception:
+        except Exception as e:
+            print(f"❌ 通信エラー: {e}")
             break
             
-    return all_quotes
+    print(f"   ✅ 取得完了: {len(all_data)} 銘柄分")
+    return all_data
 
 def get_last_date(file_path):
-    """CSVの最後の日付を取得する"""
-    if not os.path.exists(file_path):
-        return None
+    if not os.path.exists(file_path): return None
     try:
-        if os.path.getsize(file_path) < 50:
-            return None
-        df = pd.read_csv(file_path)
-        if df.empty or 'datetime' not in df.columns:
-            return None
-        return df['datetime'].max()
-    except:
-        return None
+        with open(file_path, 'rb') as f:
+            try: f.seek(-200, os.SEEK_END)
+            except OSError: f.seek(0)
+            last_lines = f.readlines()
+            if not last_lines: return None
+            last_line = last_lines[-1].decode('utf-8', errors='ignore')
+            return last_line.split(',')[0]
+    except: return None
 
 def main():
     print("=" * 60)
-    print("🚀 J-Quants V2 日足データ取得 (API Key方式)")
+    print("🚀 J-Quants V2 日足データ更新 v4.0")
     print("=" * 60)
     
-    # 1. 銘柄一覧
-    codes = get_listed_info()
-    if not codes:
-        print("❌ 銘柄一覧が取得できませんでした。処理を終了します。")
+    now = datetime.now()
+    target_date = now.strftime("%Y%m%d")
+    
+    # データ取得
+    quotes = get_all_quotes_for_date(target_date)
+    if not quotes:
+        print("🍂 本日のデータはまだ配信されていないか、休場日です。")
         return
 
-    print(f"🎯 対象: {len(codes)} 銘柄")
+    print(f"\n💾 各ファイルに書き込み中 ({len(quotes)}件)...")
     
-    today_str = datetime.now().strftime("%Y%m%d")
     updated_count = 0
-    uptodate_count = 0
+    skipped_count = 0
+    error_count = 0
     
-    print("\n🍵 ダウンロード開始...\n")
-    
-    for i, code in enumerate(codes):
-        file_path = os.path.join(DATA_DIR, f"daily_{code}.csv")
-        last_date_str = get_last_date(file_path)
-        
-        if last_date_str:
-            try:
-                last_dt = pd.to_datetime(last_date_str)
-                start_date = (last_dt + timedelta(days=1)).strftime("%Y%m%d")
-                mode = "差分"
-            except:
-                start_date = DEFAULT_START_DATE
-                mode = "修復"
-        else:
-            start_date = DEFAULT_START_DATE
-            mode = "新規"
+    for i, row in enumerate(quotes):
+        try:
+            # ★ 5桁コードを4桁に変換
+            raw_code = str(row.get('Code', ''))
+            code = convert_code(raw_code)
             
-        if start_date > today_str:
-            uptodate_count += 1
-            if i % 100 == 0: print(f"⏩ [{i+1}/{len(codes)}] {code} 最新済", end="\r")
+            # 4桁数字のみ対象
+            if len(code) != 4 or not code.isdigit():
+                skipped_count += 1
+                continue
+            
+            file_path = os.path.join(DATA_DIR, f"daily_{code}.csv")
+            
+            # 日付文字列 (YYYY-MM-DD)
+            date_raw = row.get('Date', '')
+            if isinstance(date_raw, str) and len(date_raw) >= 10:
+                date_str = date_raw[:10]
+            else:
+                date_str = str(date_raw).split(" ")[0]
+
+            # 既存チェック
+            if os.path.exists(file_path):
+                last_date = get_last_date(file_path)
+                if last_date == date_str:
+                    continue # 既に最新
+                mode = 'a'
+                header = False
+            else:
+                mode = 'w'
+                header = True
+            
+            # ★ 調整後価格を使用（株式分割等に対応）
+            open_price = row.get('AdjO', row.get('O', 0))
+            high_price = row.get('AdjH', row.get('H', 0))
+            low_price = row.get('AdjL', row.get('L', 0))
+            close_price = row.get('AdjC', row.get('C', 0))
+            volume = row.get('AdjVo', row.get('Vo', 0))
+            
+            # 書き込み用DataFrame作成 (1行)
+            line_data = pd.DataFrame([{
+                'datetime': date_str,
+                'open': open_price,
+                'high': high_price,
+                'low': low_price,
+                'close': close_price,
+                'volume': volume
+            }])
+            
+            line_data.to_csv(file_path, mode=mode, header=header, index=False)
+            updated_count += 1
+            
+            if updated_count % 500 == 0:
+                print(f"   進捗: {updated_count} 更新済み", end="\r")
+
+        except Exception as e:
+            error_count += 1
+            if error_count == 1:
+                print(f"\n❌ 書き込みエラー発生 (例: {raw_code}): {e}")
             continue
 
-        print(f"[{i+1}/{len(codes)}] {code} ({mode}) ...", end="", flush=True)
-        
-        quotes = get_daily_quotes(code, start_date, today_str)
-        
-        if quotes:
-            df = pd.DataFrame(quotes)
-            
-            # ★ V2のカラム名 (O, H, L, C, Vo, Va) を bot仕様 (open, high...) に変換
-            rename_map = {
-                "Date": "datetime", 
-                "O": "open", 
-                "H": "high", 
-                "L": "low", 
-                "C": "close", 
-                "Vo": "volume", 
-                "Va": "trading_value"
-            }
-            df.rename(columns=rename_map, inplace=True)
-            
-            if 'datetime' in df.columns:
-                df['datetime'] = pd.to_datetime(df['datetime'])
-                df.sort_values('datetime', inplace=True)
-                
-                # 保存するカラム
-                cols = ["datetime", "open", "high", "low", "close", "volume"]
-                cols = [c for c in cols if c in df.columns]
-                df = df[cols]
-                
-                if mode == "差分" and os.path.exists(file_path):
-                    df.to_csv(file_path, mode='a', header=False, index=False)
-                else:
-                    df.to_csv(file_path, mode='w', header=True, index=False)
-                    
-                print(f" ✅ +{len(df)}日")
-                updated_count += 1
-            else:
-                print(" ⚠️ データ形式エラー (カラム名不一致)")
-                print(f"    取得カラム: {df.columns.tolist()}")
-        else:
-            print(" ー なし")
-            
-        time.sleep(0.02)
+    print(f"\n   ✅ 更新: {updated_count} ファイル")
+    print(f"   ⏭️ スキップ: {skipped_count} (非4桁コード)")
+    if error_count > 0:
+        print(f"   ⚠️ エラー: {error_count} 件")
 
     print("\n" + "-" * 60)
     print(f"🎉 完了！")
-    print(f"   更新: {updated_count} / 最新済: {uptodate_count}")
 
 if __name__ == "__main__":
     main()

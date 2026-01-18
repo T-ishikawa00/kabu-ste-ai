@@ -100266,3 +100266,62 @@
 2026-01-15 14:05:56,613 [INFO] tearing down on exception 
 2026-01-15 14:05:56,613 [WARNING] 🔄 Reconnecting to Websocket in 3 seconds...
 2026-01-15 14:05:56,761 [INFO] 🛑 User Interrupted
+2026-01-15 20:00:59,274 [INFO] 📝 Logger initialized: Console=INFO, File=DEBUG
+2026-01-15 20:00:59,274 [INFO] 🔌 KabusAPI v9.1 initialized
+2026-01-15 20:00:59,274 [INFO]   📡 Host: http://localhost:18080/kabusapi
+2026-01-15 20:00:59,274 [INFO] 🔧 Broker v11.2 Initialized (Pending Lock Fix)
+2026-01-15 20:00:59,275 [INFO] 💾 DataCollector initialized
+2026-01-15 20:00:59,942 [INFO] 🤖 AIモデルのロードを開始します...
+2026-01-15 20:01:00,578 [INFO]   🌐 汎用モデル搭載完了 (universal_v1)
+2026-01-15 20:01:00,584 [INFO]   ✅ [285A] AI搭載完了 (v12)
+2026-01-15 20:01:00,590 [INFO]   ✅ [6269] AI搭載完了 (v12)
+2026-01-15 20:01:00,597 [INFO]   ✅ [9984] AI搭載完了 (v12)
+2026-01-15 20:01:00,603 [INFO]   ✅ [6954] AI搭載完了 (v12)
+2026-01-15 20:01:00,609 [INFO]   ✅ [7011] AI搭載完了 (v12)
+2026-01-15 20:01:00,615 [INFO]   ✅ [8411] AI搭載完了 (v12)
+2026-01-15 20:01:00,621 [INFO]   ✅ [9501] AI搭載完了 (v12)
+2026-01-15 20:01:00,622 [INFO]   🌐 [92520] 汎用モデルで稼働
+2026-01-15 20:01:00,623 [INFO]   🌐 [91600] 汎用モデルで稼働
+2026-01-15 20:01:00,624 [INFO]   🌐 [88870] 汎用モデルで稼働
+2026-01-15 20:01:00,625 [INFO]   🌐 [98880] 汎用モデルで稼働
+2026-01-15 20:01:00,625 [INFO]   🌐 [92270] 汎用モデルで稼働
+2026-01-15 20:01:00,626 [INFO] 📚 過去データを読み込み中...
+2026-01-15 20:01:00,642 [INFO]   💾 [285A] ウォームアップ完了: 12本
+2026-01-15 20:01:00,656 [INFO]   💾 [6269] ウォームアップ完了: 1本
+2026-01-15 20:01:00,670 [INFO]   💾 [9984] ウォームアップ完了: 13本
+2026-01-15 20:01:00,684 [INFO]   💾 [6954] ウォームアップ完了: 13本
+2026-01-15 20:01:00,697 [INFO]   💾 [7011] ウォームアップ完了: 13本
+2026-01-15 20:01:00,711 [INFO]   💾 [8411] ウォームアップ完了: 13本
+2026-01-15 20:01:00,725 [INFO]   💾 [9501] ウォームアップ完了: 13本
+2026-01-15 20:01:00,733 [INFO] 🔧 Controller v10.1 initialized
+2026-01-15 20:01:00,733 [INFO]   📉 Short Selling: DISABLED
+2026-01-15 20:01:00,733 [INFO] 🔧 WebsocketController v9.1 initialized (Ghost-Free)
+2026-01-15 20:01:00,733 [INFO]   ⏱️ Process interval: 1.0s
+2026-01-15 20:01:00,733 [INFO]   🔢 Max workers: 3
+2026-01-15 20:01:00,734 [INFO] 🚀 Phase 2: Websocket Controller Starting... (Target: 12 syms)
+2026-01-15 20:01:00,734 [INFO] HB i=1 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:01,746 [INFO] HB i=2 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:02,761 [INFO] HB i=3 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:03,777 [INFO] HB i=4 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:04,792 [INFO] HB i=5 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:04,824 [WARNING] Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=18080): Failed to establish a new connection: [WinError 10061] 対象のコンピューターによって拒否されたため、接続できませんでした。")': /kabusapi/token
+2026-01-15 20:01:05,808 [INFO] HB i=6 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:06,823 [INFO] HB i=7 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:07,837 [INFO] HB i=8 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:08,838 [INFO] HB i=9 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:09,851 [INFO] HB i=10 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:09,932 [WARNING] Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=18080): Failed to establish a new connection: [WinError 10061] 対象のコンピューターによって拒否されたため、接続できませんでした。")': /kabusapi/token
+2026-01-15 20:01:10,853 [INFO] HB i=11 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:11,867 [INFO] HB i=12 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:12,873 [INFO] HB i=13 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:13,873 [INFO] HB i=14 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:14,887 [INFO] HB i=15 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:15,890 [INFO] HB i=16 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:16,014 [WARNING] Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=18080): Failed to establish a new connection: [WinError 10061] 対象のコンピューターによって拒否されたため、接続できませんでした。")': /kabusapi/token
+2026-01-15 20:01:16,903 [INFO] HB i=17 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:17,904 [INFO] HB i=18 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:18,920 [INFO] HB i=19 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:19,934 [INFO] HB i=20 paper=False kill_exists=False latency_ms=0
+2026-01-15 20:01:20,122 [WARNING] [API] ConnectionError: HTTPConnectionPool(host='localhost', port=18080): Max retries exceeded with url: /kabusapi/token (Caused by NewConnectionError("HTTPConnection(host='localhost', port=18080): Failed to establish a new connection: [WinError 10061] 対象のコンピューターによって拒否されたため、接続できませんでした。"))
+2026-01-15 20:01:20,122 [WARNING] [API] エラー記録: connection (Wait 2s)
+2026-01-15 20:01:20,122 [ERROR] ❌ API Auth Failed: token取得失敗: None

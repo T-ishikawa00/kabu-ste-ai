@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Controller v10.1 (Stable Short Selling Edition)
-==================================================
-修正点:
-- AIモデルが存在しない場合でもエラー落ちせず、ルールベース（モメンタム）で動作するように修正
-- 既存のロジック（MACD, RCI等）は全て維持
+Controller v17.0 (Config Priority Fix)
+======================================
+【重要修正】
+config.yaml の設定値(commonセクション)を「絶対優先」にします。
+コード内のデフォルト値に関わらず、yamlで指定した秒数やTick数が適用されます。
 """
 
 import os, time, logging, json, glob
@@ -35,11 +35,12 @@ from strategy_router import StrategyRouter, Context
 # ★追加: 通知機能
 from notifier import Notifier
 
-# ===== パラメータ（デフォルト値） =====
-SWING = dict(
-    tp_ticks_cap=20,
-    sl_ticks_cap=10,
-    max_hold_sec=300,
+# ===== パラメータ（フォールバック用デフォルト値） =====
+# ※ config.yaml が読めない場合のみ、この値が使われます
+DEFAULT_SWING = dict(
+    tp_ticks_cap=30,
+    sl_ticks_cap=20,
+    max_hold_sec=900,  # デフォルト900秒
     max_spread_ticks=5,
     heat_exit_drop=0.20,
     obi_flip=0.10,
@@ -153,6 +154,20 @@ class Controller:
         maxn = max(1, int(getattr(cfg, "max_concurrent_symbols", len(cfg.symbols) or 1)))
         self.syms = cfg.symbols[:maxn]
         
+        # ======================================================
+        # ★ Config優先ロジック (v17.0 Fix)
+        # ======================================================
+        # config.yaml の common セクションを取得
+        common_cfg = getattr(cfg, "common", {})
+        
+        # Configの値があれば採用、なければデフォルト値を使用
+        self.global_tp = int(getattr(common_cfg, "tp_ticks", DEFAULT_SWING["tp_ticks_cap"]))
+        self.global_sl = int(getattr(common_cfg, "sl_ticks", DEFAULT_SWING["sl_ticks_cap"]))
+        self.global_hold = int(getattr(common_cfg, "max_hold_sec", DEFAULT_SWING["max_hold_sec"]))
+        
+        logging.info(f"⚙️ Config設定適用: MaxHold={self.global_hold}s, TP={self.global_tp}, SL={self.global_sl}")
+        # ======================================================
+        
         self.target_codes = [str(s.code) for s in self.syms]
         self.sym_map = {str(s.code): s for s in self.syms}
 
@@ -169,7 +184,7 @@ class Controller:
         logging.info("💾 DataCollector initialized")
 
         self.notifier = Notifier(cfg)
-        self.notifier.send("🤖 システム起動しました (Version 10.1 - Stable Short Selling)", "startup")
+        self.notifier.send("🤖 システム起動しました (Version 17.0 - Config Priority)", "startup")
 
         # ==========================================
         # AIモデルのロード
@@ -184,30 +199,42 @@ class Controller:
         if os.path.exists(universal_path + ".zip"):
             try:
                 self.universal_model = PPO.load(universal_path)
-                logging.info(f"  🌐 汎用モデル搭載完了 (universal_v1)")
+                logging.info(f"   🌐 汎用モデル搭載完了 (universal_v1)")
             except Exception as e:
-                logging.warning(f"  ⚠️ 汎用モデルロード失敗: {e}")
+                logging.warning(f"   ⚠️ 汎用モデルロード失敗: {e}")
         
         # 銘柄別モデルをロード
         for s in self.syms:
             code = str(s.code)
             loaded = False
+            # v30から探索 (新しい順)
             for v in range(30, 0, -1):
                 model_path = f"model/model_{code}_v{v}"
                 if os.path.exists(model_path + ".zip"):
                     try:
                         self.ai_models[code] = PPO.load(model_path)
-                        logging.info(f"  ✅ [{code}] AI搭載完了 (v{v})")
+                        logging.info(f"   ✅ [{code}] AI搭載完了 (v{v})")
                         loaded = True
                         break 
                     except Exception as e:
                         logging.warning(f" ⚠️ [{code}] v{v} ロード失敗: {e}")
             
+            # v13固定ファイルもチェック
+            if not loaded:
+                model_path = f"model/model_{code}_v13"
+                if os.path.exists(model_path + ".zip"):
+                    try:
+                        self.ai_models[code] = PPO.load(model_path)
+                        logging.info(f"   ✅ [{code}] AI搭載完了 (v13)")
+                        loaded = True
+                    except Exception as e:
+                        logging.warning(f" ⚠️ [{code}] v13 ロード失敗: {e}")
+
             if not loaded:
                 if self.universal_model:
-                    logging.info(f"  🌐 [{code}] 汎用モデルで稼働")
+                    logging.info(f"   🌐 [{code}] 汎用モデルで稼働")
                 else:
-                    logging.info(f"  ⚪ [{code}] AIなし (ルールベースのみで稼働)")
+                    logging.info(f"   ⚪ [{code}] AIなし (ルールベースのみで稼働)")
 
         self._next_board_at = {str(s.code): 0.0 for s in self.syms}
         self._backoff        = {str(s.code): 0.0 for s in self.syms}
@@ -270,12 +297,12 @@ class Controller:
         self._processing_entry: Set[str] = set()
         self._processing_lock = threading.Lock()
 
-        # ★v10.0: 空売り設定の読み込み
+        # 空売り設定
         short_cfg = getattr(self.cfg, "short", object())
         self._short_enabled = bool(getattr(short_cfg, "enabled", False))
         self._short_allowed = set(getattr(short_cfg, "allowed_symbols", []))
         
-        logging.info(f"🔧 Controller v10.1 initialized")
+        logging.info(f"🔧 Controller v17.0 initialized")
         logging.info(f"  📉 Short Selling: {'ENABLED' if self._short_enabled else 'DISABLED'}")
         if self._short_enabled:
             logging.info(f"  📉 Short Allowed Symbols: {len(self._short_allowed)}")
@@ -463,7 +490,7 @@ class Controller:
         return True, "ok"
 
     # ======================================================
-    # ★v10.0: パニックエグジット（特別気配・ストップ高接近）
+    # パニックエグジット（特別気配・ストップ高接近）
     # ======================================================
     def _check_panic_exit(self, code_s: str, sym, board: dict) -> bool:
         """
@@ -564,7 +591,7 @@ class Controller:
 
         if not current_board: return
 
-        # ★v10.0: パニックエグジットチェック（空売りポジション保有時）
+        # ★パニックエグジットチェック（空売りポジション保有時）
         if has_position and self._check_panic_exit(code_s, sym, current_board):
             return  # パニックエグジット実行済み
 
@@ -683,7 +710,7 @@ class Controller:
 
 
     def _execute_trade(self, sym, b, mk):
-        """AI判断と発注実行（v10.0: 空売り対応）"""
+        """AI判断と発注実行（Config優先版）"""
         code_s = str(sym.code)
         cur = mk['cur']
         m1_bars = mk['m1_bars']
@@ -693,7 +720,7 @@ class Controller:
         # ★銘柄別モデル → 汎用モデルの順にフォールバック
         ai_model = self.ai_models.get(code_s) or self.universal_model
         ai_buy = False
-        ai_sell = False  # ★v10.0: 空売りシグナル
+        ai_sell = False 
         ai_exit = False
         
         # ★★★ AI判定 ★★★
@@ -776,14 +803,13 @@ class Controller:
                     # ポジション情報 (Short対応)
                     is_pos = 0.0
                     pnl_pct = 0.0
-                    current_hold_duration = 0.0 # 経過時間正規化用
+                    current_hold_duration = 0.0 
                     
                     if pos_open:
                         pos_data = self.brk.pos[code_s]
                         entry_p = float(pos_data["entry"])
                         pos_side = pos_data.get("side", "BUY")
                         
-                        # 学習環境(step2_env)に合わせて Shortは -1.0, Longは 1.0 にする
                         if pos_side == "SHORT":
                             is_pos = -1.0
                             pnl_pct = (entry_p - cur_price) / entry_p * 100.0
@@ -791,10 +817,9 @@ class Controller:
                             is_pos = 1.0
                             pnl_pct = (cur_price - entry_p) / entry_p * 100.0
                             
-                        # 保有時間の計算 (学習環境に合わせる)
+                        # 保有時間の計算
                         base_ts = float(pos_data.get("fill_ts") or pos_data.get("ts") or time.time())
                         held_sec = time.time() - base_ts
-                        # SWING["max_hold_sec"] (3600秒) で正規化
                         current_hold_duration = min(1.0, held_sec / 3600.0)
 
                     ma15_val = cur_price
@@ -811,7 +836,6 @@ class Controller:
                         volatility = (high_p - low_p) / open_p * 100.0
 
                     # AI入力 (17次元)
-                    # step2_env.py と完全に一致させる
                     ai_obs = np.array([
                         pct_change, 
                         mk['obi_val'], 
@@ -819,15 +843,15 @@ class Controller:
                         bb_p, 
                         rci9 / 100.0, 
                         rci26 / 100.0,
-                        0.0,  # step2_envに合わせてSARは0.0固定にする（不一致防止）
+                        0.0, 
                         rsi_val / 100.0, 
                         mk['vol_boost'], 
                         dist_sma25, 
-                        is_pos,        # ★修正済み (-1.0, 0.0, 1.0)
+                        is_pos, 
                         pnl_pct, 
                         dist_ma15, 
                         volatility, 
-                        current_hold_duration, # ★修正済み (経過時間)
+                        current_hold_duration, 
                         mk.get('ndbi', 0.0), 
                         mk.get('hsr', 0.0)
                     ], dtype=np.float32)
@@ -841,7 +865,6 @@ class Controller:
                     if req_dim == cur_dim:
                         action, _ = ai_model.predict(ai_obs, deterministic=True)
                         
-                        # 現在のポジション方向を取得
                         current_side = None
                         if pos_open:
                             current_side = self.brk.pos[code_s].get("side", "BUY")
@@ -849,33 +872,26 @@ class Controller:
                         # Action 1: BULL (強気)
                         if action == 1:
                             if current_side == "SHORT":
-                                # 空売りを持っていたら -> 決済 (Cover)
                                 ai_exit = True
                                 logging.debug(f"🤖 [{code_s}] AI指示: BULL (Cover Short) 🚀")
                             elif not pos_open:
-                                # ノーポジなら -> 新規買い
                                 ai_buy = True
                                 logging.debug(f"🤖 [{code_s}] AI指示: BULL (Long Entry) 🔥")
-                            # ※買いポジ保有中なら何もしない(Hold)
 
                         # Action 2: BEAR (弱気)
                         elif action == 2:
                             if current_side == "BUY":
-                                # 買いを持っていたら -> 決済 (Sell)
                                 ai_exit = True
                                 logging.debug(f"🤖 [{code_s}] AI指示: BEAR (Sell Long) 📉")
                             elif not pos_open:
-                                # ノーポジなら -> 新規空売り
                                 ai_sell = True
                                 logging.debug(f"🤖 [{code_s}] AI指示: BEAR (Short Entry) 💀")
-                            # ※売りポジ保有中なら何もしない(Hold)
 
                 except Exception as e:
                     pass
             
             else:
-                # ★★★ AIモデルがない時のフォールバック (単純モメンタム) ★★★
-                # これがないと「AIモデル待ち」で一生動かない
+                # モメンタムフォールバック
                 px_hist = list(self.hist[code_s]['px_1s'])
                 if len(px_hist) >= 5:
                     p_now = px_hist[-1]
@@ -891,13 +907,13 @@ class Controller:
         
         # --- ENTRY判定 ---
         strong_long = ai_buy
-        strong_short = ai_sell and self._short_enabled  # 空売り有効時のみ
+        strong_short = ai_sell and self._short_enabled 
 
         allowed = (code_s in self.allowed_symbols) if self.gk_enabled else True
 
         can_trade_window = self.brk.can_trade_now(is_entry=True)
         can_new_entry = self._can_new_entry_now()
-        can_short_entry = self._can_short_entry_now()  # ★空売り専用時間チェック
+        can_short_entry = self._can_short_entry_now() 
         under_max_positions = self._respect_max_open_positions()
         interval_ok = self._respect_min_order_interval(sym)
         cool_ok = time.time() >= self._cooldown_until.get(code_s, 0.0)
@@ -929,7 +945,7 @@ class Controller:
         strategy = self.router.decide(cx)
 
         if float(mk['tick']) >= 5.0 and strategy == "SCALP": strategy = "OBSERVE"
-        if (mk['spread_ticks'] is not None) and (mk['spread_ticks'] > SWING["max_spread_ticks"]): strategy = "OBSERVE"
+        if (mk['spread_ticks'] is not None) and (mk['spread_ticks'] > DEFAULT_SWING["max_spread_ticks"]): strategy = "OBSERVE"
         if strategy == "SCALP": strategy = "MINI_SWING" 
         
         market_hot_enough = (mk['market_heat'] >= (0.3 if mk['regime'] == "OPEN" else 0.4))
@@ -965,9 +981,8 @@ class Controller:
                     with self._processing_lock:
                         self._processing_entry.discard(code_s)
             
-            # ★SHORTエントリー（v10.0新機能）
+            # ★SHORTエントリー
             elif strong_short and can_short_entry:
-                # 空売り安全チェック
                 can_short, reason = self.brk.can_short(code_s, b)
                 if not can_short:
                     logging.debug(f"⛔ [{code_s}] SHORT blocked: {reason}")
@@ -1016,16 +1031,17 @@ class Controller:
             else:
                 exit_target_px = float(cur)
             
-            # ★v10.0: 空売りと買いでパラメータを分ける
+            # ★v17.0修正: Config値を絶対優先
             if side == "SHORT":
                 short_cfg = getattr(self.cfg, "short", object())
                 p_tp = float(getattr(short_cfg, "tp_ticks", 10))
                 p_sl = float(getattr(short_cfg, "sl_ticks", 5))
                 p_time = float(getattr(short_cfg, "max_hold_sec", 1200))
             else:
-                p_tp = self._get_sym_param(sym, "tp_ticks_cap", SWING["tp_ticks_cap"])
-                p_sl = self._get_sym_param(sym, "sl_ticks_cap", SWING["sl_ticks_cap"])
-                p_time = self._get_sym_param(sym, "max_hold_sec", SWING["max_hold_sec"])
+                # self.global_* はConfigから読み込んだ値
+                p_tp = self._get_sym_param(sym, "tp_ticks_cap", self.global_tp)
+                p_sl = self._get_sym_param(sym, "sl_ticks_cap", self.global_sl)
+                p_time = self._get_sym_param(sym, "max_hold_sec", self.global_hold)
             
             # 高額株の調整
             current_price_val = float(cur)
@@ -1044,12 +1060,11 @@ class Controller:
                 hit_sl = (exit_target_px <= entry_px - p_sl * mk['tick'])
 
             hit_time = held_sec >= p_time
-            hit_force = self._force_close_due(side)  # ★空売りは早めに強制決済
+            hit_force = self._force_close_due(side)
 
             do_exit, reason = False, "COND"
             
-            # ★★★ v13.0: TP/SLを最優先（AIより先に判定）★★★
-            # これにより、利確ラインに達したら必ず利確される
+            # TP/SLを最優先
             if hit_tp:
                 do_exit, reason = True, "TP"
                 logging.info(f"🎯 [{code_s}] TP hit! pnl_ticks={pnl_ticks:.1f}")
@@ -1061,7 +1076,6 @@ class Controller:
             elif hit_time:
                 do_exit, reason = True, "TIME"
             elif ai_exit:
-                # AIのEXIT判断は最後（TP/SLに達してない時のみ）
                 do_exit, reason = True, "AI_EXIT"
 
             if do_exit:
@@ -1084,7 +1098,6 @@ class Controller:
                     self._daily_pnl += approx_pnl
                     logging.info(f"LIVE EXIT_EXEC {code_s} pnl={approx_pnl:.0f} (approx) reason={reason}")
 
-                    # ★v10.0: 空売りと買いで決済関数を分ける
                     if side == "SHORT":
                         is_ok, res = self.brk.cover(sym, qty=qty)
                     else:

@@ -1,8 +1,0 @@
-{
-  "w_buy": 1.0050100100050003,
-  "w_sell": 1.0,
-  "theta_by_strategy": {
-    "SCALP": 0.615,
-    "MINI_SWING": 0.595
-  }
-}

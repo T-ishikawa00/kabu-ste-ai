@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-step4_process_daily_log.py v12.0
-================================
-既存の merged_*.csv を v12 形式に再加工する
+step4_process_daily_log.py v15.0 (Random Injection Edition)
+===========================================================
+【最強のデータセット作成機能】
+1. あなたの「戦った銘柄」と「監視銘柄」を最優先でリストアップ
+2. そこに「ランダムな野良銘柄」を100個追加
+3. 全てに「最新の戦績注入ロジック」を適用して保存
+
+これにより、AIは「あなたの戦績」を重視しつつ、
+「初見の銘柄」にも対応できる汎用性を身につけます。
 """
 
 import os
@@ -10,17 +16,114 @@ import glob
 import pandas as pd
 import numpy as np
 import pandas_ta as ta
+import re
+import yaml
+import random
 import warnings
 
 warnings.simplefilter('ignore')
 
+# ==========================================
 # 設定
-DATA_RAW_DIR = "data_raw"
-DATA_OUT_DIR = "data"
+# ==========================================
+DATA_INPUT_DIR = "data_archive_daily"  # Step1が保存している場所
+LOG_DIR = "logs"                       # main.pyが保存している場所
+DATA_OUT_DIR = "data"                  # AIが読む場所 (出力先)
+CONFIG_FILE = "config.yaml"            # 監視銘柄リスト
 
+RANDOM_SAMPLE_COUNT = 100              # ランダムに追加する「練習相手」の数
+MIN_ROWS = 30
 
+# ==========================================
+# 0. 処理対象リスト作成（優先枠＋ランダム枠）
+# ==========================================
+def create_target_list():
+    """
+    処理すべき銘柄のリストを作成する
+    Priority 1: 戦績がある銘柄 (Logs)
+    Priority 2: 監視している銘柄 (Config)
+    Priority 3: ランダムな野良銘柄 (Random)
+    """
+    # 1. 倉庫にある全ファイルを取得
+    all_files = glob.glob(os.path.join(DATA_INPUT_DIR, "daily_*.csv"))
+    if not all_files:
+        print(f"❌ {DATA_INPUT_DIR} が空です！ Step1を実行してください。")
+        return set(), {}, []
+
+    # コード一覧を抽出
+    all_codes = []
+    file_map = {} # code -> filepath
+    for f in all_files:
+        code = os.path.basename(f).replace("daily_", "").replace(".csv", "")
+        all_codes.append(code)
+        file_map[code] = f
+
+    # --- Priority 1 & 2: エリート枠（戦績・監視） ---
+    priority_whitelist = set()
+    
+    # Configから
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f)
+                symbols = cfg.get("symbols", [])
+                for s in symbols:
+                    priority_whitelist.add(str(s.get("code")))
+        except: pass
+
+    # Logから (戦績取得)
+    battle_results = get_battle_results()
+    for code in battle_results.keys():
+        priority_whitelist.add(code)
+    
+    # --- Priority 3: ランダム枠（練習相手） ---
+    # エリート枠に含まれていない銘柄を候補にする
+    candidates = [c for c in all_codes if c not in priority_whitelist]
+    
+    random_picks = []
+    if len(candidates) > RANDOM_SAMPLE_COUNT:
+        random_picks = random.sample(candidates, RANDOM_SAMPLE_COUNT)
+    else:
+        random_picks = candidates # 足りなければ全部
+    
+    # 最終リスト結合
+    final_target = priority_whitelist.union(set(random_picks))
+    
+    print(f"🎯 処理対象の内訳:")
+    print(f"   👑 優先枠 (戦績/監視): {len(priority_whitelist)} 銘柄")
+    print(f"   🎲 野良枠 (ランダム): {len(random_picks)} 銘柄")
+    print(f"   ∑  合計: {len(final_target)} 銘柄")
+    
+    return final_target, battle_results, file_map
+
+# ==========================================
+# 1. 戦績データの解析機能
+# ==========================================
+def get_battle_results():
+    """ログから戦績を集計"""
+    log_files = glob.glob(os.path.join(LOG_DIR, "*.log"))
+    log_files += glob.glob(os.path.join("runtime", "logs", "*.log"))
+    
+    results = {} 
+    pattern = re.compile(r"LIVE EXIT_EXEC (\d{4}) pnl=([+\-]?\d+)")
+    
+    for filepath in log_files:
+        try:
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    match = pattern.search(line)
+                    if match:
+                        code = match.group(1)
+                        pnl = int(match.group(2))
+                        if code not in results: results[code] = 0
+                        results[code] += pnl
+        except: pass
+    return results
+
+# ==========================================
+# 2. 指標計算ロジック
+# ==========================================
 def calc_rci_series(series: pd.Series, period=9) -> pd.Series:
-    """RCI（順位相関指数）を計算"""
     rci_values = []
     if len(series) < period:
         return pd.Series([np.nan] * len(series), index=series.index)
@@ -38,177 +141,128 @@ def calc_rci_series(series: pd.Series, period=9) -> pd.Series:
         d_sq = np.sum((time_rank - price_rank) ** 2)
         val = (1 - (6 * d_sq) / (period**3 - period)) * 100
         rci_values.append(val)
-    
     return pd.Series(rci_values, index=series.index)
 
-
-def process_existing_merged(filepath):
-    """既存の merged_*.csv を読み込んで指標を再計算"""
+def process_file(filepath, battle_score=0):
     try:
         df = pd.read_csv(filepath)
-        
-        # インデックスをリセット
-        if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
-            df.set_index('timestamp', inplace=True)
-        elif 'Unnamed: 0' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['Unnamed: 0'])
-            df.set_index('timestamp', inplace=True)
-            df.drop(columns=['Unnamed: 0'], errors='ignore', inplace=True)
-        
-        # 必須カラムの確認
-        if 'close' not in df.columns:
-            print(f"  ❌ 'close' カラムがありません")
-            return None
-        
-        # 欠損埋め
-        df["close"] = pd.to_numeric(df["close"], errors='coerce').ffill()
-        
-        if "open" not in df.columns:
-            df["open"] = df["close"]
-        if "high" not in df.columns:
-            df["high"] = df["close"]
-        if "low" not in df.columns:
-            df["low"] = df["close"]
-        if "volume" not in df.columns:
-            df["volume"] = 0
-            
-        df["open"] = pd.to_numeric(df["open"], errors='coerce').fillna(df["close"])
-        df["high"] = pd.to_numeric(df["high"], errors='coerce').fillna(df["close"])
-        df["low"] = pd.to_numeric(df["low"], errors='coerce').fillna(df["close"])
-        df["volume"] = pd.to_numeric(df["volume"], errors='coerce').fillna(0)
-        
-        # 板情報（なければデフォルト値）
-        if "obi" not in df.columns:
-            df["obi"] = 0.5
-        if "ndbi" not in df.columns:
-            df["ndbi"] = 0.0
-        if "hsr" not in df.columns:
-            df["hsr"] = 0.0
+        rename_map = {
+            "Date": "datetime", "date": "datetime", 
+            "Open": "open", "High": "high", "Low": "low", "Close": "close",
+            "Volume": "volume", "AdjC": "close", "AdjO": "open", "AdjH": "high", "AdjL": "low", "AdjVo": "volume"
+        }
+        df.rename(columns=rename_map, inplace=True)
+        if 'close' not in df.columns: return None
 
-        # ==========================================
-        # テクニカル指標計算
-        # ==========================================
+        if 'datetime' in df.columns:
+            df['datetime'] = pd.to_datetime(df['datetime'])
+            df.set_index('datetime', inplace=True)
         
-        # 1. MACD
+        df = df[~df.index.duplicated(keep='last')]
+        df.sort_index(inplace=True)
+
+        df["close"] = pd.to_numeric(df["close"], errors='coerce').ffill()
+        for col in ["open", "high", "low"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(df["close"])
+            else:
+                df[col] = df["close"]
+        if "volume" in df.columns:
+            df["volume"] = pd.to_numeric(df["volume"], errors='coerce').fillna(0)
+        else:
+            df["volume"] = 0
+
+        # --- テクニカル指標 ---
         try:
             macd = ta.macd(df['close'], fast=12, slow=26, signal=9)
-            if macd is not None:
-                df = pd.concat([df, macd], axis=1)
-        except Exception as e:
-            print(f"  ⚠️ MACD計算エラー: {e}")
-        
-        # 2. Bollinger Bands
+            if macd is not None: df = pd.concat([df, macd], axis=1)
+        except: pass
+
         try:
             bb = ta.bbands(df['close'], length=20, std=2)
-            if bb is not None:
-                df = pd.concat([df, bb], axis=1)
-        except Exception as e:
-            print(f"  ⚠️ BB計算エラー: {e}")
-        
-        # 3. Parabolic SAR
-        try:
-            psar = ta.psar(df['high'], df['low'], df['close'], af0=0.02, af=0.2)
-            if psar is not None:
-                df = pd.concat([df, psar], axis=1)
-        except:
-            pass
+            if bb is not None: df = pd.concat([df, bb], axis=1)
+        except: pass
 
-        # 4. RCI (順位相関指数)
         df['rci_9'] = calc_rci_series(df['close'], period=9)
         df['rci_26'] = calc_rci_series(df['close'], period=26)
-        
-        # 5. RSI
+
         try:
-            rsi = ta.rsi(df['close'], length=14)
-            if rsi is not None:
-                df['RSI_14'] = rsi
-        except:
-            df['RSI_14'] = 50.0
+            df['RSI_14'] = ta.rsi(df['close'], length=14)
+        except: pass
         
-        # 6. SMA
-        try:
-            sma = ta.sma(df['close'], length=25)
-            if sma is not None:
-                df['SMA_25'] = sma
-        except:
-            df['SMA_25'] = df['close']
+        df['SMA_25'] = df['close'].rolling(25).mean()
+        df['dist_sma25'] = (df['close'] - df['SMA_25']) / (df['SMA_25'] + 1e-9) * 100
         
-        # 7. 出来高比率
-        vol_ma = df['volume'].rolling(20).mean()
-        df['vol_ratio'] = df['volume'] / (vol_ma + 1e-9)
-        df['vol_ratio'] = df['vol_ratio'].replace([np.inf, -np.inf], 1.0).fillna(1.0)
-        
-        # 8. MA15乖離率
         ma15 = df['close'].rolling(15).mean()
         df['dist_ma15'] = (df['close'] - ma15) / (ma15 + 1e-9)
         
-        # 9. ボラティリティ
         df['volatility'] = (df['high'] - df['low']) / (df['open'] + 1e-9)
         
-        # 10. SMA25乖離率
-        if 'SMA_25' in df.columns:
-            df['dist_sma25'] = (df['close'] - df['SMA_25']) / (df['SMA_25'] + 1e-9) * 100
+        vol_ma = df['volume'].rolling(20).mean()
+        df['vol_ratio'] = df['volume'] / (vol_ma + 1e-9)
+        
+        # --- ★戦績スコア注入 ---
+        # 優先枠ならスコアあり、野良枠なら0
+        score_val = battle_score / 1000.0
+        df['battle_score'] = score_val
 
-        # NaN行を削除（最初の30行程度）
         df = df.iloc[30:].dropna(subset=['close'])
-        
         return df
-        
-    except Exception as e:
-        print(f"  ❌ 処理エラー: {e}")
-        import traceback
-        traceback.print_exc()
+
+    except Exception:
         return None
 
-
 def main():
-    """メイン処理"""
     print("=" * 60)
-    print("🚀 データ加工プロセス v12.0")
+    print("🚀 データ加工 v15.0 (Random Injection)")
+    print("   優先枠 + ランダム100銘柄で最強のデータセットを作成")
     print("=" * 60)
     
     os.makedirs(DATA_OUT_DIR, exist_ok=True)
     
-    # 既存の merged_*.csv を探す
-    existing_files = glob.glob(os.path.join(DATA_OUT_DIR, "merged_*.csv"))
+    # 1. 処理対象リストを作成
+    target_codes, battle_data, file_map = create_target_list()
     
-    if not existing_files:
-        print("❌ data/ フォルダに merged_*.csv がありません")
-        print("   先にボットを実行してデータを収集してください")
+    if not target_codes:
         return
-    
-    print(f"📋 対象ファイル数: {len(existing_files)}")
+
+    print(f"\n⚙️ 処理開始...")
     print("-" * 60)
     
-    success_count = 0
-    skip_count = 0
+    count = 0
+    injected_count = 0
     
-    for filepath in sorted(existing_files):
-        filename = os.path.basename(filepath)
-        stock_code = filename.replace("merged_", "").replace(".csv", "")
-        
-        print(f"\n📈 処理中: {stock_code}")
-        
-        df = process_existing_merged(filepath)
-        
-        if df is not None and len(df) > 100:
-            # 上書き保存
-            df.to_csv(filepath)
-            print(f"  ✅ 完了: {len(df)}行")
-            success_count += 1
-        else:
-            row_count = len(df) if df is not None else 0
-            print(f"  ⚠️ スキップ: データ不足 ({row_count}行)")
-            skip_count += 1
-    
-    print("\n" + "=" * 60)
-    print(f"🎉 完了!")
-    print(f"   成功: {success_count} 銘柄")
-    print(f"   スキップ: {skip_count} 銘柄")
-    print(f"\n👉 次のステップ: py -3.12 step3_train.py")
-    print("=" * 60)
+    for code in target_codes:
+        # ファイルパス取得
+        filepath = file_map.get(code)
+        if not filepath: continue
 
+        # 戦績スコアを取得（野良枠は0になる）
+        score = battle_data.get(code, 0)
+        
+        # 加工実行
+        df = process_file(filepath, battle_score=score)
+        
+        if df is not None and len(df) > 0:
+            save_path = os.path.join(DATA_OUT_DIR, f"merged_{code}.csv")
+            df['code'] = code
+            df.to_csv(save_path)
+            
+            if score != 0:
+                print(f"🔥 {code} (戦績:¥{score:,}) -> 優先注入")
+                injected_count += 1
+            elif count % 20 == 0:
+                print(f"🎲 {code} (野良) -> 追加")
+            
+            count += 1
+            
+    print("-" * 60)
+    print(f"🎉 完了！")
+    print(f"   作成ファイル数: {count} 件")
+    print(f"   (内訳: 戦績入り {injected_count} 件 / 野良 {count - injected_count} 件)")
+    print(f"\n👉 次のステップ: py -3.12 train_universal.py")
+    print("   ※ データ量が増えたので、学習には少し時間がかかります")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()
