@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-step1_setup_data.py
-===================
-yfinanceを使って、新ポートフォリオ全銘柄の過去データを取得し、
-ボットが学習できる形式 (merged_XXXX.csv) に変換して保存する。
+step0_yfinance_patch.py
+=======================
+【最終兵器】
+J-Quantsにも実戦ログにもなかった「完全な欠落銘柄（485Aなど）」を
+yfinanceを使って穴埋めします。
+
+★安全設計:
+すでにデータがある銘柄（285Aなど）はスキップします。
+上書き事故を防ぎます。
 """
 
 import os
@@ -11,64 +16,70 @@ import yfinance as yf
 import pandas as pd
 import time
 
-# 保存先ディレクトリ
+# ==========================================
+# 設定
+# ==========================================
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# ★v13.0 Aggressive Portfolio (全16銘柄)
+# 監視対象リスト (ここにある中で、ファイルがないものを探します)
 TARGET_CODES = [
-    # Tier 1: 重工・造船
-    "7011", "7013", "7003", "6269",
-    # Tier 2: 半導体エース
-    "285A", "3110",
-    # Tier 3: 監視枠 (データは必要)
-    "6920", "6146",
-    # Tier 4: 主力・ディフェンシブ
-    "6954", "6506", "9984", "8411", "9107", "9501", "8136", "7974"
+    "9501", "8411", "5803", "9984", "6954", "6269", "285A", "5801", "485A", "4570",
+    "3110", "7974", "6525", "6330", "1662", "3350", "7746", "5016", "8306", "4506",
+    "1893", "278A", "6702", "464A", "5101", "6501", "6758", "7267", "3382", "4446",
+    "4082", "7003", "7735", "7711", "8135", "186A", "5802", "9107", "7453", "9227",
+    "7701", "8086", "9104", "4889", "4901", "6770", "9830", "2503"
 ]
 
 def download_and_save(code):
-    print(f"📥 [{code}] データを取得中...", end=" ")
+    file_path = os.path.join(DATA_DIR, f"merged_{code}.csv")
+    
+    # ★すでにデータがあるなら何もしない（重要）
+    if os.path.exists(file_path):
+        print(f"🛡️  [{code}] はすでにデータがあります (Skip)")
+        return
+
+    print(f"📥 [{code}] データをyfinanceから取得中...", end=" ")
     
     ticker = f"{code}.T"
     try:
-        # 過去5日間の1分足を取得
+        # 1分足を最大期間（約7日分）取得
+        # ※足りなければ daily データに切り替える戦略もありですが、
+        #   ボットの性質上、短い期間でも 1分足 の方が食いつきが良いです。
         df = yf.download(ticker, period="5d", interval="1m", progress=False)
         
-        if len(df) == 0:
+        if df.empty:
             print("❌ データなし")
             return
 
-        # マルチインデックス解除 (yfinanceの仕様対策)
+        # マルチインデックス解除
         if isinstance(df.columns, pd.MultiIndex):
-            try:
-                df.columns = df.columns.get_level_values(0)
-            except:
-                pass
+            df.columns = df.columns.get_level_values(0)
         
-        # カラム名を小文字に統一
+        # カラム名を統一 (Open -> open)
         df.columns = [c.lower() for c in df.columns]
         
-        # 必要なカラムに絞る (テクニカル計算は step4 に任せるのでRawデータのみ)
+        # 必要なカラム確認
         required = ['open', 'high', 'low', 'close', 'volume']
         if not all(col in df.columns for col in required):
             print("⚠️ カラム不足")
             return
             
+        # 整形
         df = df[required].dropna()
+        df.index.name = "datetime"
         
         # タイムゾーン調整 (UTC -> JST)
-        # yfinanceは通常ローカル時刻かUTCで返すが、念のため
         if df.index.tz is not None:
             df.index = df.index.tz_convert('Asia/Tokyo')
         else:
-            # tzなしの場合はUTCとみなしてJSTへ (簡易対応)
             df.index = df.index + pd.Timedelta(hours=9)
+            
+        # indexを列に戻す（保存形式を合わせるため）
+        df.reset_index(inplace=True)
 
-        # ファイル保存 (merged_{code}.csv)
-        save_path = os.path.join(DATA_DIR, f"merged_{code}.csv")
-        df.to_csv(save_path)
-        
+        # 保存
+        df.to_csv(file_path, index=False)
         print(f"✅ 保存完了 ({len(df)}行)")
         
     except Exception as e:
@@ -76,18 +87,16 @@ def download_and_save(code):
 
 def main():
     print("=" * 60)
-    print("🚀 初期データセットアップ (yfinance)")
+    print("🚑 yfinance データ補完ミッション")
+    print("   不足している銘柄のみをダウンロードします")
     print("=" * 60)
     
     for code in TARGET_CODES:
-        download_and_save(code)
-        time.sleep(1) # サーバー負荷軽減
+        download_and_save(str(code))
+        time.sleep(0.5) # 優しさウェイト
         
     print("-" * 60)
-    print("🎉 全データの取得が完了しました。")
-    print("👉 次の手順:")
-    print("   1. py step4_process_daily_log.py  (テクニカル指標の計算)")
-    print("   2. py step3_train.py              (AIモデルの学習 v12)")
+    print("🎉 補完完了！ step3_train.py に進んでください。")
     print("=" * 60)
 
 if __name__ == "__main__":

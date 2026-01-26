@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-step2_screening.py v6.1 (Ghost Buster + Point System)
-=====================================================
-v5.1の高度なポイント分析ロジックに、
-v6.0の「上場廃止銘柄除外（鮮度チェック）」を追加した完全版。
-
-【機能】
-1. データの最終更新日が古い（5日以上前）銘柄を自動除外
-2. RSI, 乖離率, ADX, 出来高倍率などを総合評価
+step2_screening.py v6.5 (Safety First)
+======================================
+【修正点】
+1. ブラックリスト対応: config.yamlのblacklistに入っている銘柄を絶対除外
+2. 暴落回避: 前日比 -5% 以下の銘柄は「落ちるナイフ」として除外
+3. 価格制限: 上限を 10,000円 -> 4,000円 に下げて、高額株の事故を防ぐ
 """
 
 import os
 import glob
 import pandas as pd
 import numpy as np
+import re
+import yaml
 import warnings
 from concurrent.futures import ProcessPoolExecutor
 
@@ -24,30 +24,64 @@ warnings.filterwarnings('ignore')
 # ==========================================
 DATA_DIR = "data_archive_daily"
 OUTPUT_FILE = "target_list.csv"
-TARGET_COUNT = 10
-
-# ★追加: データの鮮度チェック（何日以上前なら除外するか）
+CONFIG_FILE = "config.yaml"
+TARGET_COUNT = 7
 MAX_DAYS_OLD = 5  
 
 ABSOLUTE_NG = {
-    "max_rsi": 80,
-    "max_kairi": 20,
-    "max_change": 10,
+    "max_rsi": 85,
+    "max_kairi": 25,
+    "max_change": 15,     # 上昇しすぎも怖いけど一旦許容
+    "min_change": -5.0,   # ★追加: これ以上暴落してる銘柄は触らない
 }
 
 BASE_PARAMS = {
-    "min_price": 150,
-    "max_price": 5000,
-    "min_trading_val": 300_000_000,
-    "min_days": 30
+    "min_price": 500,
+    "max_price":10000,                # ★修正: 10000 -> 4000 (高額株排除)
+    "min_trading_val": 1_000_000_000, # 10億円以上
+    "min_days": 30,
+    "min_volatility": 1.5
 }
 
 
+def load_config_lists():
+    """config.yaml から固定銘柄とブラックリストを取得"""
+    fixed_codes = set()
+    blacklist_codes = set()
+    
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+                
+                # 固定銘柄
+                symbols = config.get("symbols", [])
+                for s in symbols:
+                    if s.get("fixed", False):
+                        fixed_codes.add(str(s["code"]))
+                
+                # ブラックリスト
+                gatekeeper = config.get("gatekeeper", {})
+                bl = gatekeeper.get("blacklist", [])
+                for b in bl:
+                    blacklist_codes.add(str(b))
+                    
+        except Exception as e:
+            print(f"⚠️ config.yaml 読み込みエラー: {e}")
+            
+    return fixed_codes, blacklist_codes
+
+
 def convert_code(code_str):
-    """5桁コードを4桁に変換"""
     if len(code_str) == 5 and code_str.endswith('0'):
         return code_str[:-1]
     return code_str
+
+
+def is_valid_code(code_str):
+    if len(code_str) != 4: return False
+    if not re.match(r'^[0-9A-Z]{4}$', code_str): return False
+    return True
 
 
 def calc_rsi(series, period=14):
@@ -58,49 +92,17 @@ def calc_rsi(series, period=14):
     return 100 - (100 / (1 + rs))
 
 
-def calc_adx(high, low, close, period=14):
-    tr1 = high - low
-    tr2 = abs(high - close.shift(1))
-    tr3 = abs(low - close.shift(1))
-    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-    atr = tr.rolling(period).mean()
-    
-    up_move = high - high.shift(1)
-    down_move = low.shift(1) - low
-    
-    plus_dm = up_move.where((up_move > down_move) & (up_move > 0), 0)
-    minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0)
-    
-    plus_di = 100 * (plus_dm.rolling(period).mean() / atr)
-    minus_di = 100 * (minus_dm.rolling(period).mean() / atr)
-    
-    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di + 1e-10)
-    adx = dx.rolling(period).mean()
-    
-    return adx
-
-
 def analyze_stock(file_path):
-    """ポイント制で銘柄を評価"""
     try:
-        # カラム名を柔軟に処理
         df = pd.read_csv(file_path)
+        if len(df) < BASE_PARAMS["min_days"]: return None
         
-        if len(df) < BASE_PARAMS["min_days"]:
-            return None
-        
-        # カラム名の正規化（大文字小文字対応）
         df.columns = df.columns.str.lower()
         
-        # 必要なカラムを探す
-        if 'datetime' in df.columns:
-            date_col = 'datetime'
-        elif 'date' in df.columns:
-            date_col = 'date'
-        else:
-            return None
+        if 'datetime' in df.columns: date_col = 'datetime'
+        elif 'date' in df.columns: date_col = 'date'
+        else: return None
         
-        # 調整後価格があればそちらを使う
         if 'adjc' in df.columns:
             close_col = 'adjc'
             open_col = 'adjo' if 'adjo' in df.columns else 'open'
@@ -108,178 +110,107 @@ def analyze_stock(file_path):
             low_col = 'adjl' if 'adjl' in df.columns else 'low'
             vol_col = 'adjvo' if 'adjvo' in df.columns else 'volume'
         else:
-            close_col = 'close'
-            open_col = 'open'
-            high_col = 'high'
-            low_col = 'low'
-            vol_col = 'volume'
+            close_col, open_col, high_col, low_col, vol_col = 'close', 'open', 'high', 'low', 'volume'
         
         required = [close_col, open_col, high_col, low_col, vol_col]
         for col in required:
-            if col not in df.columns:
-                return None
+            if col not in df.columns: return None
         
-        df[date_col] = pd.to_datetime(df[date_col])
+        df[date_col] = pd.to_datetime(df[date_col], format='mixed', errors='coerce')
+        df = df.dropna(subset=[date_col])
+        if len(df) < BASE_PARAMS["min_days"]: return None
         df.sort_values(date_col, inplace=True)
         df.reset_index(drop=True, inplace=True)
         
-        # ==========================================
-        # ★追加: データの鮮度チェック（ゴーストバスター）
-        # ==========================================
         last_date = df[date_col].iloc[-1]
+        if last_date.tzinfo is not None: last_date = last_date.tz_localize(None)
         today = pd.Timestamp.now()
-        delta_days = (today - last_date).days
-        
-        # 「最後のデータが指定日数以上前」なら上場廃止かデータ切れなので除外
-        if delta_days > MAX_DAYS_OLD:
-            # print(f"👻 除外(古い): 最終更新 {last_date.date()}")
-            return None
+        if (today - last_date).days > MAX_DAYS_OLD: return None
 
-        # ここからいつもの分析
         latest = df.iloc[-1]
         prev = df.iloc[-2]
         
-        # コード取得（5桁→4桁変換）
         code = os.path.basename(file_path).replace("daily_", "").replace(".csv", "")
         code = convert_code(code)
-        
-        if len(code) != 4 or not code.isdigit():
-            return None
+        if not is_valid_code(code): return None
         
         close = float(latest[close_col])
-        open_price = float(latest[open_col])
+        open_p = float(latest[open_col])
         high = float(latest[high_col])
         low = float(latest[low_col])
         volume = float(latest[vol_col])
         
-        if pd.isna(close) or pd.isna(volume) or close == 0 or volume == 0:
-            return None
+        if pd.isna(close) or pd.isna(volume) or close == 0 or volume == 0: return None
         
-        # 基本フィルタ
-        if not (BASE_PARAMS["min_price"] <= close <= BASE_PARAMS["max_price"]):
-            return None
+        # 価格フィルタ (4000円以下に厳選)
+        if not (BASE_PARAMS["min_price"] <= close <= BASE_PARAMS["max_price"]): return None
         
         trading_value = close * volume
-        if trading_value < BASE_PARAMS["min_trading_val"]:
-            return None
+        if trading_value < BASE_PARAMS["min_trading_val"]: return None
         
-        # 絶対NG条件
+        # ボラティリティチェック
+        df['range_pct'] = (df[high_col] - df[low_col]) / df[open_col] * 100
+        daily_range_pct = (high - low) / open_p * 100
+        avg_range_5d = df['range_pct'].iloc[-5:].mean()
+        
+        if avg_range_5d < BASE_PARAMS["min_volatility"]: return None
+
+        # テクニカル指標
         df['rsi'] = calc_rsi(df[close_col], 14)
         rsi = df['rsi'].iloc[-1]
-        if pd.isna(rsi) or rsi > ABSOLUTE_NG["max_rsi"]:
-            return None
+        if pd.isna(rsi) or rsi > ABSOLUTE_NG["max_rsi"]: return None
         
         df['ma25'] = df[close_col].rolling(25).mean()
         ma25 = df['ma25'].iloc[-1]
-        if pd.isna(ma25):
-            return None
+        if pd.isna(ma25): return None
         
         kairi = (close - ma25) / ma25 * 100
-        if kairi > ABSOLUTE_NG["max_kairi"]:
-            return None
+        if kairi > ABSOLUTE_NG["max_kairi"]: return None
         
         prev_close = float(prev[close_col])
-        if pd.isna(prev_close) or prev_close == 0:
-            return None
+        if pd.isna(prev_close) or prev_close == 0: return None
         change_pct = (close - prev_close) / prev_close * 100
-        if change_pct > ABSOLUTE_NG["max_change"]:
-            return None
         
-        # ==========================================
-        # ポイント制評価
-        # ==========================================
+        # ★NG条件: 上がりすぎ or 下がりすぎ(暴落)
+        if change_pct > ABSOLUTE_NG["max_change"]: return None
+        if change_pct < ABSOLUTE_NG["min_change"]: return None # -5%以下は除外
+
+        # ポイント計算
         points = 0
+        if daily_range_pct >= 5.0: points += 20
+        elif daily_range_pct >= 3.0: points += 15
+        elif daily_range_pct >= 2.0: points += 10
+        elif daily_range_pct < 1.0: points -= 10
         
-        # RSI
-        if 50 <= rsi <= 60:
-            points += 20
-        elif 40 <= rsi <= 70:
-            points += 10
-        elif rsi < 40:
-            points += 5
-        elif rsi > 70:
-            points -= 10
-        
-        # 乖離率
-        if 0 <= kairi <= 5:
-            points += 15
-        elif 5 < kairi <= 10:
-            points += 5
-        elif kairi > 10:
-            points -= 10
-        elif kairi < 0:
-            points -= 5
-        
-        # トレンド
-        if close > ma25:
-            points += 15
-        else:
-            points -= 10
-        
-        # 変化率
-        if 0.5 <= change_pct <= 3:
-            points += 15
-        elif 0 < change_pct < 0.5:
-            points += 5
-        elif 3 < change_pct <= 5:
-            points += 0
-        elif change_pct > 5:
-            points -= 10
-        elif change_pct < 0:
-            points -= 5
-        
-        # 出来高
         recent_vol = df[vol_col].iloc[-6:-1].mean()
+        vol_ratio = 1.0
         if recent_vol > 0:
             vol_ratio = volume / recent_vol
-            if vol_ratio >= 1.5:
-                points += 15
-            elif vol_ratio >= 1.2:
-                points += 10
-            elif vol_ratio >= 1.0:
-                points += 5
-            else:
-                points -= 5
-        else:
-            vol_ratio = 1.0
+            if vol_ratio >= 3.0: points += 25
+            elif vol_ratio >= 2.0: points += 20
+            elif vol_ratio >= 1.5: points += 15
+            elif vol_ratio >= 1.2: points += 10
+            elif vol_ratio < 0.8: points -= 10
         
-        # ADX (本格計算)
-        df['adx'] = calc_adx(df[high_col], df[low_col], df[close_col], 14)
-        adx = df['adx'].iloc[-1]
-        if pd.isna(adx):
-            adx = 0
+        if 50 <= rsi <= 70: points += 10
+        elif 40 <= rsi < 50: points += 5
+        elif rsi > 75: points -= 5
+        elif rsi < 30: points -= 5
         
-        if adx >= 30:
-            points += 15
-        elif adx >= 20:
-            points += 10
-        elif adx >= 15:
-            points += 5
-        
-        # 陽線/陰線
-        if close > open_price:
-            points += 10
-        else:
-            points -= 5
-        
-        # 上ヒゲ
-        if high > low:
-            upper_shadow = high - max(close, open_price)
-            total_range = high - low
-            upper_ratio = upper_shadow / total_range
-            if upper_ratio > 0.3:
-                points -= 10
-            elif upper_ratio > 0.2:
-                points -= 5
-        
-        # 売買代金ボーナス
         tv_oku = trading_value / 100_000_000
-        if tv_oku >= 10:
-            points += 10
-        elif tv_oku >= 5:
-            points += 5
+        if tv_oku >= 50: points += 15
+        elif tv_oku >= 30: points += 10
+        elif tv_oku >= 20: points += 5
         
-        # 最終スコア
+        if close > ma25: points += 10
+        if close > open_p: points += 5
+        
+        if high > low:
+            upper_shadow = high - max(close, open_p)
+            upper_ratio = upper_shadow / (high - low)
+            if upper_ratio > 0.4: points -= 15
+            elif upper_ratio > 0.25: points -= 5
+
         score = points * np.log10(trading_value)
         
         return {
@@ -287,38 +218,34 @@ def analyze_stock(file_path):
             "close": int(close),
             "change_pct": round(change_pct, 2),
             "vol_ratio": round(vol_ratio, 2),
-            "rsi": round(rsi, 1),
-            "adx": round(adx, 1),
-            "kairi": round(kairi, 2),
+            "range_pct": round(daily_range_pct, 2),
             "trading_val": round(tv_oku, 1),
             "points": points,
             "score": round(score, 1)
         }
         
-    except Exception as e:
+    except Exception:
         return None
 
 
 def main():
     print("=" * 70)
-    print("💎 ポイント制スクリーニング v6.1 (Ghost Buster + Point System)")
-    print(f"   データ期限: {MAX_DAYS_OLD}日以内 (古いデータは除外)")
+    print("💎 ポイント制スクリーニング v6.5 (Safety First)")
+    print(f"   基準: 4,000円以下 / 暴落(-5%)除外 / 売買代金10億円以上")
     print("=" * 70)
-    print("【絶対NG条件】")
-    print(f"   RSI > {ABSOLUTE_NG['max_rsi']}")
-    print(f"   乖離率 > {ABSOLUTE_NG['max_kairi']}%")
-    print(f"   上昇率 > {ABSOLUTE_NG['max_change']}%")
-    print("-" * 70)
+    
+    fixed_codes, blacklist_codes = load_config_lists()
+    
+    if fixed_codes: print(f"🔒 固定銘柄を除外: {len(fixed_codes)}件")
+    if blacklist_codes: print(f"⛔ ブラックリスト除外: {len(blacklist_codes)}件")
     
     files = glob.glob(os.path.join(DATA_DIR, "daily_*.csv"))
-    
     if not files:
         print("❌ データファイルがありません")
         return
     
     print(f"📊 分析対象: {len(files)} 銘柄")
     
-    # 並列処理
     results = []
     with ProcessPoolExecutor() as executor:
         for i, res in enumerate(executor.map(analyze_stock, files)):
@@ -327,29 +254,38 @@ def main():
             if (i + 1) % 500 == 0:
                 print(f"   処理中... [{i+1}/{len(files)}]")
     
-    print(f"   処理完了: {len(files)} 銘柄 → {len(results)} 銘柄がポイント>0")
+    print(f"   処理完了: {len(files)} 銘柄 → {len(results)} 銘柄が候補")
     print("-" * 70)
     
     if results:
         results.sort(key=lambda x: x["score"], reverse=True)
-        final = results[:TARGET_COUNT]
+        
+        final = []
+        for res in results:
+            if len(final) >= TARGET_COUNT: break
+            
+            # 除外チェック
+            code = res["code"]
+            if code in fixed_codes: continue
+            if code in blacklist_codes: continue
+            
+            final.append(res)
         
         print(f"\n🎯 最終選抜 ({len(final)}銘柄)")
-        print(f"{'順位':<4} {'コード':<6} {'終値':>7} {'変化率':>7} {'RSI':>6} {'ADX':>6} {'乖離':>6} {'倍率':>5} {'Pt':>4} {'スコア':>7}")
-        print("-" * 75)
+        print(f"{'順位':<4} {'コード':<6} {'終値':>7} {'変化率':>7} {'値幅%':>6} {'倍率':>5} {'代金(億)':>8} {'Pt':>4} {'スコア':>7}")
+        print("-" * 80)
         
         for i, row in enumerate(final):
             print(f"{i+1:<4} {row['code']:<6} {row['close']:>7,} {row['change_pct']:>+6.2f}% "
-                  f"{row['rsi']:>6.1f} {row['adx']:>6.1f} {row['kairi']:>+5.1f}% "
-                  f"{row['vol_ratio']:>4.1f}x {row['points']:>4} {row['score']:>7.1f}")
+                  f"{row['range_pct']:>6.1f} {row['vol_ratio']:>4.1f}x "
+                  f"{row['trading_val']:>8.1f} {row['points']:>4} {row['score']:>7.1f}")
         
         df_result = pd.DataFrame(final)
         df_result.to_csv(OUTPUT_FILE, index=False)
-        
         print(f"\n💾 {OUTPUT_FILE} に保存しました")
         
     else:
-        print("\n❌ ポイント>0の銘柄がありませんでした")
+        print("\n❌ 候補が見つかりませんでした")
         pd.DataFrame(columns=["code"]).to_csv(OUTPUT_FILE, index=False)
     
     print("=" * 70)

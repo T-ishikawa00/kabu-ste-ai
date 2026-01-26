@@ -1,0 +1,200 @@
+# -*- coding: utf-8 -*-
+"""
+step2_env_universal.py v17.21 (Trailing Stop Edition)
+=====================================================
+【解決策】
+時間を短くするのではなく、「利益確保（トレーリング）」を導入する。
+1. MAX_HOLD: 30 (時間を倍にして、利益を伸ばすチャンスを作る)
+2. TRAILING_STOP: 最高値から一定幅落ちたら、時間前でも即利確する。
+   → これにより「含み益が含み損になる」現象をプログラムで阻止する。
+"""
+
+import gymnasium as gym
+import numpy as np
+import pandas as pd
+from gymnasium import spaces
+
+class TradingEnv(gym.Env):
+    def __init__(self, df, stock_code="UNKNOWN"):
+        super(TradingEnv, self).__init__()
+        self.df = df.reset_index(drop=True)
+        self.MAX_STEPS = len(self.df) - 1
+        self.stock_code = str(stock_code)
+
+        # ==========================================
+        # ★恐怖を消すための設定
+        # ==========================================
+        self.ENTRY_COST = 0.05
+        
+        # 時間は「30分」に伸ばす (焦って切らない)
+        self.MAX_HOLD = 30        
+        self.STAY_BONUS = 0.002
+
+        # ★トレーリングストップ設定
+        # 利益が 0.3% 乗ったら追跡開始
+        self.TRAIL_START = 0.3 
+        # 最高値から 0.15% 落ちたら即利確 (利益確保)
+        self.TRAIL_CALLBACK = 0.15
+
+        self.action_space = spaces.Discrete(3)
+        self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(18,), dtype=np.float32
+        )
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        min_start = 60
+        max_start = max(min_start + 1, len(self.df) - 500)
+        self.current_step = self.np_random.integers(min_start, max_start) if max_start > min_start else min_start
+
+        self.position = 0
+        self.entry_price = 0.0
+        self.balance = 0.0
+        self.trades = []
+        self.hold_duration = 0
+        self.max_profit_pct = 0.0 # このトレードでの最高含み益
+        
+        self.episode_wins = 0
+        self.episode_losses = 0
+        
+        return self._next_observation(), {}
+
+    def _next_observation(self):
+        # (前回と同じため省略: 18次元のデータ作成)
+        # ... v17.20と同じコード ...
+        row = self.df.iloc[self.current_step]
+        prev = self.df.iloc[self.current_step - 1]
+        cur_price = float(row['close'])
+        
+        pct_change = (cur_price - float(prev['close'])) / float(prev['close']) * 100 if prev['close'] else 0
+
+        unrealized_pnl = 0.0
+        if self.position == 1:
+            unrealized_pnl = (cur_price - self.entry_price) / self.entry_price * 100
+        elif self.position == -1:
+            unrealized_pnl = (self.entry_price - cur_price) / self.entry_price * 100
+
+        def get_val(key, default=0.0):
+            return float(row.get(key, default))
+
+        obs = np.array([
+            pct_change, get_val('obi', 0.5), get_val('MACDh_12_26_9', 0.0), get_val('BBP_20_2.0', 0.5),
+            get_val('rci_9', 0.0) / 100.0, get_val('rci_26', 0.0) / 100.0, 0.0,
+            get_val('RSI_14', 50.0) / 100.0, get_val('vol_ratio', 1.0), get_val('dist_sma25', 0.0),
+            float(self.position), unrealized_pnl, get_val('dist_ma15', 0.0), get_val('volatility', 0.0),
+            self.hold_duration / self.MAX_HOLD, get_val('ndbi', 0.0), get_val('hsr', 0.0),
+            get_val('battle_score', 0.0)
+        ], dtype=np.float32)
+        return np.nan_to_num(obs)
+
+    def step(self, action):
+        row = self.df.iloc[self.current_step]
+        cur_price = float(row['close'])
+        reward = 0.0
+        terminated = False
+        
+        if self.position != 0:
+            self.hold_duration += 1
+            
+            pnl_pct = 0.0
+            if self.position == 1:
+                pnl_pct = (cur_price - self.entry_price) / self.entry_price * 100
+            elif self.position == -1:
+                pnl_pct = (self.entry_price - cur_price) / self.entry_price * 100
+            
+            # 最高含み益を更新
+            self.max_profit_pct = max(self.max_profit_pct, pnl_pct)
+
+            # ==========================================
+            # ★ トレーリングストップ発動ロジック
+            # ==========================================
+            is_trailing_hit = False
+            # 利益が一度でも TRAIL_START を超えたことがあり、
+            # かつ、最高値から TRAIL_CALLBACK 以上落ちたら強制利確
+            if self.max_profit_pct >= self.TRAIL_START:
+                if pnl_pct < (self.max_profit_pct - self.TRAIL_CALLBACK):
+                    is_trailing_hit = True
+            
+            # 含み損への罰 (指数関数)
+            if pnl_pct < 0:
+                pain = (abs(pnl_pct) ** 2) * 5.0 
+                reward -= pain
+            elif pnl_pct > 0:
+                reward += (pnl_pct * 0.1)
+
+            # 強制決済判定 (時間切れ OR トレーリング発動)
+            force_exit = False
+            if self.hold_duration >= self.MAX_HOLD:
+                force_exit = True
+            elif is_trailing_hit:
+                force_exit = True
+                reward += 1.0 # ナイス利確！と褒める
+
+            if force_exit:
+                if self.position == 1: action = 2
+                elif self.position == -1: action = 1
+
+        # --- アクション処理 (v17.20と同じ) ---
+        if action == 1: # BUY
+            if self.position == 0:
+                self.position = 1
+                self.entry_price = cur_price
+                self.hold_duration = 0
+                self.max_profit_pct = 0.0
+                reward -= self.ENTRY_COST
+            elif self.position == -1:
+                self._close_position(cur_price)
+                reward += self._calc_trade_reward()
+
+        elif action == 2: # BEAR
+            if self.position == 0:
+                self.position = -1
+                self.entry_price = cur_price
+                self.hold_duration = 0
+                self.max_profit_pct = 0.0
+                reward -= self.ENTRY_COST
+            elif self.position == 1:
+                self._close_position(cur_price)
+                reward += self._calc_trade_reward()
+
+        elif action == 0:
+            if self.position == 0:
+                reward += self.STAY_BONUS
+
+        self.current_step += 1
+        if self.current_step >= self.MAX_STEPS:
+            terminated = True
+            if self.position != 0:
+                self._close_position(cur_price)
+        
+        return self._next_observation(), float(reward), terminated, False, self._get_info()
+
+    def _close_position(self, cur_price):
+        profit_pct = 0
+        if self.position == 1:
+            profit_pct = (cur_price - self.entry_price) / self.entry_price * 100
+        elif self.position == -1:
+            profit_pct = (self.entry_price - cur_price) / self.entry_price * 100
+        
+        self.balance += profit_pct
+        self.trades.append(profit_pct)
+        self.last_pnl_pct = profit_pct
+        self.position = 0
+
+    def _calc_trade_reward(self):
+        pnl = self.last_pnl_pct
+        if pnl > 0:
+            self.episode_wins += 1
+            if pnl > 0.5: return pnl * 1.5
+            return pnl
+        else:
+            self.episode_losses += 1
+            if pnl > -0.2: return pnl * 0.5 
+            return pnl * 2.0
+
+    def _get_info(self):
+        return {
+            "balance": self.balance,
+            "wins": self.episode_wins,
+            "losses": self.episode_losses
+        }

@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-train_universal.py v16.1 (Safe Loader)
-======================================
-全銘柄のデータを統合して「汎用AIモデル」を学習する。
+train_universal.py v19.3 (VWAP Native & Fresh Data Only)
+========================================================
+全銘柄データを統合して汎用モデル(先生)を鍛える。
 
-【安全機能】
-- dataフォルダに大量のファイルがあっても、
-  メモリ保護のため「最大300銘柄」までしか読み込みません。
-- ただし、config.yaml にある「監視銘柄」は最優先で読み込みます。
+【v19.3 修正点】
+1. データの読み込み時、タイムスタンプを確認して
+   「直近2時間以内に更新されたファイル（＝さっきStep4で作ったやつ）」
+   だけを対象にするフィルタを追加。
+   → フォルダに古いゴミデータが残っていても無視して、最新のデータだけで学習します。
 """
 
 import os
@@ -15,10 +16,11 @@ import glob
 import pandas as pd
 import numpy as np
 import yaml
-import random
+import time
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.callbacks import BaseCallback
+
 from step2_env_universal import TradingEnv
 import warnings
 import torch
@@ -31,27 +33,29 @@ warnings.filterwarnings("ignore")
 DATA_DIR = "data"
 MODEL_DIR = "model"
 CONFIG_FILE = "config.yaml"
-MODEL_NAME = "model_universal_v1"
-VERSION = "v16"
+TARGET_LIST_FILE = "target_list.csv"
 
-# ★メモリ保護リミッター
-# 32GBメモリなら 300~500 くらいが安全圏
-MAX_FILES_TO_LOAD = 300 
+# モデル名
+MODEL_NAME = "model_universal_v19"
 
 # ハイパーパラメータ
-LEARNING_RATE = 0.0001
-N_STEPS = 4096
-BATCH_SIZE = 256
-N_EPOCHS = 4
-GAMMA = 0.85
-ENT_COEF = 0.02
+LEARNING_RATE = 0.0003
+N_STEPS = 2048          
+BATCH_SIZE = 64
+N_EPOCHS = 10
+GAMMA = 0.99           
+ENT_COEF = 0.005       
 GAE_LAMBDA = 0.95
 CLIP_RANGE = 0.2
 
-# 学習設定
-TOTAL_TIMESTEPS = 1_000_000
+# 学習回数
+TOTAL_TIMESTEPS = 1_000_000 
 MIN_DATA_ROWS = 200
 NUM_ENVS = 4
+
+# ★データ鮮度リミット (秒)
+# Step4実行から時間が経ちすぎているファイルは無視 (2時間 = 7200秒)
+DATA_FRESHNESS_LIMIT = 7200
 
 
 class UniversalTradingEnv(TradingEnv):
@@ -68,6 +72,12 @@ class UniversalTradingEnv(TradingEnv):
         self.current_df_idx = np.random.randint(0, len(self.all_dfs))
         self.df = self.all_dfs[self.current_df_idx].reset_index(drop=True)
         self.stock_code = self.all_codes[self.current_df_idx]
+        
+        if self.stock_code in self.TIME_LIMITS:
+            self.MAX_HOLD = self.TIME_LIMITS[self.stock_code]
+        else:
+            self.MAX_HOLD = 60 # デフォルト
+            
         self.MAX_STEPS = len(self.df) - 1
         return super().reset(seed=seed, options=options)
 
@@ -85,6 +95,7 @@ class WinRateCallback(BaseCallback):
         if self.n_calls % self.check_freq == 0:
             wins = 0
             losses = 0
+            
             for env in self.training_env.envs:
                 if hasattr(env, 'episode_wins'):
                     wins += env.episode_wins
@@ -101,61 +112,51 @@ class WinRateCallback(BaseCallback):
                 if win_rate > self.best_win_rate:
                     self.best_win_rate = win_rate
                 
-                print(f"  Step {self.n_calls:,}: "
-                      f"勝率 {win_rate:.1f}% | 最高 {self.best_win_rate:.1f}%")
+                print(f"   Step {self.n_calls:,}: "
+                      f"勝率 {win_rate:.1f}% ({new_wins}-{new_losses}) | 最高 {self.best_win_rate:.1f}%")
         return True
 
 
-def get_priority_symbols():
-    """Configから優先的に読み込むべき銘柄リストを取得"""
-    priority_codes = set()
+def get_training_symbols():
+    target_codes = set()
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
                 symbols = config.get("symbols", [])
                 for s in symbols:
-                    priority_codes.add(str(s["code"]))
-        except:
-            pass
-    return priority_codes
+                    target_codes.add(str(s["code"]))
+        except: pass
+
+    if os.path.exists(TARGET_LIST_FILE):
+        try:
+            df = pd.read_csv(TARGET_LIST_FILE)
+            for c in df['code'].astype(str).tolist():
+                if len(c) == 5 and c.endswith('0'): c = c[:-1]
+                target_codes.add(c)
+        except: pass
+        
+    return target_codes
 
 def load_all_data():
-    """リミッター付きデータ読み込み"""
     csv_files = glob.glob(os.path.join(DATA_DIR, "merged_*.csv"))
     if not csv_files:
         print("❌ データファイルが見つかりません")
         return [], []
     
-    # 優先銘柄とその他を分ける
-    priority_codes = get_priority_symbols()
-    priority_files = []
-    other_files = []
+    load_targets = []
+    now_ts = time.time()
+    skipped_old = 0
     
+    # ★修正: タイムスタンプでフィルタリング
     for f in csv_files:
-        filename = os.path.basename(f)
-        code = filename.replace("merged_", "").replace(".csv", "")
-        if code in priority_codes:
-            priority_files.append(f)
+        mtime = os.path.getmtime(f)
+        if now_ts - mtime <= DATA_FRESHNESS_LIMIT:
+            load_targets.append(f)
         else:
-            other_files.append(f)
+            skipped_old += 1
             
-    print(f"🔍 ファイル検出: 計 {len(csv_files)} 件")
-    print(f"   ★優先(Config): {len(priority_files)} 件")
-    print(f"   ・その他: {len(other_files)} 件")
-
-    # 読み込みリストを作成
-    # まず優先ファイルを全部入れる
-    load_targets = priority_files[:]
-    
-    # まだ枠が余っていれば、その他からランダムに追加
-    remaining_slots = MAX_FILES_TO_LOAD - len(load_targets)
-    if remaining_slots > 0 and other_files:
-        # ランダムに選ぶ（毎回違う銘柄で学習できるメリットも）
-        sampled_others = random.sample(other_files, min(len(other_files), remaining_slots))
-        load_targets.extend(sampled_others)
-    
-    print(f"📉 メモリ保護のため {len(load_targets)} ファイルに絞って読み込みます...")
+    print(f"🔍 読み込み対象: {len(load_targets)} ファイル (古い {skipped_old} 件を除外)")
 
     all_dfs = []
     all_codes = []
@@ -166,17 +167,17 @@ def load_all_data():
             filename = os.path.basename(csv_file)
             stock_code = filename.replace("merged_", "").replace(".csv", "")
             df = pd.read_csv(csv_file)
-            
-            if len(df) < MIN_DATA_ROWS:
-                continue
+            if len(df) < MIN_DATA_ROWS: continue
             
             all_dfs.append(df)
             all_codes.append(stock_code)
             total_rows += len(df)
-            
         except Exception:
             continue
     
+    if len(all_dfs) == 0:
+        print("⚠️ 有効なデータが0件です。Step4を実行してください。")
+        
     print(f"📊 読み込み完了: {len(all_dfs)}銘柄 / 総行数 {total_rows:,}")
     return all_dfs, all_codes
 
@@ -191,12 +192,12 @@ def train():
     os.makedirs(MODEL_DIR, exist_ok=True)
     
     print("=" * 70)
-    print("🌐 汎用AIモデル学習 v16.1 (Safe Loader)")
+    print(f"🌐 汎用AIモデル学習 v19.3 (Fresh Data Only)")
+    print(f"   Model Name: {MODEL_NAME}")
     print("=" * 70)
     
     all_dfs, all_codes = load_all_data()
     if not all_dfs:
-        print("❌ 学習データなし")
         return
 
     print(f"\n🔧 環境構築中...")
@@ -206,29 +207,30 @@ def train():
     
     model_path = os.path.join(MODEL_DIR, MODEL_NAME)
     model = None
-    is_new = True
-
-    # 既存モデルチェック
+    
+    # ==========================================
+    # ★Smart Resume (継続学習ロジック)
+    # ==========================================
     if os.path.exists(f"{model_path}.zip"):
         try:
-            print(f"\n🔄 既存モデルをチェック中...")
+            print(f"\n🔄 既存の汎用モデルを発見。ロードして続きから学習します...")
             temp_model = PPO.load(model_path, env=env, device='auto')
-            saved_dim = temp_model.policy.observation_space.shape[0]
+            
+            saved_dim = temp_model.observation_space.shape[0]
             current_dim = env.observation_space.shape[0]
             
             if saved_dim != current_dim:
-                print(f"⚠️ 次元不一致 ({saved_dim} != {current_dim}) -> 新規作成")
+                print(f"⚠️ 次元不一致 ({saved_dim} != {current_dim}) -> 新規作成します")
                 model = None
             else:
-                print(f"✅ 互換性OK。継続学習します。")
+                print(f"✅ 互換性OK。継続学習開始。")
                 model = temp_model
-                is_new = False
         except Exception as e:
-            print(f"♻️  新規作成します ({e})")
+            print(f"♻️  ロード失敗 ({e}) -> 新規作成します")
             model = None
     
     if model is None:
-        if is_new: print(f"\n✨ 新規汎用モデル作成")
+        print(f"\n✨ 新規汎用モデル作成 (Zero-Scratch v19)")
         model = PPO(
             "MlpPolicy",
             env,
@@ -241,8 +243,7 @@ def train():
             gae_lambda=GAE_LAMBDA,
             clip_range=CLIP_RANGE,
             verbose=1,
-            device='auto',
-            tensorboard_log="./tb_logs/"
+            device='auto'
         )
     
     callback = WinRateCallback(check_freq=20000)
@@ -255,7 +256,7 @@ def train():
         model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback, progress_bar=True)
         model.save(model_path)
         env.save(f"{model_path}_env.pkl")
-        print(f"\n🎉 学習完了!")
+        print(f"\n🎉 学習完了! -> {model_path}.zip")
         
     except KeyboardInterrupt:
         print("\n⚠️ 中断: 現状を保存します")

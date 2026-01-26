@@ -248,7 +248,7 @@ class KabusAPI:
         return [p for p in res if str(p.get("Symbol")) == s]
 
     # ==========================================
-    # ★発注 (sendorder) - 詳細エラー対応版
+    # 発注 (sendorder) - 詳細エラー対応版
     # ==========================================
     def sendorder(self, payload: dict):
         """
@@ -271,7 +271,6 @@ class KabusAPI:
                 time.sleep(self._sendorder_min_interval - elapsed)
             self._last_sendorder_time = time.time()
 
-            # ★_safe_callを使わず、直接try-exceptで制御してエラー内容を返す
             if self._check_backoff():
                 return {"Result": -1, "Message": "API Backoff Mode (Too many errors)"}
 
@@ -298,7 +297,6 @@ class KabusAPI:
             except Exception as e:
                 self._record_error("exception")
                 logging.error(f"[API] sendorder exception: {e}")
-                # ★ここでエラー内容を辞書として返す
                 return {"Result": -1, "Message": str(e)}
 
     # ==========================================

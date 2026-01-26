@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-config_loader.py — 安全＆後方互換対応の設定ローダ（v9.0対応）
-- default_factory を用いて mutable default を排除
-- APIパスワードは環境変数優先（api_password_env / trade_password_env / 旧キーfallback）
-- orders（buy/sell）を読み込み、Broker/KabusAPI と連携
-- ★v9.0: 新しいsafety設定項目を追加
+config_loader.py v19.0 (Fresh & Logging Support)
+===============================================
+【v19.0 修正点】
+1. LoggingCfg をデータクラスとして定義。
+   → DataCollector が使う 'save_data: true' などの設定を構造化。
+2. 他の Pctベース TP/SL などの v18.4 機能は完全に維持。
 """
 from __future__ import annotations
 import os, yaml
@@ -19,6 +20,10 @@ class SymbolCfg:
     exchange: int = 1
     qty: int = 100
     min_order_interval_sec: int = 1
+    tp_pct_cap: Optional[float] = None
+    sl_pct_cap: Optional[float] = None
+    tp_ticks_cap: Optional[int] = None
+    sl_ticks_cap: Optional[int] = None
 
 @dataclass
 class PortfolioCfg:
@@ -26,7 +31,7 @@ class PortfolioCfg:
 
 @dataclass
 class TradingCfg:
-    long_only: bool = True
+    long_only: bool = False
     day_trade_credit: bool = True
 
 @dataclass
@@ -49,23 +54,59 @@ class SafetyCfg:
     board_min_interval_ms: int = 300
     api_qps_limit: int = 8
     backoff_429_ms: int = 800
-    # --- 追加: 約定→建玉反映ラグの吸収パラメータ ---
-    holdid_wait_ms: int = 3000        # HoldID を待つ最大ミリ秒
-    poll_interval_ms: int = 50        # positions/orders のポーリング間隔
+    holdid_wait_ms: int = 3000
+    poll_interval_ms: int = 50
+    cooldown_after_exit_sec: float = 2.0
+    streak_pause_sec: float = 60.0
+    min_order_interval_sec: float = 5.0
+    order_confirm_timeout_sec: float = 15.0
+    api_call_interval_sec: float = 1.0
 
-    # --- ここから追加（Controller が参照する安全系パラメータ） ---
-    cooldown_after_exit_sec: float = 2.0   # 返済直後のクールダウン
-    streak_pause_sec: float = 60.0         # 連敗時の一時停止秒数
+@dataclass
+class ShortCfg:
+    enabled: bool = True
+    allowed_symbols: List[str] = field(default_factory=list)
+    no_entry_after: str = "14:30"
+    force_close_time: str = "14:50"
+    tp_pct: float = 1.0
+    sl_pct: float = 0.4
+    max_hold_sec: int = 1800
+    panic_on_special_quote: bool = True
+    panic_distance_pct: float = 1.0
 
-    # ★★★ v9.0 新規追加: 発注制御パラメータ ★★★
-    min_order_interval_sec: float = 5.0       # 同一銘柄への発注間隔（秒）
-    order_confirm_timeout_sec: float = 15.0   # 約定確認タイムアウト（秒）
-    api_call_interval_sec: float = 1.0        # API呼び出し間隔（秒）
+@dataclass
+class CommonCfg:
+    tp_pct: float = 1.0
+    sl_pct: float = 0.4
+    max_hold_sec: int = 1800
+
+@dataclass
+class GatekeeperCfg:
+    enabled: bool = True
+    whitelist: List[str] = field(default_factory=list)
+    blacklist: List[str] = field(default_factory=list)
+
+@dataclass
+class NotificationCfg:
+    discord_webhook_url: str = ""
+    line_notify_token: str = ""
+    notify_on_startup: bool = True
+    notify_on_entry: bool = True
+    notify_on_exit: bool = True
+    notify_on_error: bool = True
+    notify_hourly: bool = True
+
+# ★追加: DataCollector 等が使うロギング設定を構造化
+@dataclass
+class LoggingCfg:
+    save_data: bool = False
+    save_interval_sec: int = 300
+    log_dir: str = "logs"
 
 @dataclass
 class BuySellCfg:
-    front_order_type: int = 10  # 10=成行, 20=指値
-    price: int = 0              # 成行なら0で無視
+    front_order_type: int = 10
+    price: int = 0
 
 @dataclass
 class OrdersCfg:
@@ -77,8 +118,8 @@ class APISettings:
     base: str = "http://localhost:18080/kabusapi"
     api_password_env: Optional[str] = "KABUS_API_PASSWORD"
     trade_password_env: Optional[str] = "KABUS_TRADE_PASSWORD"
-    api_password: Optional[str] = None       # 後方互換
-    trade_password: Optional[str] = None     # 後方互換
+    api_password: Optional[str] = None
+    trade_password: Optional[str] = None
     timeout_get_sec: int = 5
     timeout_post_sec: int = 7
 
@@ -91,26 +132,30 @@ class Config:
     trading: TradingCfg = field(default_factory=TradingCfg)
     risk: RiskCfg = field(default_factory=RiskCfg)
     safety: SafetyCfg = field(default_factory=SafetyCfg)
+    
+    short: ShortCfg = field(default_factory=ShortCfg)
+    common: CommonCfg = field(default_factory=CommonCfg)
+    gatekeeper: GatekeeperCfg = field(default_factory=GatekeeperCfg)
+    notification: NotificationCfg = field(default_factory=NotificationCfg)
+    
+    # ★修正: Dictではなく LoggingCfg クラスとして保持
+    logging: LoggingCfg = field(default_factory=LoggingCfg)
+    
     orders: OrdersCfg = field(default_factory=OrdersCfg)
     api: APISettings = field(default_factory=APISettings)
     telemetry_path: str = "runtime/state.json"
     max_concurrent_symbols: int = 5
-    mode: str = "live"  # "live" / "paper" など
+    mode: str = "live"
 
 # ---------- Loader ----------
 
 def _to_int(x: Any, default: int) -> int:
-    try:
-        return int(x)
-    except Exception:
-        return default
+    try: return int(x)
+    except: return default
 
 def _to_float(x: Any, default: float) -> float:
-    """★追加: float変換ヘルパー"""
-    try:
-        return float(x)
-    except Exception:
-        return default
+    try: return float(x)
+    except: return default
 
 def _load_orders(raw: Dict[str, Any]) -> OrdersCfg:
     def _one(d: Dict[str, Any]) -> BuySellCfg:
@@ -126,16 +171,16 @@ def _load_orders(raw: Dict[str, Any]) -> OrdersCfg:
 
 def _load_symbols(lst: Any) -> List[SymbolCfg]:
     res: List[SymbolCfg] = []
-    if not isinstance(lst, list):
-        return res
+    if not isinstance(lst, list): return res
     for s in lst:
-        if not isinstance(s, dict) or "code" not in s:
-            continue
+        if not isinstance(s, dict) or "code" not in s: continue
         res.append(SymbolCfg(
             code=str(s["code"]),
             exchange=_to_int(s.get("exchange", 1), 1),
             qty=_to_int(s.get("qty", 100), 100),
             min_order_interval_sec=_to_int(s.get("min_order_interval_sec", 1), 1),
+            tp_pct_cap=_to_float(s.get("tp_pct_cap"), 0.0) if s.get("tp_pct_cap") is not None else None,
+            sl_pct_cap=_to_float(s.get("sl_pct_cap"), 0.0) if s.get("sl_pct_cap") is not None else None
         ))
     return res
 
@@ -151,7 +196,6 @@ def _load_api(d: Dict[str, Any]) -> APISettings:
     )
 
 def _load_safety(d: Dict[str, Any]) -> SafetyCfg:
-    """★追加: SafetyCfg専用ローダー（型変換を明示的に行う）"""
     return SafetyCfg(
         api_latency_ms_limit=_to_int(d.get("api_latency_ms_limit", 1500), 1500),
         max_order_failures=_to_int(d.get("max_order_failures", 3), 3),
@@ -169,13 +213,44 @@ def _load_safety(d: Dict[str, Any]) -> SafetyCfg:
         poll_interval_ms=_to_int(d.get("poll_interval_ms", 50), 50),
         cooldown_after_exit_sec=_to_float(d.get("cooldown_after_exit_sec", 2.0), 2.0),
         streak_pause_sec=_to_float(d.get("streak_pause_sec", 60.0), 60.0),
-        # ★v9.0 新規追加
         min_order_interval_sec=_to_float(d.get("min_order_interval_sec", 5.0), 5.0),
         order_confirm_timeout_sec=_to_float(d.get("order_confirm_timeout_sec", 15.0), 15.0),
         api_call_interval_sec=_to_float(d.get("api_call_interval_sec", 1.0), 1.0),
     )
 
+def _load_short(d: Dict[str, Any]) -> ShortCfg:
+    return ShortCfg(
+        enabled=bool(d.get("enabled", True)),
+        allowed_symbols=d.get("allowed_symbols", []) or [],
+        no_entry_after=str(d.get("no_entry_after", "14:30")),
+        force_close_time=str(d.get("force_close_time", "14:50")),
+        tp_pct=_to_float(d.get("tp_pct", 1.0), 1.0),
+        sl_pct=_to_float(d.get("sl_pct", 0.4), 0.4),
+        max_hold_sec=_to_int(d.get("max_hold_sec", 1800), 1800),
+        panic_on_special_quote=bool(d.get("panic_on_special_quote", True)),
+        panic_distance_pct=_to_float(d.get("panic_distance_pct", 1.0), 1.0)
+    )
+
+def _load_common(d: Dict[str, Any]) -> CommonCfg:
+    return CommonCfg(
+        tp_pct=_to_float(d.get("tp_pct", 1.0), 1.0),
+        sl_pct=_to_float(d.get("sl_pct", 0.4), 0.4),
+        max_hold_sec=_to_int(d.get("max_hold_sec", 1800), 1800)
+    )
+
+# ★追加: loggingセクションの読み込み
+def _load_logging(d: Dict[str, Any]) -> LoggingCfg:
+    return LoggingCfg(
+        save_data=bool(d.get("save_data", False)),
+        save_interval_sec=_to_int(d.get("save_interval_sec", 300), 300),
+        log_dir=str(d.get("log_dir", "logs"))
+    )
+
 def load_cfg(path: str = "config.yaml") -> Config:
+    if not os.path.exists(path):
+        print(f"⚠️ Config file not found: {path}. Using defaults.")
+        return Config()
+
     with open(path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
 
@@ -186,11 +261,20 @@ def load_cfg(path: str = "config.yaml") -> Config:
         portfolio=PortfolioCfg(**(raw.get("portfolio", {}) or {})),
         trading=TradingCfg(**(raw.get("trading", {}) or {})),
         risk=RiskCfg(**(raw.get("risk", {}) or {})),
-        safety=_load_safety(raw.get("safety", {}) or {}),  # ★修正: 専用ローダーを使用
+        safety=_load_safety(raw.get("safety", {}) or {}),
+        
+        short=_load_short(raw.get("short", {}) or {}),
+        common=_load_common(raw.get("common", {}) or {}),
+        gatekeeper=GatekeeperCfg(**(raw.get("gatekeeper", {}) or {})),
+        notification=NotificationCfg(**(raw.get("notification", {}) or {})),
+        
+        # Dictではなく LoggingCfg として読み込む
+        logging=_load_logging(raw.get("logging", {}) or {}),
+        
         orders=_load_orders(raw),
         api=_load_api(raw.get("api", {})),
         telemetry_path=str(raw.get("telemetry_path", "runtime/state.json")),
         max_concurrent_symbols=_to_int(raw.get("max_concurrent_symbols", 5), 5),
-        mode=str(raw.get("mode", "live")),
+        mode=str(raw.get("mode", "live"))
     )
     return cfg
