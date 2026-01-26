@@ -1,17 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-step3_train.py (Fixed: Existing Model Priority)
-===============================================
-固定40銘柄の一括トレーニングスクリプト。
-
-【修正ロジック】
-1. まず「既存の個別モデル(v13)」を探します。
-   → あれば、それをロードして続きから学習します（上書きしません）。
-   
-2. なければ、「汎用モデル」を探します。
-   → あれば、それをベースに新規作成します（転移学習）。
-   
-3. どちらもなければ、ゼロから新規作成します。
+step3_train.py v19.2 (Smart Resume & New Portfolio)
+===================================================
+【v19.2 最終完成版】
+1. 銘柄リストを「資金効率重視」に更新 (SCREEN除外、三井物産・IHI追加)。
+2. 学習ロジックを「継続学習優先」に変更。
+   - 既存v19があれば続きから。
+   - なければ汎用モデルから転移。
+   - それもなければ新規作成。
 """
 
 import os
@@ -21,6 +17,7 @@ import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.callbacks import BaseCallback
+
 from step2_env import TradingEnv 
 import warnings
 import torch
@@ -32,28 +29,48 @@ warnings.filterwarnings("ignore")
 # ==========================================
 DATA_DIR = "data"
 MODEL_DIR = "model"
-VERSION = "v13"  # ★ファイル名は変えずに固定
 
-# ベースにする汎用モデル
-UNIVERSAL_MODEL_PATH = os.path.join(MODEL_DIR, "model_universal_v1.zip")
+# バージョン管理 (v19系: VWAP対応)
+VERSION = "v19" 
 
-# ★固定40銘柄リスト
+# 汎用モデル（先生）のパス
+UNIVERSAL_MODEL_PATH = os.path.join(MODEL_DIR, "model_universal_v19.zip")
+
+# ★最新ポートフォリオ (SCREEN, SBGを除外 / 8031, 7013等を追加)
 TARGET_STOCKS = [
-    "9501", "8411", "5803", "9984", "6954", "6269", "285A", "5801", "485A", "4570",
-    "3110", "7974", "6525", "6330", "1662", "3350", "7746", "5016", "8306", "4506",
-    "1893", "278A", "6702", "464A", "5101", "6501", "6758", "7267", "3382", "4446",
-    "4082", "7003", "7735", "7711", "8135", "186A", "5802", "9107", "7453", "9227"
+    # --- 攻撃担当 (半導体・ハイテク) ---
+    "6525", # KOKUSAI
+    "6526", # ソシオネクスト
+    "6871", # 日本マイクロニクス
+    
+    # --- 主力担当 (重工・防衛) ---
+    "7011", # 三菱重工
+    "7013", # IHI
+    "7003", # 三井E&S
+    "6269", # 三井海洋
+
+    # --- 安定担当 (商社・海運・素材) ---
+    "8031", # 三井物産 (New!)
+    "9107", # 川崎汽船
+    "5016", # 良品計画 or JX金属
+    "3110", # 日東紡
+
+    # --- 低位株・その他 ---
+    "8306", # 三菱UFJ
+    "6954", # ファナック (残す場合)
+    "278A", # テラドローン
+    "285A", # キオクシア
 ]
 
 # 学習パラメータ
 LEARNING_RATE = 0.0003
 N_STEPS = 2048
 BATCH_SIZE = 64
-N_EPOCHS = 4
-GAMMA = 0.90
-ENT_COEF = 0.02
+N_EPOCHS = 10        
+GAMMA = 0.99       
+ENT_COEF = 0.01   
 GAE_LAMBDA = 0.95
-TOTAL_TIMESTEPS = 40000 
+TOTAL_TIMESTEPS = 100000 
 
 
 class DetailedStatsCallback(BaseCallback):
@@ -101,16 +118,13 @@ def train():
     
     csv_files = glob.glob(os.path.join(DATA_DIR, "merged_*.csv"))
     if not csv_files:
-        print("❌ データなし: utils_restore_data.py を実行してください")
+        print("❌ データなし: Step4を実行してください")
         return
 
-    # 汎用モデルがあるか確認しておく
-    has_universal = os.path.exists(UNIVERSAL_MODEL_PATH)
-    
     targets = [t.upper() for t in TARGET_STOCKS]
 
     print(f"{'='*60}")
-    print(f"🏋️‍♀️ 固定銘柄トレーニング (既存優先モード)")
+    print(f"🏋️‍♀️ スナイパーAI育成 (v19.2: Smart Resume)")
     print(f"   対象: {len(targets)} 銘柄")
     print(f"{'='*60}")
 
@@ -139,6 +153,7 @@ def train():
             split_idx = int(len(df) * 0.9)
             df_train = df.iloc[:split_idx].reset_index(drop=True)
             
+            # 環境初期化
             def make_env():
                 return TradingEnv(df_train, stock_code=stock_code)
             
@@ -149,49 +164,34 @@ def train():
             model_path = os.path.join(MODEL_DIR, model_name)
             
             print(f"\n──────────────────────────────────────────────────")
-            print(f"📊 学習開始: {stock_code}")
+            print(f"📊 学習開始: {stock_code} ({VERSION})")
             
             model = None
             
-            # =========================================================
-            # ★ 修正ポイント: 既存モデル優先ロジック
-            # =========================================================
+            # ==========================================
+            # ★優先順位ロジック (ここが心臓部)
+            # ==========================================
             
-            # 1. まず既存の個別モデルを探す
+            # 1. 自分の過去モデル(v19)があるか？ -> あれば続きから (Continue)
             if os.path.exists(f"{model_path}.zip"):
                 try:
-                    print(f"   🔄 既存モデル({VERSION})を発見。ロードして継続学習します。")
-                    model = PPO.load(model_path, env=env, device='auto', verbose=1)
-                    
-                    # 次元の不一致チェック
-                    saved_dim = model.policy.observation_space.shape[0]
-                    current_dim = env.observation_space.shape[0]
-                    
-                    if saved_dim != current_dim:
-                        print(f"   ⚠️ 次元不一致 ({saved_dim}!={current_dim}) -> 新規作成します。")
-                        model = None
-                    else:
-                        # 既存モデルの場合は通常の学習率でしっかり学ぶ
-                        model.learning_rate = LEARNING_RATE
-                        
+                    print(f"   🔄 既存の個別モデルを発見。続きから学習します。")
+                    model = PPO.load(model_path, env=env, device='auto', verbose=0)
                 except Exception as e:
-                    print(f"   ⚠️ 既存モデル読み込みエラー: {e}")
+                    print(f"   ⚠️ 既存モデル読み込み失敗: {e}")
                     model = None
 
-            # 2. 既存がない場合 -> 汎用モデルから転移学習
-            if model is None and has_universal:
+            # 2. なければ先生(Universal)がいるか？ -> いれば転移 (Transfer)
+            if model is None and os.path.exists(UNIVERSAL_MODEL_PATH):
                 try:
-                    print(f"   🆕 個別モデルなし -> 汎用モデルから転移学習します (Fine-Tuning)")
-                    model = PPO.load(UNIVERSAL_MODEL_PATH, env=env, device='auto', verbose=1)
-                    
-                    # 転移学習なので学習率を下げて、知識を壊さないように微調整
-                    model.learning_rate = 0.0001
-                    
+                    print(f"   🆕 汎用モデル(先生)から知識を引き継ぎます...")
+                    model = PPO.load(UNIVERSAL_MODEL_PATH, env=env, device='auto', verbose=0)
+                    model.learning_rate = 0.0001 # 先生を壊さないよう慎重に
                 except Exception as e:
-                    print(f"   ⚠️ 転移学習失敗: {e}")
+                    print(f"   ⚠️ 転移失敗: {e}")
                     model = None
-            
-            # 3. それでもダメなら -> 完全新規作成
+
+            # 3. どちらもなければ新規 (New)
             if model is None:
                 print(f"   ✨ 完全新規作成します (Zero-Scratch)")
                 model = PPO(
@@ -204,7 +204,7 @@ def train():
                     gamma=GAMMA,
                     ent_coef=ENT_COEF,
                     gae_lambda=GAE_LAMBDA,
-                    verbose=1,
+                    verbose=0,
                     device='auto'
                 )
             
@@ -216,7 +216,7 @@ def train():
             model.save(model_path)
             env.save(os.path.join(MODEL_DIR, f"{model_name}_env.pkl"))
             
-            print(f"   ✅ 保存完了: {model_name}.zip")
+            print(f"   ✅ 学習完了: {model_name}.zip")
             success_count += 1
 
         except Exception as e:

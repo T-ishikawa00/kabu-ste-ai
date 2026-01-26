@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Broker v11.2 (Pending Lock Fix)
+Broker v11.3 (Order Failure Sync)
 =====================================================
+v11.3 修正点:
+- buy()/short_entry()で注文失敗時も建玉確認・同期
+- _sync_position_if_exists()ヘルパー追加
+
 v11.2 修正点:
 - can_order()内のis_pendingチェックを削除
 - mark_pending()とcan_order()の順序問題を解決
-- 自分自身をブロックするバグを修正
 """
 
 import time
@@ -56,15 +59,15 @@ class SymbolLock:
 
 class Broker:
     """
-    Broker v11.2
-    - Pendingロックの順序問題を修正
+    Broker v11.3
+    - 注文失敗時の建玉同期機能追加
     """
     def __init__(self, api, cfg):
         self.api = api
         self.cfg = cfg
         self.paper = bool(getattr(cfg, "paper_trading", False))
 
-        logging.info(f"🔧 Broker v11.2 Initialized (Pending Lock Fix)")
+        logging.info(f"🔧 Broker v11.3 Initialized (Order Failure Sync)")
 
         self.pos: Dict[str, Dict[str, Any]] = {}
         self.last_order_ts: Dict[str, float] = {}
@@ -84,11 +87,10 @@ class Broker:
         self._short_allowed_symbols = set(getattr(short_cfg, "allowed_symbols", []))
 
     # ==========================================
-    # 共通チェック（is_pendingチェックを削除）
+    # 共通チェック
     # ==========================================
     def can_order(self, code: str) -> Tuple[bool, str]:
         code = str(code)
-        # ★is_pendingチェックは削除（mark_pendingで排他制御するため）
         
         last_order = self._order_cooldown.get(code, 0)
         if (time.time() - last_order) < self._min_order_interval: 
@@ -117,13 +119,11 @@ class Broker:
     def buy(self, sym, board, cur_px) -> Optional[dict]:
         code = str(sym.code)
         
-        # ★1. まずロックを取得（他スレッドとの競合を防ぐ）
         if not self._symbol_lock.mark_pending(code):
             logging.debug(f"[BUY] {code} skipped: already pending")
             return None
 
         try:
-            # ★2. ロック取得後にチェック
             can, reason = self.can_order(code)
             if not can:
                 logging.info(f"[BUY] {code} skipped: {reason}")
@@ -156,12 +156,17 @@ class Broker:
 
             if not res or res.get("Result") != 0:
                 logging.warning(f"⚠️ BUY注文失敗 {code}: {res}")
+                # ★v11.3: 失敗でも建玉を確認
+                time.sleep(0.3)
+                synced = self._sync_position_if_exists(code, qty, "BUY", cur_px)
+                if synced:
+                    logging.warning(f"🔄 [BUY] {code} 注文失敗だが約定を検出、同期完了")
+                    return {"Result": 0, "Synced": True}
                 return None
 
             oid = res.get("OrderId")
             self._order_cooldown[code] = time.time()
 
-            # 約定価格をAPIから取得
             fill_price = self._wait_and_get_execution_price(oid, code)
             final_entry_price = float(fill_price if fill_price else cur_px)
 
@@ -228,6 +233,12 @@ class Broker:
 
             if not res or res.get("Result") != 0:
                 logging.warning(f"⚠️ SHORT Failed: {res}")
+                # ★v11.3: 失敗でも建玉を確認
+                time.sleep(0.3)
+                synced = self._sync_position_if_exists(code, qty, "SHORT", cur_px)
+                if synced:
+                    logging.warning(f"🔄 [SHORT] {code} 注文失敗だが約定を検出、同期完了")
+                    return {"Result": 0, "Synced": True}
                 return None
 
             oid = res.get("OrderId")
@@ -295,7 +306,6 @@ class Broker:
             closes = []
             rest = int(qty)
             for p in target_pos:
-                # ★HoldIDのNoneチェック
                 hold_id = p.get("HoldID")
                 if hold_id is None:
                     logging.warning(f"⚠️ HoldID missing for {code}, skipping this position")
@@ -345,6 +355,56 @@ class Broker:
         }
         res = self.api.sendorder(payload)
         return bool(res and res.get("Result") == 0), res
+
+    # ==========================================
+    # ★v11.3: 建玉同期ヘルパー
+    # ==========================================
+    def _sync_position_if_exists(self, code: str, expected_qty: int, side: str, fallback_price: float) -> bool:
+        """
+        注文失敗後に建玉が存在するか確認し、あれば同期する
+        Returns: True if position was synced
+        """
+        try:
+            positions = self.api.positions()
+            if not positions:
+                return False
+            
+            for p in positions:
+                p_code = str(p.get("Symbol"))
+                p_qty = int(p.get("LeavesQty") or 0)
+                p_side_api = str(p.get("Side"))  # "1"=売り, "2"=買い
+                
+                if p_code != code or p_qty <= 0:
+                    continue
+                
+                # Side確認
+                expected_api_side = "1" if side == "SHORT" else "2"
+                if p_side_api != expected_api_side:
+                    continue
+                
+                # 既にposに登録済みならスキップ
+                if code in self.pos:
+                    return False
+                
+                entry_price = float(p.get("Price") or p.get("EntryPrice") or fallback_price)
+                
+                self.pos[code] = {
+                    "entry": entry_price,
+                    "qty": p_qty,
+                    "ts": time.time(),
+                    "side": side,
+                    "strategy": "SYNCED",
+                    "fill_ts": time.time()
+                }
+                self._order_cooldown[code] = time.time()
+                
+                logging.info(f"✅ [SYNC] {code} {side} @ {entry_price} qty={p_qty}")
+                return True
+            
+            return False
+        except Exception as e:
+            logging.error(f"_sync_position_if_exists error: {e}")
+            return False
 
     # ==========================================
     # ヘルパー: 正確な約定価格を取得

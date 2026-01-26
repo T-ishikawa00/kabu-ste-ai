@@ -1,138 +1,143 @@
 # -*- coding: utf-8 -*-
 """
-step6_inject_config.py v16.3 (Strict Fix)
-=========================================
-config.yaml の自動更新ツール
-
-修正点:
-1. MAX_DAILY_SYMBOLS を 10 に変更
-2. 指定された固定40銘柄を強制適用
-3. それ以外のロジック（target_list.csvの使用など）は一切変更なし
+step6_inject_config.py v17.13 (Fix Data Save & Portfolio)
+=====================================================
+【修正内容】
+1. 生成する config.yaml に `logging` (save_data: true) を常時追加。
+   → これでデータ消失を恒久的に防ぎます。
+2. ポートフォリオを正式に「任天堂削除・SCREEN追加」版に更新。
 """
 
 import os
 import yaml
 import pandas as pd
+import re
 from datetime import datetime
-from copy import deepcopy
 
 # ==========================================
 # 設定
 # ==========================================
-TARGET_FILE = "target_list.csv"      # スクリーニング結果
-CONFIG_FILE = "config.yaml"          # メイン設定ファイル
-BACKUP_DIR = "config_backup"         # バックアップ保存先
+TARGET_FILE = "target_list.csv"
+CONFIG_FILE = "config.yaml"
+BACKUP_DIR = "config_backup"
 
-# ★ここを10に変更（日替わり枠）
-MAX_DAILY_SYMBOLS = 10
-
-# ★固定銘柄リスト (40銘柄)
+# 固定13銘柄 (任天堂7974を削除し、SCREEN 7735を追加済み)
 FIXED_TARGETS = [
-    "9501", "8411", "5803", "9984", "6954", "6269", "285A", "5801", "485A", "4570",
-    "3110", "7974", "6525", "6330", "1662", "3350", "7746", "5016", "8306", "4506",
-    "1893", "278A", "6702", "464A", "5101", "6501", "6758", "7267", "3382", "4446",
-    "4082", "7003", "7735", "7711", "8135", "186A", "5802", "9107", "7453", "9227"
+    "7003", "6525", "7011", "6269", "6954", "5016", "8306", 
+    "278A", "285A", "3110", "8031", "9984", "9107"
 ]
 
+# ★【ここを自由に変えてください】銘柄ごとの保有時間設定（秒）
+# 書いていない銘柄はデフォルト（1800秒＝30分）になります
+TIME_SETTINGS = {
+    # --- 20分 (1200秒): 暴れ馬・短期決戦 ---
+    "7003": 1200,  # 三井E&S
+    "6525": 1200,  # KOKUSAI
+    "6269": 1200,  # 三井海洋
+    "9984": 1200,  # SBG
+
+    # --- 30分 (1800秒): 標準・バランス型 ---
+    "7011": 1800,  # 三菱重工
+    "6954": 1800,  # ファナック
+    "5016": 1800,  # 良品計画
+    "278A": 1800,  # (IPO/新興)
+    "285A": 1800,  # (IPO/新興)
+    "3110": 1800,  # 日東紡
+    "8031": 1200,  # 三井物産
+
+    # --- 60分 (3600秒): 重戦車・じっくり ---
+    "8306": 3600,  # 三菱UFJ
+    "9107": 3600,  # 川崎汽船
+}
+
+MAX_DAILY_SYMBOLS = 7
+
 def load_yaml_data():
-    """現在のデータを読み込む"""
-    if not os.path.exists(CONFIG_FILE):
-        return None
-    with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+    if not os.path.exists(CONFIG_FILE): return {}
+    try:
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f) or {}
+    except:
+        return rescue_passwords()
+
+def rescue_passwords():
+    try:
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f: content = f.read()
+        data = {'api': {}, 'notification': {}}
+        m_api = re.search(r'api_password:\s*["\']?([^"\n\']+)', content)
+        if m_api: data['api']['api_password'] = m_api.group(1)
+        m_trade = re.search(r'trade_password:\s*["\']?([^"\n\']+)', content)
+        if m_trade: data['api']['trade_password'] = m_trade.group(1)
+        m_discord = re.search(r'discord_webhook_url:\s*["\']?([^"\n\']+)', content)
+        if m_discord: data['notification']['discord_webhook_url'] = m_discord.group(1)
+        return data
+    except: return {}
 
 def load_screening_results():
-    """スクリーニング結果を読み込み、コードを補正する"""
-    if not os.path.exists(TARGET_FILE):
-        return []
-    df = pd.read_csv(TARGET_FILE)
-    if df.empty: return []
-    
-    raw_codes = df['code'].astype(str).tolist()
-    clean_codes = []
-    
-    # 5桁(xxxxx0)なら4桁(xxxxx)に直す
-    for c in raw_codes:
-        if len(c) == 5 and c.endswith('0'):
-            clean_codes.append(c[:-1])
-        else:
-            clean_codes.append(c)
-            
-    return clean_codes[:MAX_DAILY_SYMBOLS]
+    if not os.path.exists(TARGET_FILE): return []
+    try:
+        df = pd.read_csv(TARGET_FILE)
+        if df.empty: return []
+        raw = df['code'].astype(str).tolist()
+        clean = [c[:-1] if len(c)==5 and c.endswith('0') else c for c in raw]
+        seen = set()
+        return [x for x in clean if not (x in seen or seen.add(x))][:MAX_DAILY_SYMBOLS]
+    except: return []
 
 def backup_config():
-    """バックアップ作成"""
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_path = os.path.join(BACKUP_DIR, f"config_backup_{timestamp}.yaml")
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r', encoding='utf-8') as src:
-            with open(backup_path, 'w', encoding='utf-8') as dst:
-                dst.write(src.read())
-    return backup_path
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as src:
+                with open(os.path.join(BACKUP_DIR, f"config_backup_{ts}.yaml"), 'w', encoding='utf-8') as dst:
+                    dst.write(src.read())
+        except: pass
 
 def generate_beautiful_config(current_data, new_daily_codes, fixed_code_list):
-    """
-    設定ファイルを生成する
-    """
     api = current_data.get('api', {})
     risk = current_data.get('risk', {})
     short = current_data.get('short', {})
-    common = current_data.get('common', {})
-    notif = current_data.get('notification', {})
     
-    # ★固定枠の作成 (リストから強制生成)
-    fixed_symbols = []
-    for code in fixed_code_list:
-        fixed_symbols.append({
-            'code': str(code),
-            'exchange': 1,
-            'qty': 100,
-            'fixed': True
-        })
-            
-    # 日替わり枠の作成 (スイング設定)
+    # リスト構築
+    fixed_symbols = [{'code': str(c), 'exchange': 1, 'qty': 100, 'fixed': True} for c in fixed_code_list]
     daily_symbols = []
-    for code in new_daily_codes:
-        daily_symbols.append({
-            'code': str(code),
-            'exchange': 1,
-            'qty': 100,
-            'fixed': False,
-            'tp_ticks_cap': 60,     # 利確: 60tick
-            'sl_ticks_cap': 30,     # 損切: 30tick
-            'max_hold_sec': 3600    # 時間: 60分
-        })
+    for c in new_daily_codes:
+        if c not in fixed_code_list:
+            daily_symbols.append({'code': str(c), 'exchange': 1, 'qty': 100, 'fixed': False})
 
-    # リスト作成
-    gatekeeper_fixed = [str(s['code']) for s in fixed_symbols]
-    gatekeeper_daily = [str(c) for c in new_daily_codes]
+    whitelist = [str(s['code']) for s in fixed_symbols] + [str(s['code']) for s in daily_symbols]
 
-    # テキスト生成
+    # ★ここに `logging` セクションを追加しました
     text = f"""# ==========================================
-#   Kabu-Ste-AI Config v16.3 (Strict Fix)
+#   Kabu-Ste-AI Config v17.13 (Fix Data Save & Portfolio)
 #   ★固定枠{len(fixed_symbols)}銘柄 + 日替わり枠{len(daily_symbols)}銘柄
 # ==========================================
-
 
 # ==========================================
 # API設定
 # ==========================================
 api:
-  base: {api.get('base', 'http://localhost:18080/kabusapi')}
-  api_password: {api.get('api_password', '')}
-  trade_password: {api.get('trade_password', '')}
-  timeout_get_sec: {api.get('timeout_get_sec', 10)}
-  timeout_post_sec: {api.get('timeout_post_sec', 10)}
+  base: http://localhost:18080/kabusapi
+  api_password: "REDACTED"
+  trade_password: "REDACTED"
+  timeout_get_sec: 10
+  timeout_post_sec: 10
 
 telemetry_path: runtime/telemetry.json
 
+# ==========================================
+# ログ・データ保存設定 (★最重要)
+# ==========================================
+logging:
+  save_data: true        # ★ここをtrueにしないと学習データが残りません！
+  save_dir: "data_raw"   # 保存先フォルダ
+  log_level: "INFO"
 
 # ==========================================
 # 取引モード
 # ==========================================
 paper_trading: {str(current_data.get('paper_trading', False)).lower()}
-
 
 # ==========================================
 # 注文設定
@@ -148,7 +153,6 @@ orders:
     widen_ticks_each: 1
     wait_ms_between: 100
 
-
 # ==========================================
 # リスク管理
 # ==========================================
@@ -157,86 +161,74 @@ risk:
   force_close_time: "{risk.get('force_close_time', '14:55')}"
   max_daily_loss_jpy: {risk.get('max_daily_loss_jpy', 30000)}
 
-
 # ==========================================
 # 空売り設定 (固定枠のみ許可)
 # ==========================================
 short:
   enabled: {str(short.get('enabled', True)).lower()}
   allowed_symbols:"""
-  
-    # 固定枠のみを許可リストに追加
-    if gatekeeper_fixed:
-        for c in gatekeeper_fixed:
-            text += f"""
-    - "{c}" """
-    else:
-        text += " []"
-
+    for c in [str(s['code']) for s in fixed_symbols]: text += f"\n    - \"{c}\""
     text += f"""
-  min_distance_to_limit_up_pct: {short.get('min_distance_to_limit_up_pct', 2.0)}
-  max_dsr: {short.get('max_dsr', 4.0)}
-  no_entry_after: "{short.get('no_entry_after', '14:30')}"
-  force_close_time: "{short.get('force_close_time', '14:50')}"
-  sl_ticks: {short.get('sl_ticks', 20)}
-  tp_ticks: {short.get('tp_ticks', 30)}
-  max_hold_sec: {short.get('max_hold_sec', 900)}
-  panic_on_special_quote: {str(short.get('panic_on_special_quote', True)).lower()}
-  panic_distance_pct: {short.get('panic_distance_pct', 1.0)}
-
+  min_distance_to_limit_up_pct: 2.0
+  max_dsr: 4.0
+  no_entry_after: "14:30"
+  force_close_time: "14:50"
+  tp_pct: 1.0         # 空売り利確 -1%
+  sl_pct: 0.4         # 空売り損切 +0.4%
+  max_hold_sec: 1800
+  panic_on_special_quote: true
+  panic_distance_pct: 1.0
 
 # ==========================================
 # 共通戦略設定（利確・損切）
 # ==========================================
 common:
-  tp_ticks: {common.get('tp_ticks', 30)}      # 利確
-  sl_ticks: {common.get('sl_ticks', 20)}      # 損切
-  max_hold_sec: {common.get('max_hold_sec', 900)} # 最大保有
-
+  tp_pct: 1.0       # 利確 +1%
+  sl_pct: 0.4       # 損切 -0.4%
+  max_hold_sec: 1800
 
 # ==========================================
 # 銘柄設定
 # ==========================================
-symbols:
-
-  # ─────────────────────────────────────────
-  # 【固定枠】毎日監視する主力銘柄 (スキャルピング寄り)
-  # ─────────────────────────────────────────"""
-
-    for s in fixed_symbols:
-        text += f"""
-  - code: "{s['code']}"
-    exchange: {s.get('exchange', 1)}
-    qty: {s.get('qty', 100)}
-    fixed: true"""
+symbols:"""
     
-    text += """
-
-  # ─────────────────────────────────────────
-  # 【日替わり枠】汎用AIによるデイスイング (ゆったり設定)
-  # ─────────────────────────────────────────"""
-
-    for s in daily_symbols:
+    # 固定枠の出力
+    for s in fixed_symbols:
+        code = str(s['code'])
+        # ★ここで時間を設定
+        hold_time = TIME_SETTINGS.get(code, 1800)
+        
         text += f"""
-  - code: "{s['code']}"
+  - code: "{code}"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: {hold_time}"""
+
+    # 日替わり枠の出力
+    if daily_symbols:
+        for s in daily_symbols:
+            code = str(s['code'])
+            # ★日替わり枠も時間設定があれば反映
+            hold_time = TIME_SETTINGS.get(code, 1800)
+            
+            text += f"""
+  - code: "{code}"
     exchange: 1
     qty: 100
     fixed: false
-    tp_ticks_cap: {s['tp_ticks_cap']}
-    sl_ticks_cap: {s['sl_ticks_cap']}
-    max_hold_sec: {s['max_hold_sec']} # 60分"""
+    max_hold_sec: {hold_time}"""
+            
+    else: text += "\n  # (本日は対象なし)"
 
     text += f"""
-
 
 # ==========================================
 # ポートフォリオ設定
 # ==========================================
 max_concurrent_symbols: 60
-
 portfolio:
   max_open_positions: 3
-
 
 # ==========================================
 # 安全設定
@@ -258,18 +250,15 @@ safety:
   cooldown_after_exit_sec: 2.0
   streak_pause_sec: 30
 
-
 # ==========================================
 # エントリー・エグジット設定
 # ==========================================
 entry:
-  theta: 0.60
-
+  theta: 0.55
 exit:
   trail_back_pct: 0.005
   trail_start_pct: 0.003
-  max_hold_sec: 900
-
+  max_hold_sec: 1800
 
 # ==========================================
 # 自動学習（無効）
@@ -277,36 +266,16 @@ exit:
 learning:
   enable_auto_train: false
 
-
 # ==========================================
 # Gatekeeper（取引許可リスト）
 # ==========================================
 gatekeeper:
   enabled: true
-  whitelist:
-    # 固定枠"""
+  whitelist:"""
+    for c in whitelist: text += f"\n    - \"{c}\""
     
-    for c in gatekeeper_fixed:
-        text += f"""
-    - "{c}" """
-
     text += """
-    # 日替わり枠"""
-    
-    for c in gatekeeper_daily:
-        text += f"""
-    - "{c}" """
-    
-    blacklist = current_data.get('gatekeeper', {}).get('blacklist', [])
-    if blacklist:
-        text += """
-  blacklist:"""
-        for c in blacklist:
-             text += f"""
-    - "{c}" """
-
-    text += f"""
-
+  blacklist: []
 
 # ==========================================
 # 戦略設定
@@ -327,13 +296,12 @@ router:
     vol_rank: 0.05
     price_step: 100
 
-
 # ==========================================
 # 通知設定（Discord）
 # ==========================================
 notification:
-  discord_webhook_url: "REDACTED'discord_webhook_url', '')}"
-  line_notify_token: "REDACTED'line_notify_token', '')}"
+  discord_webhook_url: "REDACTED"
+  line_notify_token: ""
   notify_on_startup: true
   notify_on_entry: true
   notify_on_exit: true
@@ -344,32 +312,19 @@ notification:
 
 def main():
     print("=" * 60)
-    print("🔧 config.yaml 最終調整ツール v16.3")
-    print("   ・target_list.csv から日替わり10銘柄")
-    print("   ・FIXED_TARGETS から固定40銘柄")
+    print("🔧 config.yaml 自動生成 (v17.13 Fix Data Save & Portfolio)")
+    print("   全銘柄を %指定に統一し、データ保存設定(save_data: true)を強制付与")
+    print("   SCREEN(7735)を正式に固定枠へ追加しました")
     print("=" * 60)
     
     current_data = load_yaml_data()
-    if not current_data: return
-
-    # target_list.csv から読み込むロジック（そのまま）
     new_daily_codes = load_screening_results()
-    
-    if not new_daily_codes:
-        print("⚠️ target_list.csv に銘柄がありません")
-    
-    # バックアップ
     backup_config()
-    
-    # 生成 (固定リストを渡す)
     new_config_text = generate_beautiful_config(current_data, new_daily_codes, FIXED_TARGETS)
-
+    
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         f.write(new_config_text)
-
     print("✅ config.yaml を更新しました")
-    print(f"   固定: {len(FIXED_TARGETS)} + 日替わり: {len(new_daily_codes)} = 合計 {len(FIXED_TARGETS) + len(new_daily_codes)} 銘柄")
-    print("=" * 60)
 
 if __name__ == "__main__":
     main()

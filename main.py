@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-main.py — Lv16.0 (Commander Edition)
-====================================
-機能:
-- launch_multi_bot.py の機能を統合
-- 起動すると config.yaml を読み込み、銘柄リストを分割して
-  複数の controller_ws.py (分身) をサブプロセスとして並列起動します。
-- 既存の「自動学習」や「通知設定ロード」機能はそのまま維持。
+main.py — Lv19.3 (Universal Commander Mode)
+==========================================
+【v19.3 変更点】
+1. 1ボット(STOCKS_PER_BOT=100)体制を維持し、シングルプロセスで安定稼働。
+2. 古い自動学習(train_policy.py)を安全のため無効化。
+   → 今後は手動または別スケジュールの train_universal.py が主役のため。
+3. ログ出力を整理。
 """
 
 import os
@@ -17,19 +17,20 @@ import threading
 import subprocess
 import yaml
 import math
+import json
+import urllib.request
 from datetime import datetime as dt_datetime, timedelta, timezone
 
 from utils_common import ensure_dir, now
 from config_loader import load_cfg
 
-# ※ここではクラスとして使わず、サブプロセス起動用のファイルパスとして使う
+# サブプロセスとして起動するコントローラー
 CONTROLLER_SCRIPT_NAME = "controller_ws.py"
 
 JST = timezone(timedelta(hours=9))
 
-# ★1ボットあたりの担当銘柄数
-STOCKS_PER_BOT = 10
-
+# ★1ボットあたりの担当銘柄数 (シングルボット運用)
+STOCKS_PER_BOT = 100
 
 # ===== ログ設定 =====
 def setup_logging(level: str):
@@ -47,58 +48,33 @@ def setup_logging(level: str):
         force=True,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.info(f"==== Session Start {now().strftime('%Y-%m-%d %H:%M:%S')} (Commander Mode) ====")
+    logging.info(f"==== Session Start {now().strftime('%Y-%m-%d %H:%M:%S')} (v19.3 Universal Mode) ====")
 
+# ==========================================
+# ★Discord通知テスト
+# ==========================================
+def send_discord_test(webhook_url):
+    if not webhook_url:
+        logging.warning("🔕 Discord URLが設定されていません")
+        return
 
-# ===== 16:30 自動学習ウォッチャ =====
-def start_auto_train_watcher(cfg):
-    def _watch():
-        ran_date = None
-        while True:
-            try:
-                learning = getattr(cfg, "learning", None)
-                if not learning or not getattr(learning, "enable_auto_train", False):
-                    time.sleep(30)
-                    continue
-
-                target = str(getattr(learning, "auto_train_time", "16:30"))
-                now_jst = dt_datetime.now(JST)
-                hhmm = now_jst.strftime("%H:%M")
-                today = now_jst.date()
-
-                if (hhmm >= target) and (ran_date != today):
-                    lookback = str(getattr(learning, "lookback_days", 7))
-                    python_cmd = getattr(learning, "python_cmd", sys.executable)
-                    logging.info(f"[auto-train] start lookback_days={lookback}")
-                    try:
-                        subprocess.run(
-                            [python_cmd, "train_policy.py"],
-                            env={**os.environ, "LOOKBACK_DAYS": lookback},
-                            check=False,
-                        )
-                        logging.info("[auto-train] done")
-                    except Exception as e:
-                        logging.error(f"[auto-train] failed: {e}")
-                    ran_date = today
-
-                time.sleep(20)
-
-            except Exception as e:
-                logging.warning(f"[auto-train] watcher error: {e}")
-                time.sleep(30)
-
-    th = threading.Thread(target=_watch, name="auto_train_watcher", daemon=True)
-    th.start()
-    return th
-
+    logging.info("📨 Discord通知テスト送信中...")
+    try:
+        payload = {
+            "content": f"📢 **Commander起動 (v19.3)**: 汎用モデル強制モードで開始します\n⏰ {now().strftime('%H:%M:%S')}"
+        }
+        headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+        req = urllib.request.Request(webhook_url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+        with urllib.request.urlopen(req, timeout=5) as res:
+            if 200 <= res.status < 300:
+                logging.info("✅ Discord通知テスト成功！")
+    except Exception as e:
+        logging.error(f"❌ Discord通知送信失敗: {e}")
 
 # ===== 取引実行ロジック (Commander) =====
 
 def run_trading(cfg):
-    """
-    ここで controller_ws.py を複数体起動する
-    """
-    logging.info("🚀 マルチプロセス・トレードモード開始")
+    logging.info("🚀 トレードモード開始 (Force Universal v19.3)")
     
     # 1. 銘柄リストの取得
     symbols = getattr(cfg, "symbols", [])
@@ -121,45 +97,50 @@ def run_trading(cfg):
     
     logging.info(f"📂 Controller Path: {script_path}")
 
-    # 3. 銘柄を分割 (Chunking)
-    num_bots = math.ceil(total_stocks / STOCKS_PER_BOT)
-    chunks = [codes[i:i + STOCKS_PER_BOT] for i in range(0, total_stocks, STOCKS_PER_BOT)]
+    # 3. 通知設定の取得
+    discord_url = ""
+    notif = getattr(cfg, "notification", None)
+    if notif:
+        discord_url = getattr(notif, "discord_webhook_url", "")
     
-    processes = []
+    if discord_url:
+        logging.info(f"🔧 Discord URL検出: ...{discord_url[-5:]}")
+        send_discord_test(discord_url)
 
     # 4. サブプロセス起動
+    chunks = [codes[i:i + STOCKS_PER_BOT] for i in range(0, total_stocks, STOCKS_PER_BOT)]
+    processes = []
     try:
+        env = os.environ.copy()
+        if discord_url:
+            env["DISCORD_WEBHOOK_URL"] = discord_url
+
         for i, chunk in enumerate(chunks):
-            # 銘柄リストをカンマ区切りの文字列にする "9984,7011,..."
             arg_list = ",".join(chunk)
+            logging.info(f"🤖 [Bot {i+1}] 起動 (担当: {len(chunk)}銘柄)")
             
-            logging.info(f"🤖 [Bot {i+1}] 起動 (担当: {len(chunk)}銘柄: {chunk[0]}...)")
-            
-            # 別プロセスとして起動
+            # controller_ws.py を起動
             cmd = [sys.executable, script_path, arg_list]
-            p = subprocess.Popen(cmd)
+            p = subprocess.Popen(cmd, env=env) 
             processes.append(p)
-            
-            # API制限回避のため、起動を少しずらす
             time.sleep(3)
 
-        logging.info("✅ 全ボット出撃完了。司令塔は監視モードに入ります。")
+        logging.info("✅ ボット出撃完了。司令塔は監視に入ります。")
         
-        # 5. 親プロセスは待機 (死なないようにループ)
+        # 5. 親プロセスは待機
         while True:
             time.sleep(10)
-            # 必要であればここで子プロセスの生存確認などを行う
             all_dead = True
             for p in processes:
                 if p.poll() is None:
                     all_dead = False
                     break
             if all_dead:
-                logging.warning("⚠️ 全てのボットが終了しました。")
+                logging.warning("⚠️ 全ボットが終了しました。")
                 break
 
     except KeyboardInterrupt:
-        logging.info("🛑 停止シグナル受信。全ボットを停止します...")
+        logging.info("🛑 停止シグナル受信。ボットを停止します...")
         for p in processes:
             p.terminate()
         logging.info("👋 全プロセス停止完了")
@@ -168,58 +149,20 @@ def run_trading(cfg):
         for p in processes:
             p.terminate()
 
-
 # ===== メイン =====
 
 def main():
+    # コンフィグ読み込み
     cfg = load_cfg()
     setup_logging(getattr(cfg, "log_level", "INFO"))
     ensure_dir("runtime")
 
-    # =================================================================
-    # 通知設定の強制ロード (維持)
-    # =================================================================
-    try:
-        with open("config.yaml", "r", encoding="utf-8") as f:
-            raw_data = yaml.safe_load(f)
-            if "notification" in raw_data:
-                setattr(cfg, "notification", raw_data["notification"])
-                if isinstance(cfg, dict):
-                    cfg["notification"] = raw_data["notification"]
-                url = raw_data['notification'].get('discord_webhook_url', '')
-                logging.info(f"🔧 通知設定ロード (URL末尾: ...{url[-5:]})")
-    except Exception:
-        pass
-    # =================================================================
+    # ※自動学習ウォッチャ(v17時代の古いロジック)は無効化しています
+    # 理由: v19.3では train_universal.py による全体学習が推奨されるため
+    # start_auto_train_watcher(cfg)
 
-    # 自動学習ウォッチャ起動 (維持)
-    start_auto_train_watcher(cfg)
-
-    now_jst = dt_datetime.now(JST)
-    hhmm = now_jst.strftime("%H:%M")
-
-    # 夜間学習モード判定 (維持)
-    learning = getattr(cfg, "learning", None)
-    if learning and getattr(learning, "enable_auto_train", False):
-        target = str(getattr(learning, "auto_train_time", "16:30"))
-        if hhmm >= target:
-            lookback = str(getattr(learning, "lookback_days", 7))
-            python_cmd = getattr(learning, "python_cmd", sys.executable)
-            logging.info("=== 夜間学習モード開始 ===")
-            try:
-                subprocess.run(
-                    [python_cmd, "train_policy.py"],
-                    env={**os.environ, "LOOKBACK_DAYS": lookback},
-                    check=False,
-                )
-                logging.info("=== 学習完了 ===")
-            except Exception as e:
-                logging.error(f"夜間学習エラー: {e}")
-            return
-
-    # 通常取引モード (並列起動ロジックへ)
+    # 通常取引モードのみ実行
     run_trading(cfg)
-
 
 if __name__ == "__main__":
     main()
