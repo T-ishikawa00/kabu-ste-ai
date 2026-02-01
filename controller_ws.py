@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-WebsocketController v19.3 (Force Universal Optimized)
-=====================================================
-【v19.3 変更点】
-1. AI入力を 19次元 (VWAP乖離率含む) に対応。
-2. フォルダの個別モデルを無視し、強制的に model_universal_v19 を全員に適用。
-3. v19親クラス(Controller)のロジックと完全に同期。
+WebsocketController v20.21 (Robust Fix Edition)
+==============================================
+【v20.21 修正点】
+1. クラッシュ対策: ポジション情報の取得を .get() で安全に行うように変更
+   → 'price' キーが見つからなくてもエラーで止まらないように修正
+2. 単元株チェック: 注文数量が単元株(100株など)の倍数になるよう調整
 """
 
 import sys
@@ -15,10 +15,11 @@ import threading
 import time
 import logging
 import websocket
-import random
+import math
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Set, List, Optional
+from stable_baselines3 import PPO
 
 try:
     from config_loader import load_cfg
@@ -26,7 +27,7 @@ except ImportError:
     sys.path.append(os.getcwd())
     from config_loader import load_cfg
 
-# v19.3 の親クラスをインポート
+# 親クラス (Controller v20.6) をインポート
 from controller import Controller
 
 JST = timezone(timedelta(hours=9))
@@ -40,7 +41,7 @@ class WebsocketController(Controller):
             logging.error(f"Config load failed: {e}")
             raise e
 
-        # 親クラスの初期化（ここで v19 基準の初期設定が行われる）
+        # 親クラスの初期化
         super().__init__(cfg)
 
         if symbols is not None and len(symbols) > 0:
@@ -53,38 +54,54 @@ class WebsocketController(Controller):
             logging.warning(f"🤖 [本体モード] {len(self.syms)} 銘柄監視")
 
         # ==========================================
-        # ★修正: WS側でも強制汎用モデルモードを適用
+        # ★ハイブリッドモデルロード (Individual > Universal)
         # ==========================================
-        logging.warning("🤖 [WS] AIモデル再配置 (Force Universal v19)...")
-        if self.universal_model:
-            for code in self.target_codes:
+        logging.warning("🤖 [WS] AIモデル最適化 (Hybrid Mode)...")
+        indiv_count = 0
+        univ_count = 0
+
+        self.ai_models = {}
+
+        for code in self.target_codes:
+            indiv_path = f"runtime/model_individual_{code}"
+            
+            if os.path.exists(indiv_path + ".zip"):
+                try:
+                    self.ai_models[code] = PPO.load(indiv_path)
+                    logging.info(f"   👤 [{code}] 個別モデル(Specialist) 適用")
+                    indiv_count += 1
+                    continue
+                except Exception as e:
+                    logging.error(f"   ⚠️ [{code}] 個別モデル破損 -> 汎用にフォールバック: {e}")
+
+            if self.universal_model:
                 self.ai_models[code] = self.universal_model
-            logging.warning(f"   ✅ 全 {len(self.target_codes)} 銘柄に汎用モデルを強制適用しました")
-        else:
-            logging.error("   ❌ 汎用モデル(v19)が親クラスでロードされていません！")
+                univ_count += 1
+            else:
+                logging.warning(f"   ❌ [{code}] AIモデルなし (ルールベース稼働)")
+
+        logging.warning(f"🤖 モデル再配置完了: 個別特化={indiv_count} / 汎用汎用={univ_count}")
 
         self.ws_url = getattr(self.cfg, "websocket_url", "ws://localhost:18080/kabusapi/websocket")
         self.ws = None
         self.is_running = False
         
-        # 処理間引き
         self._last_process_time: Dict[str, float] = {}
         self._process_interval = 0.5 
         self._processing: Set[str] = set()
         self._processing_lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="SymWorker")
         
-        # ハートビート
         self._heartbeat_count = 0
         self._last_status_log = 0
 
-        logging.warning("🔧 WebsocketController v19.3 initialized")
+        logging.warning("🔧 WebsocketController v20.21 (Robust Fix) initialized")
 
     def run(self):
         self.is_running = True
         
         if hasattr(self, 'notifier'):
-            self.notifier.send("🤖 Bot起動 (v19.3 Force Universal/WS)", "startup")
+            self.notifier.send("🤖 Bot起動 (v20.21 Robust Fix)", "startup")
         
         logging.warning(f"🚀 Starting WS Mode... ({len(self.syms)} symbols)")
         
@@ -97,15 +114,12 @@ class WebsocketController(Controller):
         if not self.cfg.paper_trading:
             self._recover_ghost_positions()
 
-        # 起動時の初期データ取得
         self._initialize_buffer()
         self._register_push()
         
-        # ハートビート
         self.heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
         self.heartbeat_thread.start()
         
-        # WebSocket接続
         self.ws = websocket.WebSocketApp(
             self.ws_url, 
             on_message=self._on_message, 
@@ -132,23 +146,19 @@ class WebsocketController(Controller):
             if code not in self.target_codes:
                 return
             
-            # ボード更新（process_symbolで使用）
             if code not in self.boards:
                 self.boards[code] = {}
             self.boards[code].update(data)
             
-            # 処理間引き
             now_t = time.time()
             last_time = self._last_process_time.get(code, 0)
             
-            # ポジション保有中は反応速度を上げる
             has_pos = code in self.brk.pos
             interval = 0.2 if has_pos else self._process_interval
             
             if now_t - last_time < interval:
                 return
             
-            # 多重処理防止
             with self._processing_lock:
                 if code in self._processing:
                     return
@@ -156,7 +166,6 @@ class WebsocketController(Controller):
             
             self._last_process_time[code] = now_t
             
-            # 非同期で処理実行（親クラス v19.3 のロジックへ）
             self._executor.submit(self._safe_process_symbol, code, self.boards[code])
             
         except Exception as e:
@@ -166,6 +175,7 @@ class WebsocketController(Controller):
         try:
             self.process_symbol(code, board)
         except Exception as e:
+            # ここでエラーが出ても全体を止めない
             logging.error(f"Process error [{code}]: {e}")
         finally:
             with self._processing_lock:
@@ -173,25 +183,59 @@ class WebsocketController(Controller):
 
     def process_symbol(self, code_s: str, board: dict = None):
         """
-        ★オーバーライド: v19.3 基準の時間ガード
+        ★ LogFix オーバーライド (v20.21 安全版)
         """
         now_jst = datetime.now(JST)
         hm = now_jst.strftime("%H:%M")
         
-        # 昼休み完全停止
-        if "11:30" <= hm < "12:25":
-            return
-
-        # エントリー禁止時間帯（ポジションなしの場合のみ）
+        if "11:30" <= hm < "12:25": return
         if code_s not in self.brk.pos:
-            # 寄り付き直後の激動を避ける
-            if now_jst.hour == 9 and now_jst.minute < 15:
-                return
-            if now_jst.hour == 12 and 30 <= now_jst.minute < 35:
-                return
+            if now_jst.hour == 9 and now_jst.minute < 15: return
+            if now_jst.hour == 12 and 30 <= now_jst.minute < 40: return
+
+        # -----------------------------------------------------
+        # [LogFix] 処理前の状態を記録 (Before)
+        # -----------------------------------------------------
+        had_pos = code_s in self.brk.pos
+        entry_price = 0
+        entry_side = ""
+        entry_qty = 0
         
-        # 親クラス(v19.3)の19次元AI判定・トレードロジックを実行
+        if had_pos:
+            # ★【修正】安全にデータを取り出す (.getを使用)
+            pos_data = self.brk.pos.get(code_s, {})
+            try:
+                entry_price = float(pos_data.get("price", 0))
+                entry_side = pos_data.get("side", "")
+                entry_qty = float(pos_data.get("qty", 0))
+            except:
+                entry_price = 0
+
+        # =====================================================
+        # 親クラスのロジック実行
+        # =====================================================
         super().process_symbol(code_s, board)
+        # =====================================================
+
+        # -----------------------------------------------------
+        # [LogFix] 処理後の状態を確認 (After)
+        # -----------------------------------------------------
+        has_pos_now = code_s in self.brk.pos
+
+        if had_pos and not has_pos_now:
+            # 決済価格の推定
+            exit_price = float(board.get("current_price") or board.get("close_price") or 0)
+            
+            if exit_price > 0 and entry_qty > 0 and entry_price > 0:
+                pnl = 0
+                if entry_side == "BUY":
+                    pnl = (exit_price - entry_price) * entry_qty
+                elif entry_side == "SHORT":
+                    pnl = (entry_price - exit_price) * entry_qty
+                
+                sign = "+" if pnl >= 0 else ""
+                log_msg = f"💰 [{code_s}] EXIT FIX: ¥{sign}{int(pnl)} (Price: {entry_price:.1f}->{exit_price:.1f})"
+                logging.warning(log_msg)
 
     def _initialize_buffer(self):
         logging.warning("⏳ 初期データ取得中...")
@@ -201,7 +245,6 @@ class WebsocketController(Controller):
                 if board:
                     code_s = str(s.code)
                     self.boards[code_s] = board
-                    # 指標初期計算
                     self._update_indicators(code_s, board)
                 time.sleep(0.1) 
             except Exception as e:
@@ -217,7 +260,7 @@ class WebsocketController(Controller):
             try:
                 time.sleep(10.0)
                 pos_info = f" pos={list(self.brk.pos.keys())}" if self.brk.pos else ""
-                logging.warning(f"💓 HB v19.3 | pnl={self._daily_pnl:.0f}{pos_info}")
+                logging.warning(f"💓 HB v20.21 | pnl={self._daily_pnl:.0f}{pos_info}")
             except: pass
 
     def _on_open(self, ws): logging.warning("🔗 WebSocket Connected")

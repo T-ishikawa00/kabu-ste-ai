@@ -1,0 +1,337 @@
+# ==========================================
+#   Kabu-Ste-AI Config v17.16 (Data Collection Support)
+#   ★固定枠13 + 日替わり7 + 観測専用4
+# ==========================================
+
+# ==========================================
+# API設定
+# ==========================================
+api:
+  base: http://localhost:18080/kabusapi
+  api_password: "Htk050313"
+  trade_password: "Htk_222305"
+  timeout_get_sec: 10
+  timeout_post_sec: 10
+
+telemetry_path: runtime/telemetry.json
+
+# ==========================================
+# ログ・データ保存設定 (★最重要)
+# ==========================================
+logging:
+  save_data: true        # ★ここをtrueにしないと学習データが残りません！
+  save_dir: "data_raw"   # 保存先フォルダ
+  log_level: "INFO"
+
+# ==========================================
+# 取引モード
+# ==========================================
+paper_trading: false  # ★本番モード(強制)
+
+# ==========================================
+# 注文設定
+# ==========================================
+orders:
+  style: "market"
+  ioc: false
+  cap_ticks_entry: 10
+  cap_ticks_exit: 10
+  retry:
+    enabled: true
+    max_attempts: 2
+    widen_ticks_each: 1
+    wait_ms_between: 100
+
+# ==========================================
+# リスク管理
+# ==========================================
+risk:
+  no_new_entry_after: "14:50"
+  force_close_time: "14:55"
+  max_daily_loss_jpy: 30000
+
+# ==========================================
+# 空売り設定 (固定枠のみ許可)
+# ==========================================
+short:
+  enabled: true
+  allowed_symbols:
+    - "7003"
+    - "6525"
+    - "7011"
+    - "6269"
+    - "6954"
+    - "5016"
+    - "8306"
+    - "278A"
+    - "285A"
+    - "3110"
+    - "8031"
+    - "9984"
+    - "9107"
+  min_distance_to_limit_up_pct: 2.0
+  max_dsr: 4.0
+  no_entry_after: "14:30"
+  force_close_time: "14:50"
+  tp_pct: 1.5         # ★デイトレ用B案
+  sl_pct: 0.5         # ★デイトレ用B案
+  max_hold_sec: 1800
+  panic_on_special_quote: true
+  panic_distance_pct: 1.0
+
+# ==========================================
+# 共通戦略設定（利確・損切）
+# ==========================================
+common:
+  tp_pct: 1.5       # ★デイトレ用B案
+  sl_pct: 0.5       # ★デイトレ用B案
+  max_hold_sec: 1800
+
+# ==========================================
+# 銘柄設定
+# ==========================================
+symbols:
+  - code: "7003"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1200
+  - code: "6525"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1200
+  - code: "7011"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1800
+  - code: "6269"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1200
+  - code: "6954"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1800
+  - code: "5016"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1800
+  - code: "8306"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 3600
+  - code: "278A"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1800
+  - code: "285A"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1800
+  - code: "3110"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1800
+  - code: "8031"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1200
+  - code: "9984"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 1200
+  - code: "9107"
+    exchange: 1
+    qty: 100
+    fixed: true
+    max_hold_sec: 3600
+  - code: "8303"
+    exchange: 1
+    qty: 100
+    fixed: false
+    max_hold_sec: 1800
+  - code: "1944"
+    exchange: 1
+    qty: 100
+    fixed: false
+    max_hold_sec: 1800
+  - code: "6728"
+    exchange: 1
+    qty: 100
+    fixed: false
+    max_hold_sec: 1800
+  - code: "3003"
+    exchange: 1
+    qty: 100
+    fixed: false
+    max_hold_sec: 1800
+  - code: "1942"
+    exchange: 1
+    qty: 100
+    fixed: false
+    max_hold_sec: 1800
+  - code: "9412"
+    exchange: 1
+    qty: 100
+    fixed: false
+    max_hold_sec: 1800
+  - code: "6754"
+    exchange: 1
+    qty: 100
+    fixed: false
+    max_hold_sec: 1800
+  # --- 観測専用 (No Trade) ---
+  - code: "9107"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
+  - code: "6857"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
+  - code: "6526"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
+  - code: "1570"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
+
+# ==========================================
+# ポートフォリオ設定
+# ==========================================
+max_concurrent_symbols: 60
+portfolio:
+  max_open_positions: 3
+
+# ==========================================
+# 安全設定
+# ==========================================
+safety:
+  api_latency_ms_limit: 2500
+  pause_on_latency: true
+  api_qps_limit: 3
+  board_min_interval_ms: 500
+  min_order_interval_sec: 1
+  order_confirm_timeout_sec: 8
+  api_call_interval_sec: 0.2
+  spike_pct: 4.0
+  spike_window_sec: 3
+  pause_after_spike_sec: 30
+  kill_switch_file: runtime/kill.txt
+  holdid_wait_ms: 2000
+  poll_interval_ms: 20
+  cooldown_after_exit_sec: 2.0
+  streak_pause_sec: 30
+
+# ==========================================
+# エントリー・エグジット設定
+# ==========================================
+entry:
+  theta: 0.60
+exit:
+  trail_back_pct: 0.005
+  trail_start_pct: 0.003
+  max_hold_sec: 1800
+
+# ==========================================
+# 自動学習（無効）
+# ==========================================
+learning:
+  enable_auto_train: false
+
+# ==========================================
+# Gatekeeper（取引許可リスト）
+# ==========================================
+gatekeeper:
+  enabled: true
+  whitelist:
+    - "7003"
+    - "6525"
+    - "7011"
+    - "6269"
+    - "6954"
+    - "5016"
+    - "8306"
+    - "278A"
+    - "285A"
+    - "3110"
+    - "8031"
+    - "9984"
+    - "9107"
+    - "8303"
+    - "1944"
+    - "6728"
+    - "3003"
+    - "1942"
+    - "9412"
+    - "6754"
+  blacklist: []
+
+# ==========================================
+# 戦略設定
+# ==========================================
+strategies:
+  MINI_SWING:
+    pass_placeholder: true
+
+router:
+  prefer_swing_if:
+    heat: 0.50
+    vwap_distance: 0.70
+    spread_ticks: 3
+    vol_boost_ratio: 2.0    # ★ユーザー指定: 2.0倍
+    market_temp: 0.40
+  
+  forbid_entry_if:
+    spread_ticks: 5
+    vol_rank: 0.05
+    price_step: 100
+
+  # ★銘柄ごとの強制決済時間(分)
+  logic:
+    time_limits:
+      default: 60
+      "7003": 20
+      "6525": 20
+      "6269": 20
+      "9984": 20
+      "6857": 20
+      "6526": 20
+      "8031": 20
+      "7011": 30
+      "6954": 30
+      "5016": 30
+      "278A": 30
+      "285A": 30
+      "3110": 30
+      "8306": 60
+      "9107": 60
+
+# ==========================================
+# 通知設定（Discord）
+# ==========================================
+notification:
+  discord_webhook_url: "https://discordapp.com/api/webhooks/1458028818446028851/1k7PEt4LfAn7-YSXs9_b8NTlN7Gbo74zBxofc-YbUX-n1h_uFgYhgWOzPFycQ9aLrpix"
+  line_notify_token: ""
+  notify_on_startup: true
+  notify_on_entry: true
+  notify_on_exit: true
+  notify_on_error: true
+  notify_hourly: true

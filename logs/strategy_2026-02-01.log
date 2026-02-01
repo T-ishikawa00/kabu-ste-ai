@@ -1,0 +1,44 @@
+2026-02-01 23:55:23,747 [WARNING] 📝 Logger: Console=WARNING+, File=DEBUG+
+2026-02-01 23:55:23,747 [INFO] 🔌 KabusAPI v9.1 initialized
+2026-02-01 23:55:23,747 [INFO]   📡 Host: http://localhost:18080/kabusapi
+2026-02-01 23:55:23,747 [INFO] 🔧 Broker v11.3 Initialized (Order Failure Sync)
+2026-02-01 23:55:23,747 [WARNING] ⚙️ Config: MaxHold=1800s, TP=1.5%, SL=0.5%
+2026-02-01 23:55:23,749 [INFO] 📁 Created data directory: data_raw\20260201
+2026-02-01 23:55:23,749 [INFO] 📢 Notification System: ON (Discord ...Lrpix)
+2026-02-01 23:55:23,749 [WARNING] ⚙️ AI確信度閾値: 65% (これ未満はエントリーしない)
+2026-02-01 23:55:23,750 [WARNING] 🤖 AIモデルロード開始 (v20.7 VecNormalize Fix)...
+2026-02-01 23:55:24,901 [WARNING]    🌐 汎用モデル(v20) ロード成功
+2026-02-01 23:55:24,902 [WARNING]    📊 正規化統計ロード成功 (mean shape: (21,))
+2026-02-01 23:55:24,903 [WARNING] 🤖 モデル適用完了: 個別特化=0 / 汎用汎用=25
+2026-02-01 23:55:24,903 [DEBUG] 📚 過去データ読み込み中...
+2026-02-01 23:55:24,966 [DEBUG]   💾 [7003] ウォームアップ: 206本
+2026-02-01 23:55:25,043 [DEBUG]   💾 [6525] ウォームアップ: 219本
+2026-02-01 23:55:25,100 [DEBUG]   💾 [7011] ウォームアップ: 204本
+2026-02-01 23:55:25,127 [DEBUG]   💾 [6269] ウォームアップ: 203本
+2026-02-01 23:55:25,153 [DEBUG]   💾 [6954] ウォームアップ: 198本
+2026-02-01 23:55:25,185 [DEBUG]   💾 [5016] ウォームアップ: 200本
+2026-02-01 23:55:25,219 [DEBUG]   💾 [8306] ウォームアップ: 216本
+2026-02-01 23:55:25,234 [DEBUG]   💾 [278A] ウォームアップ: 187本
+2026-02-01 23:55:25,262 [DEBUG]   💾 [285A] ウォームアップ: 199本
+2026-02-01 23:55:25,286 [DEBUG]   💾 [3110] ウォームアップ: 198本
+2026-02-01 23:55:25,317 [DEBUG]   💾 [8031] ウォームアップ: 200本
+2026-02-01 23:55:25,346 [DEBUG]   💾 [9984] ウォームアップ: 199本
+2026-02-01 23:55:25,379 [DEBUG]   💾 [9107] ウォームアップ: 232本
+2026-02-01 23:55:25,417 [DEBUG]   💾 [9107] ウォームアップ: 232本
+2026-02-01 23:55:25,445 [DEBUG]   💾 [6857] ウォームアップ: 199本
+2026-02-01 23:55:25,474 [DEBUG]   💾 [6526] ウォームアップ: 209本
+2026-02-01 23:55:25,505 [DEBUG]   💾 [8306] ウォームアップ: 216本
+2026-02-01 23:55:25,531 [DEBUG]   💾 [1570] ウォームアップ: 198本
+2026-02-01 23:55:25,531 [WARNING] 🔧 Controller v20.7 initialized (25 symbols)
+2026-02-01 23:55:25,532 [WARNING] ⚠️ Config内に 'time_limits' が見つかりませんでした。バックアップ値を使用します。
+2026-02-01 23:55:25,532 [WARNING]    (※バックアップ値には7003=20分などが含まれているため、動作は正常です)
+2026-02-01 23:55:25,532 [INFO] 🔧 Controller v20.3 initialized (25 symbols)
+2026-02-01 23:55:25,532 [WARNING] 🤖 [分身モード] 25 銘柄監視
+2026-02-01 23:55:25,532 [WARNING] 🤖 [WS] AIモデル最適化 (Hybrid Mode)...
+2026-02-01 23:55:25,532 [WARNING] 🤖 モデル再配置完了: 個別特化=0 / 汎用汎用=25
+2026-02-01 23:55:25,532 [WARNING] 🔧 WebsocketController v20.21 (Robust Fix) initialized
+2026-02-01 23:55:25,532 [WARNING] 🚀 Starting WS Mode... (25 symbols)
+2026-02-01 23:55:25,536 [DEBUG] Starting new HTTP connection (1): localhost:18080
+2026-02-01 23:55:29,617 [DEBUG] Incremented Retry for (url='/kabusapi/token'): Retry(total=2, connect=None, read=None, redirect=None, status=None)
+2026-02-01 23:55:29,617 [WARNING] Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError("HTTPConnection(host='localhost', port=18080): Failed to establish a new connection: [WinError 10061] 対象のコンピューターによって拒否されたため、接続できませんでした。")': /kabusapi/token
+2026-02-01 23:55:29,618 [DEBUG] Starting new HTTP connection (2): localhost:18080

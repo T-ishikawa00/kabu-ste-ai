@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-config_loader.py v19.0 (Fresh & Logging Support)
+config_loader.py v19.1 (Fresh & Logging Support)
 ===============================================
-【v19.0 修正点】
-1. LoggingCfg をデータクラスとして定義。
-   → DataCollector が使う 'save_data: true' などの設定を構造化。
-2. 他の Pctベース TP/SL などの v18.4 機能は完全に維持。
+【v19.1 修正点】
+1. _load_symbols にて tp_ticks_cap / sl_ticks_cap の読み込み漏れを修正。
+   (YAMLで指定しても無視されるバグを修正)
+2. LoggingCfg の構造化を確定。
 """
 from __future__ import annotations
 import os, yaml
@@ -20,8 +20,10 @@ class SymbolCfg:
     exchange: int = 1
     qty: int = 100
     min_order_interval_sec: int = 1
+    # Pctベースのキャップ
     tp_pct_cap: Optional[float] = None
     sl_pct_cap: Optional[float] = None
+    # Tickベースのキャップ (v19.1で読み込み対応)
     tp_ticks_cap: Optional[int] = None
     sl_ticks_cap: Optional[int] = None
 
@@ -96,7 +98,13 @@ class NotificationCfg:
     notify_on_error: bool = True
     notify_hourly: bool = True
 
-# ★追加: DataCollector 等が使うロギング設定を構造化
+# ★Entry設定 (v20.6追加)
+@dataclass
+class EntryCfg:
+    theta: float = 0.70  # AI確信度閾値（デフォルト70%）
+    ai_confidence_threshold: float = None  # 明示的に設定する場合
+
+# ★Logging設定 (DataCollector等が使用)
 @dataclass
 class LoggingCfg:
     save_data: bool = False
@@ -138,8 +146,11 @@ class Config:
     gatekeeper: GatekeeperCfg = field(default_factory=GatekeeperCfg)
     notification: NotificationCfg = field(default_factory=NotificationCfg)
     
-    # ★修正: Dictではなく LoggingCfg クラスとして保持
+    # 構造化されたログ設定
     logging: LoggingCfg = field(default_factory=LoggingCfg)
+    
+    # ★v20.6: Entry設定
+    entry: EntryCfg = field(default_factory=EntryCfg)
     
     orders: OrdersCfg = field(default_factory=OrdersCfg)
     api: APISettings = field(default_factory=APISettings)
@@ -174,13 +185,22 @@ def _load_symbols(lst: Any) -> List[SymbolCfg]:
     if not isinstance(lst, list): return res
     for s in lst:
         if not isinstance(s, dict) or "code" not in s: continue
+        
+        # ★修正: ticks_cap の読み込みを追加
+        tp_pct_cap = _to_float(s.get("tp_pct_cap"), 0.0) if s.get("tp_pct_cap") is not None else None
+        sl_pct_cap = _to_float(s.get("sl_pct_cap"), 0.0) if s.get("sl_pct_cap") is not None else None
+        tp_ticks_cap = _to_int(s.get("tp_ticks_cap"), 0) if s.get("tp_ticks_cap") is not None else None
+        sl_ticks_cap = _to_int(s.get("sl_ticks_cap"), 0) if s.get("sl_ticks_cap") is not None else None
+
         res.append(SymbolCfg(
             code=str(s["code"]),
             exchange=_to_int(s.get("exchange", 1), 1),
             qty=_to_int(s.get("qty", 100), 100),
             min_order_interval_sec=_to_int(s.get("min_order_interval_sec", 1), 1),
-            tp_pct_cap=_to_float(s.get("tp_pct_cap"), 0.0) if s.get("tp_pct_cap") is not None else None,
-            sl_pct_cap=_to_float(s.get("sl_pct_cap"), 0.0) if s.get("sl_pct_cap") is not None else None
+            tp_pct_cap=tp_pct_cap,
+            sl_pct_cap=sl_pct_cap,
+            tp_ticks_cap=tp_ticks_cap,
+            sl_ticks_cap=sl_ticks_cap
         ))
     return res
 
@@ -238,12 +258,21 @@ def _load_common(d: Dict[str, Any]) -> CommonCfg:
         max_hold_sec=_to_int(d.get("max_hold_sec", 1800), 1800)
     )
 
-# ★追加: loggingセクションの読み込み
 def _load_logging(d: Dict[str, Any]) -> LoggingCfg:
     return LoggingCfg(
         save_data=bool(d.get("save_data", False)),
         save_interval_sec=_to_int(d.get("save_interval_sec", 300), 300),
         log_dir=str(d.get("log_dir", "logs"))
+    )
+
+def _load_entry(d: Dict[str, Any]) -> EntryCfg:
+    theta = _to_float(d.get("theta", 0.70), 0.70)
+    ai_conf = d.get("ai_confidence_threshold")
+    if ai_conf is not None:
+        ai_conf = _to_float(ai_conf, theta)
+    return EntryCfg(
+        theta=theta,
+        ai_confidence_threshold=ai_conf
     )
 
 def load_cfg(path: str = "config.yaml") -> Config:
@@ -268,8 +297,9 @@ def load_cfg(path: str = "config.yaml") -> Config:
         gatekeeper=GatekeeperCfg(**(raw.get("gatekeeper", {}) or {})),
         notification=NotificationCfg(**(raw.get("notification", {}) or {})),
         
-        # Dictではなく LoggingCfg として読み込む
         logging=_load_logging(raw.get("logging", {}) or {}),
+        
+        entry=_load_entry(raw.get("entry", {}) or {}),
         
         orders=_load_orders(raw),
         api=_load_api(raw.get("api", {})),

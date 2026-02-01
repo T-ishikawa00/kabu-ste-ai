@@ -1,6 +1,6 @@
 # ==========================================
-#   Kabu-Ste-AI Config v17.13 (Fix Data Save & Portfolio)
-#   ★固定枠13銘柄 + 日替わり枠7銘柄
+#   Kabu-Ste-AI Config v17.16 (Data Collection Support)
+#   ★固定枠13 + 日替わり7 + 観測専用5
 # ==========================================
 
 # ==========================================
@@ -9,7 +9,7 @@
 api:
   base: http://localhost:18080/kabusapi
   api_password: "Htk050313"
-  trade_password: "Htk_222305"
+  trade_password: "T_ishi_Moto_0313"
   timeout_get_sec: 10
   timeout_post_sec: 10
 
@@ -26,7 +26,7 @@ logging:
 # ==========================================
 # 取引モード
 # ==========================================
-paper_trading: true
+paper_trading: false  # ★本番モード(強制)
 
 # ==========================================
 # 注文設定
@@ -73,8 +73,8 @@ short:
   max_dsr: 4.0
   no_entry_after: "14:30"
   force_close_time: "14:50"
-  tp_pct: 1.0         # 空売り利確 -1%
-  sl_pct: 0.4         # 空売り損切 +0.4%
+  tp_pct: 1.5         # ★デイトレ用B案
+  sl_pct: 0.5         # ★デイトレ用B案
   max_hold_sec: 1800
   panic_on_special_quote: true
   panic_distance_pct: 1.0
@@ -83,8 +83,8 @@ short:
 # 共通戦略設定（利確・損切）
 # ==========================================
 common:
-  tp_pct: 1.0       # 利確 +1%
-  sl_pct: 0.4       # 損切 -0.4%
+  tp_pct: 1.5       # ★デイトレ用B案
+  sl_pct: 0.5       # ★デイトレ用B案
   max_hold_sec: 1800
 
 # ==========================================
@@ -156,41 +156,67 @@ symbols:
     qty: 100
     fixed: true
     max_hold_sec: 3600
-  - code: "9843"
+  - code: "6501"
     exchange: 1
     qty: 100
     fixed: false
     max_hold_sec: 1800
-  - code: "6629"
+  - code: "1878"
     exchange: 1
     qty: 100
     fixed: false
     max_hold_sec: 1800
-  - code: "2871"
+  - code: "2501"
     exchange: 1
     qty: 100
     fixed: false
     max_hold_sec: 1800
-  - code: "7599"
+  - code: "4186"
     exchange: 1
     qty: 100
     fixed: false
     max_hold_sec: 1800
-  - code: "3038"
+  - code: "6383"
     exchange: 1
     qty: 100
     fixed: false
     max_hold_sec: 1800
-  - code: "4578"
+  - code: "6305"
     exchange: 1
     qty: 100
     fixed: false
     max_hold_sec: 1800
-  - code: "8830"
+  - code: "6617"
     exchange: 1
     qty: 100
     fixed: false
     max_hold_sec: 1800
+  # --- 観測専用 (No Trade) ---
+  - code: "9107"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
+  - code: "6857"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
+  - code: "6526"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
+  - code: "8306"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
+  - code: "1570"
+    exchange: 1
+    qty: 0  # 発注防止
+    fixed: false
+    monitor_only: true
 
 # ==========================================
 # ポートフォリオ設定
@@ -223,7 +249,7 @@ safety:
 # エントリー・エグジット設定
 # ==========================================
 entry:
-  theta: 0.55
+  theta: 0.65
 exit:
   trail_back_pct: 0.005
   trail_start_pct: 0.003
@@ -254,13 +280,13 @@ gatekeeper:
     - "8031"
     - "9984"
     - "9107"
-    - "9843"
-    - "6629"
-    - "2871"
-    - "7599"
-    - "3038"
-    - "4578"
-    - "8830"
+    - "6501"
+    - "1878"
+    - "2501"
+    - "4186"
+    - "6383"
+    - "6305"
+    - "6617"
   blacklist: []
 
 # ==========================================
@@ -273,14 +299,35 @@ strategies:
 router:
   prefer_swing_if:
     heat: 0.50
-    vwap_distance: 0.40
+    vwap_distance: 0.70
     spread_ticks: 3
-    vol_boost_ratio: 1.0
+    vol_boost_ratio: 2.0    # ★ユーザー指定: 2.0倍
     market_temp: 0.40
+  
   forbid_entry_if:
     spread_ticks: 5
     vol_rank: 0.05
     price_step: 100
+
+  # ★銘柄ごとの強制決済時間(分)
+  logic:
+    time_limits:
+      default: 60
+      "7003": 20
+      "6525": 20
+      "6269": 20
+      "9984": 20
+      "6857": 20
+      "6526": 20
+      "8031": 20
+      "7011": 30
+      "6954": 30
+      "5016": 30
+      "278A": 30
+      "285A": 30
+      "3110": 30
+      "8306": 60
+      "9107": 60
 
 # ==========================================
 # 通知設定（Discord）
