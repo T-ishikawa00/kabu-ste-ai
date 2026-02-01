@@ -1,110 +1,123 @@
 # -*- coding: utf-8 -*-
 """
-train_universal.py v19.3 (VWAP Native & Fresh Data Only)
-========================================================
-全銘柄データを統合して汎用モデル(先生)を鍛える。
+train_universal.py v20.6 (Simplified)
+=====================================
+【設計】
+- モデルファイルあり → 継続学習
+- モデルファイルなし → 新規作成
+- 中断時は保存しない（不完全なモデルを防ぐ）
 
-【v19.3 修正点】
-1. データの読み込み時、タイムスタンプを確認して
-   「直近2時間以内に更新されたファイル（＝さっきStep4で作ったやつ）」
-   だけを対象にするフィルタを追加。
-   → フォルダに古いゴミデータが残っていても無視して、最新のデータだけで学習します。
+【使い方】
+1. ステップ数を設定: TOTAL_TIMESTEPS
+2. 実行: py -3.12 train_universal.py
 """
 
 import os
 import glob
 import pandas as pd
 import numpy as np
-import yaml
-import time
+import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.callbacks import BaseCallback
 
 from step2_env_universal import TradingEnv
 import warnings
-import torch
-
 warnings.filterwarnings("ignore")
 
 # ==========================================
-# 設定
+# ★設定（ここだけ変更）
 # ==========================================
-DATA_DIR = "data"
-MODEL_DIR = "model"
-CONFIG_FILE = "config.yaml"
-TARGET_LIST_FILE = "target_list.csv"
-
-# モデル名
-MODEL_NAME = "model_universal_v19"
+TOTAL_TIMESTEPS = 500_000   # 学習ステップ数
 
 # ハイパーパラメータ
 LEARNING_RATE = 0.0003
-N_STEPS = 2048          
+N_STEPS = 2048
 BATCH_SIZE = 64
 N_EPOCHS = 10
-GAMMA = 0.99           
-ENT_COEF = 0.005       
+GAMMA = 0.95
+ENT_COEF = 0.01
 GAE_LAMBDA = 0.95
 CLIP_RANGE = 0.2
 
-# 学習回数
-TOTAL_TIMESTEPS = 1_000_000 
-MIN_DATA_ROWS = 200
+# パス
+DATA_DIR = "data"
+MODEL_DIR = "runtime"
+MODEL_NAME = "model_universal_v20"
+
+# その他
+MIN_DATA_ROWS = 100
 NUM_ENVS = 4
 
-# ★データ鮮度リミット (秒)
-# Step4実行から時間が経ちすぎているファイルは無視 (2時間 = 7200秒)
-DATA_FRESHNESS_LIMIT = 7200
 
-
+# ==========================================
+# 環境クラス
+# ==========================================
 class UniversalTradingEnv(TradingEnv):
-    """汎用学習用の環境ラッパー"""
+    """複数銘柄をランダムに切り替える"""
     def __init__(self, all_dataframes: list, stock_codes: list):
         self.all_dfs = all_dataframes
         self.all_codes = stock_codes
-        self.current_df_idx = 0
-        super().__init__(all_dataframes[0], stock_code="UNIVERSAL")
+        super().__init__(all_dataframes[0], stock_code=stock_codes[0])
         
     def reset(self, seed=None, options=None):
         if seed is not None:
             np.random.seed(seed)
-        self.current_df_idx = np.random.randint(0, len(self.all_dfs))
-        self.df = self.all_dfs[self.current_df_idx].reset_index(drop=True)
-        self.stock_code = self.all_codes[self.current_df_idx]
+        
+        idx = np.random.randint(0, len(self.all_dfs))
+        self.df = self.all_dfs[idx].copy().reset_index(drop=True)
+        self.stock_code = self.all_codes[idx]
+        self.MAX_STEPS = len(self.df) - 1
         
         if self.stock_code in self.TIME_LIMITS:
             self.MAX_HOLD = self.TIME_LIMITS[self.stock_code]
         else:
-            self.MAX_HOLD = 60 # デフォルト
-            
-        self.MAX_STEPS = len(self.df) - 1
+            self.MAX_HOLD = 60
+        
+        self.trades = []
         return super().reset(seed=seed, options=options)
 
 
+# ==========================================
+# コールバック
+# ==========================================
 class WinRateCallback(BaseCallback):
-    """学習中の勝率をモニタリング"""
-    def __init__(self, check_freq=10000, verbose=1):
-        super().__init__(verbose)
+    """勝率 + アクション比率モニタリング"""
+    def __init__(self, check_freq=20000):
+        super().__init__()
         self.check_freq = check_freq
         self.best_win_rate = 0.0
         self.total_wins = 0
         self.total_losses = 0
+        self.total_actions = [0, 0, 0]  # STAY, BUY, SHORT
         
     def _on_step(self):
         if self.n_calls % self.check_freq == 0:
-            wins = 0
-            losses = 0
+            wins, losses = 0, 0
+            actions = [0, 0, 0]
             
             for env in self.training_env.envs:
-                if hasattr(env, 'episode_wins'):
-                    wins += env.episode_wins
-                    losses += env.episode_losses
+                if hasattr(env, 'trades'):
+                    for pnl in env.trades:
+                        if pnl > 0:
+                            wins += 1
+                        elif pnl < 0:
+                            losses += 1
+                
+                # アクションカウント集計
+                if hasattr(env, 'action_counts'):
+                    for i in range(3):
+                        actions[i] += env.action_counts[i]
             
             new_wins = wins - self.total_wins
             new_losses = losses - self.total_losses
             self.total_wins = wins
             self.total_losses = losses
+            
+            # アクション比率計算
+            new_actions = [actions[i] - self.total_actions[i] for i in range(3)]
+            self.total_actions = actions
+            total_actions = sum(new_actions)
             
             total = new_wins + new_losses
             if total > 0:
@@ -112,125 +125,152 @@ class WinRateCallback(BaseCallback):
                 if win_rate > self.best_win_rate:
                     self.best_win_rate = win_rate
                 
+                # アクション比率文字列
+                if total_actions > 0:
+                    stay_pct = new_actions[0] / total_actions * 100
+                    buy_pct = new_actions[1] / total_actions * 100
+                    short_pct = new_actions[2] / total_actions * 100
+                    action_str = f"STAY:{stay_pct:.0f}% BUY:{buy_pct:.0f}% SHORT:{short_pct:.0f}%"
+                else:
+                    action_str = ""
+                
                 print(f"   Step {self.n_calls:,}: "
-                      f"勝率 {win_rate:.1f}% ({new_wins}-{new_losses}) | 最高 {self.best_win_rate:.1f}%")
+                      f"勝率 {win_rate:.1f}% ({new_wins}W-{new_losses}L) | "
+                      f"最高 {self.best_win_rate:.1f}% | {action_str}")
         return True
 
 
-def get_training_symbols():
-    target_codes = set()
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
-                symbols = config.get("symbols", [])
-                for s in symbols:
-                    target_codes.add(str(s["code"]))
-        except: pass
-
-    if os.path.exists(TARGET_LIST_FILE):
-        try:
-            df = pd.read_csv(TARGET_LIST_FILE)
-            for c in df['code'].astype(str).tolist():
-                if len(c) == 5 and c.endswith('0'): c = c[:-1]
-                target_codes.add(c)
-        except: pass
-        
-    return target_codes
-
+# ==========================================
+# データ読み込み
+# ==========================================
 def load_all_data():
     csv_files = glob.glob(os.path.join(DATA_DIR, "merged_*.csv"))
     if not csv_files:
         print("❌ データファイルが見つかりません")
+        print("   → data/merged_XXXX.csv を配置してください")
         return [], []
     
-    load_targets = []
-    now_ts = time.time()
-    skipped_old = 0
+    print(f"🔍 検出: {len(csv_files)} ファイル")
     
-    # ★修正: タイムスタンプでフィルタリング
-    for f in csv_files:
-        mtime = os.path.getmtime(f)
-        if now_ts - mtime <= DATA_FRESHNESS_LIMIT:
-            load_targets.append(f)
-        else:
-            skipped_old += 1
-            
-    print(f"🔍 読み込み対象: {len(load_targets)} ファイル (古い {skipped_old} 件を除外)")
-
     all_dfs = []
     all_codes = []
     total_rows = 0
+    skipped = 0
     
-    for csv_file in load_targets:
+    for csv_file in csv_files:
         try:
             filename = os.path.basename(csv_file)
             stock_code = filename.replace("merged_", "").replace(".csv", "")
+            
             df = pd.read_csv(csv_file)
-            if len(df) < MIN_DATA_ROWS: continue
+            df.columns = [str(c).lower().strip() for c in df.columns]
+            
+            # カラム名の揺らぎ吸収
+            if 'volume' not in df.columns:
+                for alias in ['trading_volume', 'vol']:
+                    if alias in df.columns:
+                        df.rename(columns={alias: 'volume'}, inplace=True)
+                        break
+                else:
+                    df['volume'] = 0
+            
+            if 'close' not in df.columns:
+                for alias in ['current', 'price', 'current_price', 'currentprice']:
+                    if alias in df.columns:
+                        df.rename(columns={alias: 'close'}, inplace=True)
+                        break
+            
+            if 'close' not in df.columns:
+                skipped += 1
+                continue
+            
+            df = df[df['close'] > 0].reset_index(drop=True)
+            if len(df) < MIN_DATA_ROWS:
+                skipped += 1
+                continue
             
             all_dfs.append(df)
             all_codes.append(stock_code)
             total_rows += len(df)
-        except Exception:
+                
+        except Exception as e:
+            print(f"   ⚠️ {csv_file}: {e}")
+            skipped += 1
             continue
     
     if len(all_dfs) == 0:
-        print("⚠️ 有効なデータが0件です。Step4を実行してください。")
-        
-    print(f"📊 読み込み完了: {len(all_dfs)}銘柄 / 総行数 {total_rows:,}")
+        print("⚠️ 有効なデータが0件です")
+        return [], []
+    
+    print(f"📊 ロード完了: {len(all_dfs)}銘柄 / {total_rows:,}行")
+    if skipped > 0:
+        print(f"   （スキップ: {skipped}件）")
+    
     return all_dfs, all_codes
 
 
-def make_env(all_dfs, all_codes, rank=0):
-    def _init():
-        return UniversalTradingEnv(all_dfs, all_codes)
-    return _init
-
-
+# ==========================================
+# メイン
+# ==========================================
 def train():
     os.makedirs(MODEL_DIR, exist_ok=True)
     
-    print("=" * 70)
-    print(f"🌐 汎用AIモデル学習 v19.3 (Fresh Data Only)")
-    print(f"   Model Name: {MODEL_NAME}")
-    print("=" * 70)
+    print("=" * 60)
+    print(f"🌐 汎用AIモデル学習 v20.6")
+    print(f"   Model: {MODEL_NAME}")
+    print(f"   Steps: {TOTAL_TIMESTEPS:,}")
+    print("=" * 60)
     
+    # データ読み込み
     all_dfs, all_codes = load_all_data()
     if not all_dfs:
         return
-
-    print(f"\n🔧 環境構築中...")
-    env_fns = [make_env(all_dfs, all_codes, i) for i in range(NUM_ENVS)]
-    env = DummyVecEnv(env_fns)
-    env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.)
+    
+    # 環境構築
+    def make_env():
+        return UniversalTradingEnv(all_dfs, all_codes)
     
     model_path = os.path.join(MODEL_DIR, MODEL_NAME)
+    env_path = f"{model_path}_env.pkl"
+    
     model = None
+    env = None
     
     # ==========================================
-    # ★Smart Resume (継続学習ロジック)
+    # モデルファイル有無で自動判定
     # ==========================================
     if os.path.exists(f"{model_path}.zip"):
+        print(f"\n📂 既存モデル発見: {model_path}.zip")
+        print("   → 継続学習します")
+        
+        env = DummyVecEnv([make_env for _ in range(NUM_ENVS)])
+        if os.path.exists(env_path):
+            try:
+                env = VecNormalize.load(env_path, env)
+                print("   ✅ 正規化統計ロード成功")
+            except:
+                env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.)
+        else:
+            env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.)
+        
         try:
-            print(f"\n🔄 既存の汎用モデルを発見。ロードして続きから学習します...")
-            temp_model = PPO.load(model_path, env=env, device='auto')
-            
-            saved_dim = temp_model.observation_space.shape[0]
-            current_dim = env.observation_space.shape[0]
-            
-            if saved_dim != current_dim:
-                print(f"⚠️ 次元不一致 ({saved_dim} != {current_dim}) -> 新規作成します")
-                model = None
-            else:
-                print(f"✅ 互換性OK。継続学習開始。")
-                model = temp_model
+            model = PPO.load(model_path, env=env, device='auto')
+            print("   ✅ モデルロード成功")
         except Exception as e:
-            print(f"♻️  ロード失敗 ({e}) -> 新規作成します")
+            print(f"   ⚠️ ロード失敗: {e}")
+            print("   → 新規作成に切り替え")
             model = None
+            env = None
+    else:
+        print(f"\n📂 モデルファイルなし → 新規作成")
     
+    # 新規作成
     if model is None:
-        print(f"\n✨ 新規汎用モデル作成 (Zero-Scratch v19)")
+        print(f"\n✨ 新規モデル作成")
+        
+        env = DummyVecEnv([make_env for _ in range(NUM_ENVS)])
+        env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.)
+        
         model = PPO(
             "MlpPolicy",
             env,
@@ -243,25 +283,37 @@ def train():
             gae_lambda=GAE_LAMBDA,
             clip_range=CLIP_RANGE,
             verbose=1,
-            device='auto'
+            device='auto',
+            policy_kwargs=dict(net_arch=[dict(pi=[256, 256], vf=[256, 256])])
         )
+    
+    # 学習開始
+    print(f"\n{'='*60}")
+    print(f"🚀 学習開始")
+    print(f"   ステップ数: {TOTAL_TIMESTEPS:,}")
+    print(f"{'='*60}")
     
     callback = WinRateCallback(check_freq=20000)
     
-    print(f"\n{'─'*70}")
-    print(f"🚀 学習開始! (目標: {TOTAL_TIMESTEPS:,} steps)")
-    print(f"{'─'*70}")
-    
     try:
-        model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback, progress_bar=True)
+        model.learn(
+            total_timesteps=TOTAL_TIMESTEPS,
+            callback=callback,
+            progress_bar=True,
+            reset_num_timesteps=False
+        )
+        
+        # 完了時のみ保存
         model.save(model_path)
-        env.save(f"{model_path}_env.pkl")
-        print(f"\n🎉 学習完了! -> {model_path}.zip")
+        model.get_env().save(env_path)
+        
+        print(f"\n🎉 学習完了!")
+        print(f"   → {model_path}.zip")
+        print(f"   → {env_path}")
         
     except KeyboardInterrupt:
-        print("\n⚠️ 中断: 現状を保存します")
-        model.save(model_path)
-        env.save(f"{model_path}_env.pkl")
+        print("\n\n⚠️ 中断検知 → 保存せずに終了")
+
 
 if __name__ == "__main__":
     torch.set_num_threads(1)

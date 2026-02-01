@@ -30,7 +30,7 @@ logging.basicConfig(
 # ==========================================
 TARGET_FILE = "target_list.csv"
 CONFIG_FILE = "config.yaml"
-FINAL_COUNT = 5  # 最終選定数
+FINAL_COUNT = 7  # 最終選定数
 
 # kabuステーションAPI
 API_BASE = "http://localhost:18080/kabusapi"

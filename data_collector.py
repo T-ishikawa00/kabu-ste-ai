@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+data_collector.py v19.1 (Compatible)
+====================================
+【v19.1 修正点】
+1. Controllerからの終了時呼び出し (save_all) に対応。
+   (本クラスはリアルタイム書き込みなので、save_all は何もしなくてOK)
+"""
 import os
 import csv
 import datetime
@@ -33,7 +40,7 @@ class DataCollector:
 
     def log(self, code: str, board: dict):
         """
-        ★メソッド名を 'log_board' から 'log' に変更（Controller側の呼び出しに合わせる）
+        リアルタイムにCSVへ追記する
         """
         try:
             # 1. フォルダのチェック
@@ -96,3 +103,12 @@ class DataCollector:
     # 互換性維持のためのエイリアス
     def log_board(self, code: str, board: dict):
         self.log(code, board)
+
+    # ★追加: Controllerからの終了時呼び出しに対応
+    def save_all(self):
+        """
+        終了時の処理。
+        本クラスはリアルタイム追記型なので、特にバッファのフラッシュ等は不要だが、
+        Controllerからの呼び出しでエラーにならないように定義しておく。
+        """
+        pass

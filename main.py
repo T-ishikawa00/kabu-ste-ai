@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-main.py — Lv19.3 (Universal Commander Mode)
-==========================================
-【v19.3 変更点】
-1. 1ボット(STOCKS_PER_BOT=100)体制を維持し、シングルプロセスで安定稼働。
-2. 古い自動学習(train_policy.py)を安全のため無効化。
-   → 今後は手動または別スケジュールの train_universal.py が主役のため。
-3. ログ出力を整理。
+main.py — v20.8 (Self-Learning Trend Commander)
+===============================================
+【v20.8 変更点】
+1. controller_ws.py v20.8 を起動（21次元AI、トレンドフィルター対応）
+2. 1ボット体制維持（シングルプロセスで安定稼働）
 """
 
 import os
@@ -48,7 +46,7 @@ def setup_logging(level: str):
         force=True,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.info(f"==== Session Start {now().strftime('%Y-%m-%d %H:%M:%S')} (v19.3 Universal Mode) ====")
+    logging.info(f"==== Session Start {now().strftime('%Y-%m-%d %H:%M:%S')} (v20.8 Self-Learning Trend) ====")
 
 # ==========================================
 # ★Discord通知テスト
@@ -61,7 +59,7 @@ def send_discord_test(webhook_url):
     logging.info("📨 Discord通知テスト送信中...")
     try:
         payload = {
-            "content": f"📢 **Commander起動 (v19.3)**: 汎用モデル強制モードで開始します\n⏰ {now().strftime('%H:%M:%S')}"
+            "content": f"📢 **Commander起動 (v20.8)**: 汎用モデル強制モードで開始します\n⏰ {now().strftime('%H:%M:%S')}"
         }
         headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
         req = urllib.request.Request(webhook_url, data=json.dumps(payload).encode("utf-8"), headers=headers)
@@ -74,7 +72,7 @@ def send_discord_test(webhook_url):
 # ===== 取引実行ロジック (Commander) =====
 
 def run_trading(cfg):
-    logging.info("🚀 トレードモード開始 (Force Universal v19.3)")
+    logging.info("🚀 トレードモード開始 (v20.8 Self-Learning Trend)")
     
     # 1. 銘柄リストの取得
     symbols = getattr(cfg, "symbols", [])
@@ -130,6 +128,16 @@ def run_trading(cfg):
         # 5. 親プロセスは待機
         while True:
             time.sleep(10)
+            
+            # ★15:40自動終了
+            now_jst = dt_datetime.now(JST)
+            if now_jst.hour == 15 and now_jst.minute >= 40:
+                logging.warning("🛑 15:40 自動終了します")
+                for p in processes:
+                    p.terminate()
+                logging.info("👋 全プロセス停止完了")
+                sys.exit(0)
+            
             all_dead = True
             for p in processes:
                 if p.poll() is None:
