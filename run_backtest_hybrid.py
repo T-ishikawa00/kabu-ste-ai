@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore")
 # 設定
 DATA_DIR = "data"
 MODEL_DIR = "runtime"
-UNIVERSAL_MODEL_NAME = "model_universal_v20"
+UNIVERSAL_MODEL_NAME = "Master_AI_v2"
 RESULT_DIR = "backtest_results"
 UNIT_SHARES = 100  # 1単元
 TEST_LIMIT = 50    # テスト銘柄数上限
