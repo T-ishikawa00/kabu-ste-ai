@@ -5,7 +5,6 @@ step2_screening.py v6.5 (Safety First)
 【修正点】
 1. ブラックリスト対応: config.yamlのblacklistに入っている銘柄を絶対除外
 2. 暴落回避: 前日比 -5% 以下の銘柄は「落ちるナイフ」として除外
-3. 価格制限: 上限を 10,000円 -> 4,000円 に下げて、高額株の事故を防ぐ
 """
 
 import os
@@ -36,7 +35,7 @@ ABSOLUTE_NG = {
 }
 
 BASE_PARAMS = {
-    "min_price": 500,
+    "min_price": 1000,
     "max_price":10000,                # ★修正: 10000 -> 4000 (高額株排除)
     "min_trading_val": 1_000_000_000, # 10億円以上
     "min_days": 30,

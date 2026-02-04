@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-data_collector.py v19.1 (Compatible)
-====================================
-【v19.1 修正点】
-1. Controllerからの終了時呼び出し (save_all) に対応。
-   (本クラスはリアルタイム書き込みなので、save_all は何もしなくてOK)
+data_collector.py v22.5 (High-Speed Logger)
+===========================================
+【v22.5 変更点】
+1. バージョン番号をシステム全体(v22.5)と統一
+2. Master_AI_v2 の学習に必要な「深層板情報(OverSell/UnderBuy)」を確実に記録
+3. リアルタイム書き込み方式 (クラッシュ時のデータロスト防止)
 """
 import os
 import csv
@@ -13,8 +14,8 @@ import logging
 
 class DataCollector:
     """
-    全銘柄の市場データをCSVに高速保存するクラス (v19.0: Deep Market Depth対応)
-    OverSellQty / UnderBuyQty を記録し、将来のAI学習に役立てる
+    全銘柄の市場データをCSVに高速保存するクラス
+    Master_AI_v2 (18次元) の再学習に必要なデータを網羅的に記録する。
     """
     def __init__(self, save_dir="data_raw"):
         self.save_dir = save_dir
@@ -23,15 +24,15 @@ class DataCollector:
             "bid_price", "bid_qty", 
             "ask_price", "ask_qty", 
             "vwap",
-            "over_sell_qty",   # 板の上に見えない売り圧力
-            "under_buy_qty",   # 板の下に見えない買い圧力
+            "over_sell_qty",   # ★重要: AIの「売り圧力」判定に使用
+            "under_buy_qty",   # ★重要: AIの「買い圧力」判定に使用
             "market_cap"       # 時価総額
         ]
         self.current_dir = None
         self._ensure_daily_dir()
 
     def _ensure_daily_dir(self):
-        """今日の日付フォルダを作成 (data_raw/20260126/...)"""
+        """今日の日付フォルダを作成 (data_raw/20260201/...)"""
         today_str = datetime.datetime.now().strftime("%Y%m%d")
         self.current_dir = os.path.join(self.save_dir, today_str)
         if not os.path.exists(self.current_dir):
@@ -43,13 +44,13 @@ class DataCollector:
         リアルタイムにCSVへ追記する
         """
         try:
-            # 1. フォルダのチェック
+            # 1. フォルダのチェック (日付またぎ対応)
             today_str = datetime.datetime.now().strftime("%Y%m%d")
             if self.current_dir and today_str not in self.current_dir:
                 self._ensure_daily_dir()
 
             # 2. データの抽出
-            # 現在値
+            # 現在値 (APIのバージョン揺れに対応)
             price = board.get("CurrentPrice") or board.get("CurrentPriceV2") or board.get("LastTradedPrice")
             
             # 出来高
@@ -66,12 +67,12 @@ class DataCollector:
             # VWAP
             vwap = board.get("VWAP")
 
-            # 深層情報
+            # 深層情報 (AI v22.5 の肝)
             over_sell = board.get("OverSellQty")
             under_buy = board.get("UnderBuyQty")
             market_cap = board.get("TotalMarketValue")
 
-            # 必須データがない場合はスキップ（特に寄り付き前などはゴミデータになりやすいため）
+            # 必須データがない場合はスキップ（寄り付き前などのゴミデータ排除）
             if price is None or vol is None:
                 return
 
@@ -79,6 +80,7 @@ class DataCollector:
             file_path = os.path.join(self.current_dir, f"{code}.csv")
             file_exists = os.path.exists(file_path)
             
+            # 'a'モードで追記 (都度closeすることでデータ破損を防ぐ)
             with open(file_path, "a", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 if not file_exists:
@@ -98,17 +100,17 @@ class DataCollector:
                 writer.writerow(row)
 
         except Exception as e:
+            # エラーが出ても止まらないようにwarningだけ出す
             logging.warning(f"[DataCollector] Error saving {code}: {e}")
 
     # 互換性維持のためのエイリアス
     def log_board(self, code: str, board: dict):
         self.log(code, board)
 
-    # ★追加: Controllerからの終了時呼び出しに対応
     def save_all(self):
         """
         終了時の処理。
-        本クラスはリアルタイム追記型なので、特にバッファのフラッシュ等は不要だが、
-        Controllerからの呼び出しでエラーにならないように定義しておく。
+        リアルタイム書き込みのためバッファフラッシュは不要だが、
+        Controllerからの呼び出し用に定義しておく。
         """
         pass
