@@ -23,7 +23,7 @@ socket.getaddrinfo = getaddrinfo_ipv4
 # ==========================================
 # 設定エリア
 # ==========================================
-KABU_STATION_PATH = r"C:\Users\PUBLIC_USER\AppData\Local\kabuStation\KabuS.exe"
+KABU_STATION_PATH = r"C:\Users\<LOCAL_USER>\AppData\Local\kabuStation\KabuS.exe"
 
 # 座標設定
 LOGIN_BTN_X = 1218

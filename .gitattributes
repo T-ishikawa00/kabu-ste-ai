@@ -1,0 +1,5 @@
+# Preserve historical source bytes, including original line endings.
+* -text
+*.md text eol=lf
+*.json text eol=lf
+*.sh text eol=lf

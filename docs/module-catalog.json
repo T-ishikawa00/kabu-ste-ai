@@ -1,0 +1,2407 @@
+{
+  "scope": "All91retained original source files; static evidence is not runtime success",
+  "modules": [
+    {
+      "path": "analyze_details.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "main",
+          "line": 7
+        }
+      ],
+      "imports": [
+        "datetime",
+        "os",
+        "pathlib",
+        "re"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "analyze_log_text.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "main",
+          "line": 7
+        }
+      ],
+      "imports": [
+        "datetime",
+        "glob",
+        "os",
+        "re"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "analyze_logs.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "ensure_dir",
+          "line": 22
+        },
+        {
+          "name": "load_latest_log",
+          "line": 26
+        },
+        {
+          "name": "read_file_safe",
+          "line": 46
+        },
+        {
+          "name": "analyze",
+          "line": 57
+        },
+        {
+          "name": "main",
+          "line": 185
+        }
+      ],
+      "imports": [
+        "datetime",
+        "glob",
+        "os",
+        "re"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "auth_login.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_gmail_service",
+          "line": 27
+        },
+        {
+          "name": "find_latest_otp",
+          "line": 42
+        },
+        {
+          "name": "main",
+          "line": 67
+        }
+      ],
+      "imports": [
+        "google.auth.transport.requests",
+        "google_auth_oauthlib.flow",
+        "googleapiclient.discovery",
+        "os.path",
+        "pickle",
+        "pyautogui",
+        "re",
+        "subprocess",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "auto_login.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "BATからの参照あり",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "getaddrinfo_ipv4",
+          "line": 17
+        },
+        {
+          "name": "get_gmail_service",
+          "line": 44
+        },
+        {
+          "name": "find_latest_otp",
+          "line": 59
+        },
+        {
+          "name": "main",
+          "line": 92
+        }
+      ],
+      "imports": [
+        "google.auth.transport.requests",
+        "google_auth_oauthlib.flow",
+        "googleapiclient.discovery",
+        "os.path",
+        "pickle",
+        "pyautogui",
+        "re",
+        "socket",
+        "subprocess",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "backtest_rules.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "Trade",
+          "line": 42
+        },
+        {
+          "name": "calc_rci",
+          "line": 52
+        },
+        {
+          "name": "prepare_data",
+          "line": 69
+        },
+        {
+          "name": "simulate_trade",
+          "line": 148
+        },
+        {
+          "name": "strategy_momentum",
+          "line": 213
+        },
+        {
+          "name": "strategy_rci_cross",
+          "line": 228
+        },
+        {
+          "name": "strategy_bb_bounce",
+          "line": 251
+        },
+        {
+          "name": "strategy_macd_trend",
+          "line": 266
+        },
+        {
+          "name": "strategy_ma_deviation",
+          "line": 281
+        },
+        {
+          "name": "strategy_combined",
+          "line": 296
+        },
+        {
+          "name": "strategy_random",
+          "line": 325
+        },
+        {
+          "name": "strategy_inverse_momentum",
+          "line": 339
+        },
+        {
+          "name": "strategy_trend_only",
+          "line": 354
+        },
+        {
+          "name": "strategy_inverse_macd",
+          "line": 373
+        },
+        {
+          "name": "strategy_inverse_rsi",
+          "line": 392
+        },
+        {
+          "name": "strategy_mean_reversion",
+          "line": 410
+        },
+        {
+          "name": "backtest_strategy",
+          "line": 442
+        },
+        {
+          "name": "main",
+          "line": 501
+        }
+      ],
+      "imports": [
+        "dataclasses",
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "pandas_ta",
+        "random",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "bandit_linucb.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "LinUCB",
+          "line": 4
+        }
+      ],
+      "imports": [
+        "__future__",
+        "json",
+        "numpy"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "broker.py",
+      "domain": "戦略・リスク・証券API・注文",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "SymbolLock",
+          "line": 21
+        },
+        {
+          "name": "Broker",
+          "line": 60
+        }
+      ],
+      "imports": [
+        "contextlib",
+        "datetime",
+        "logging",
+        "threading",
+        "time",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "build_dataset_from_logs.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "parse_args",
+          "line": 15
+        },
+        {
+          "name": "main",
+          "line": 21
+        }
+      ],
+      "imports": [
+        "argparse",
+        "json",
+        "os",
+        "pathlib",
+        "re"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "check_7011.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [
+        "glob",
+        "os"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "check_context.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [
+        "glob",
+        "os"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "check_data.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "check",
+          "line": 19
+        }
+      ],
+      "imports": [
+        "glob",
+        "os",
+        "pandas"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "check_files.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [
+        "glob",
+        "os"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "check_gmail.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "main",
+          "line": 12
+        }
+      ],
+      "imports": [
+        "google.auth.transport.requests",
+        "google_auth_oauthlib.flow",
+        "googleapiclient.discovery",
+        "os.path",
+        "pickle"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "check_log.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [
+        "glob",
+        "os"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "check_screening.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "check_stock",
+          "line": 16
+        }
+      ],
+      "imports": [
+        "glob",
+        "os",
+        "pandas"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "config_loader.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "SymbolCfg",
+          "line": 20
+        },
+        {
+          "name": "PortfolioCfg",
+          "line": 31
+        },
+        {
+          "name": "TradingCfg",
+          "line": 35
+        },
+        {
+          "name": "RiskCfg",
+          "line": 40
+        },
+        {
+          "name": "SafetyCfg",
+          "line": 46
+        },
+        {
+          "name": "ShortCfg",
+          "line": 69
+        },
+        {
+          "name": "CommonCfg",
+          "line": 82
+        },
+        {
+          "name": "ExitCfg",
+          "line": 89
+        },
+        {
+          "name": "GatekeeperCfg",
+          "line": 95
+        },
+        {
+          "name": "NotificationCfg",
+          "line": 101
+        },
+        {
+          "name": "EntryCfg",
+          "line": 111
+        },
+        {
+          "name": "LoggingCfg",
+          "line": 116
+        },
+        {
+          "name": "BuySellCfg",
+          "line": 122
+        },
+        {
+          "name": "OrdersCfg",
+          "line": 127
+        },
+        {
+          "name": "APISettings",
+          "line": 132
+        },
+        {
+          "name": "Config",
+          "line": 142
+        },
+        {
+          "name": "_to_int",
+          "line": 170
+        },
+        {
+          "name": "_to_float",
+          "line": 174
+        },
+        {
+          "name": "_load_orders",
+          "line": 178
+        },
+        {
+          "name": "_load_symbols",
+          "line": 190
+        },
+        {
+          "name": "_load_api",
+          "line": 213
+        },
+        {
+          "name": "_load_safety",
+          "line": 224
+        },
+        {
+          "name": "_load_short",
+          "line": 248
+        },
+        {
+          "name": "_load_common",
+          "line": 261
+        },
+        {
+          "name": "_load_exit",
+          "line": 268
+        },
+        {
+          "name": "_load_logging",
+          "line": 275
+        },
+        {
+          "name": "_load_entry",
+          "line": 282
+        },
+        {
+          "name": "load_cfg",
+          "line": 292
+        }
+      ],
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "os",
+        "typing",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "controller.py",
+      "domain": "統合・WebSocket・市場イベント制御",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "setup_logger",
+          "line": 67
+        },
+        {
+          "name": "calc_rci_series",
+          "line": 94
+        },
+        {
+          "name": "_hhmm",
+          "line": 115
+        },
+        {
+          "name": "_time_ge",
+          "line": 118
+        },
+        {
+          "name": "_regime_now",
+          "line": 121
+        },
+        {
+          "name": "_safe_scalar",
+          "line": 127
+        },
+        {
+          "name": "Controller",
+          "line": 142
+        }
+      ],
+      "imports": [
+        "broker",
+        "collections",
+        "data_collector",
+        "datetime",
+        "glob",
+        "json",
+        "kabus_api",
+        "logging",
+        "model_registry",
+        "notifier",
+        "numpy",
+        "os",
+        "pandas",
+        "pandas_ta",
+        "pickle",
+        "random",
+        "stable_baselines3",
+        "strategy_router",
+        "telemetry",
+        "threading",
+        "time",
+        "torch",
+        "typing",
+        "utils_common"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "controller_ws.py",
+      "domain": "統合・WebSocket・市場イベント制御",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "WebsocketController",
+          "line": 36
+        }
+      ],
+      "imports": [
+        "concurrent.futures",
+        "config_loader",
+        "controller",
+        "datetime",
+        "json",
+        "logging",
+        "math",
+        "os",
+        "stable_baselines3",
+        "sys",
+        "threading",
+        "time",
+        "typing",
+        "websocket"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "daily_mission.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "wait_until_tomorrow_830",
+          "line": 6
+        },
+        {
+          "name": "main",
+          "line": 34
+        }
+      ],
+      "imports": [
+        "datetime",
+        "subprocess",
+        "sys",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "dashboard.html",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "data_collector.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "DataCollector",
+          "line": 15
+        }
+      ],
+      "imports": [
+        "csv",
+        "datetime",
+        "logging",
+        "os"
+      ],
+      "explicit_unimplemented_methods": [
+        {
+          "name": "save_all",
+          "line": 110,
+          "evidence": "pass-only body; may be an intentional protocol hook"
+        }
+      ]
+    },
+    {
+      "path": "debug_check_data.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "check_api_response",
+          "line": 18
+        },
+        {
+          "name": "check_saved_files",
+          "line": 62
+        },
+        {
+          "name": "check_screening_sample",
+          "line": 94
+        }
+      ],
+      "imports": [
+        "glob",
+        "os",
+        "pandas",
+        "random",
+        "requests"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "debug_jquants.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "test_connection",
+          "line": 7
+        }
+      ],
+      "imports": [
+        "json",
+        "requests"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "entry_decider.py",
+      "domain": "戦略・リスク・証券API・注文",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "EntryDecider",
+          "line": 17
+        }
+      ],
+      "imports": [
+        "__future__",
+        "bandit_linucb",
+        "features",
+        "json",
+        "numpy",
+        "os",
+        "time",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "exit_decider.py",
+      "domain": "戦略・リスク・証券API・注文",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "ExitDecider",
+          "line": 16
+        }
+      ],
+      "imports": [
+        "__future__",
+        "bandit_linucb",
+        "features",
+        "json",
+        "numpy",
+        "os",
+        "time",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "features.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "_norm",
+          "line": 4
+        },
+        {
+          "name": "entry_feature_vector",
+          "line": 9
+        },
+        {
+          "name": "exit_feature_vector",
+          "line": 22
+        }
+      ],
+      "imports": [
+        "__future__",
+        "numpy"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "fetch_ohlcv_yahoo.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [
+        "os",
+        "pandas",
+        "yfinance"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "find_url.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "find_correct_url",
+          "line": 6
+        }
+      ],
+      "imports": [
+        "requests"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "fix_datetime_format.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "fix_file",
+          "line": 21
+        },
+        {
+          "name": "main",
+          "line": 56
+        }
+      ],
+      "imports": [
+        "glob",
+        "os",
+        "re"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "get_pos.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [
+        "pyautogui",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "kabus_api.py",
+      "domain": "戦略・リスク・証券API・注文",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "KabusAPI",
+          "line": 22
+        }
+      ],
+      "imports": [
+        "json",
+        "logging",
+        "os",
+        "requests",
+        "requests.adapters",
+        "threading",
+        "time",
+        "typing",
+        "urllib3.util.retry"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "kpi_rollup.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "_iter_trades",
+          "line": 5
+        },
+        {
+          "name": "rollup",
+          "line": 12
+        }
+      ],
+      "imports": [
+        "glob",
+        "json",
+        "os",
+        "statistics"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "launch_multi_bot.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "main",
+          "line": 32
+        }
+      ],
+      "imports": [
+        "math",
+        "os",
+        "subprocess",
+        "sys",
+        "time",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "main.py",
+      "domain": "統合・WebSocket・市場イベント制御",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "setup_logging",
+          "line": 21
+        },
+        {
+          "name": "main",
+          "line": 32
+        }
+      ],
+      "imports": [
+        "datetime",
+        "logging",
+        "os",
+        "subprocess",
+        "sys",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "market_temperature.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "MarketTemperature",
+          "line": 4
+        }
+      ],
+      "imports": [
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "migrate_models_71_to_73_safe.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "_atomic_write",
+          "line": 14
+        },
+        {
+          "name": "_try_load",
+          "line": 21
+        },
+        {
+          "name": "main",
+          "line": 37
+        }
+      ],
+      "imports": [
+        "glob",
+        "json",
+        "os",
+        "re",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "model_registry.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "ModelRegistry",
+          "line": 13
+        }
+      ],
+      "imports": [
+        "datetime",
+        "io",
+        "json",
+        "numpy",
+        "os",
+        "pickle",
+        "threading",
+        "typing",
+        "utils_common"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "morning_batch.bat",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "night_batch.bat",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "notifier.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "Notifier",
+          "line": 16
+        }
+      ],
+      "imports": [
+        "json",
+        "logging",
+        "threading",
+        "urllib.request"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "offline_train_theta.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "parse_args",
+          "line": 6
+        },
+        {
+          "name": "load_dataset",
+          "line": 14
+        },
+        {
+          "name": "score_subset",
+          "line": 27
+        },
+        {
+          "name": "choose_theta",
+          "line": 41
+        },
+        {
+          "name": "main",
+          "line": 54
+        }
+      ],
+      "imports": [
+        "argparse",
+        "collections",
+        "json",
+        "pathlib"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "regime_manager.py",
+      "domain": "戦略・リスク・証券API・注文",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "RegimeManager",
+          "line": 4
+        }
+      ],
+      "imports": [
+        "datetime"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "risk_sizer.py",
+      "domain": "戦略・リスク・証券API・注文",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "RiskSizer",
+          "line": 21
+        }
+      ],
+      "imports": [
+        "__future__",
+        "bandit_linucb",
+        "json",
+        "numpy",
+        "os",
+        "time",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "run_backtest.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "load_data_files",
+          "line": 36
+        },
+        {
+          "name": "run",
+          "line": 51
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "random",
+        "stable_baselines3",
+        "stable_baselines3.common.vec_env",
+        "step2_env_universal",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "run_backtest_hybrid.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "load_data_files",
+          "line": 37
+        },
+        {
+          "name": "run",
+          "line": 61
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "random",
+        "stable_baselines3",
+        "stable_baselines3.common.vec_env",
+        "step2_env_universal",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "short_term_memory.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "ShortTermMemory",
+          "line": 6
+        }
+      ],
+      "imports": [
+        "collections",
+        "datetime",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "start_daily.bat",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step0_backfill_data.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_target_codes",
+          "line": 25
+        },
+        {
+          "name": "main",
+          "line": 47
+        }
+      ],
+      "imports": [
+        "datetime",
+        "jquantsapi",
+        "os",
+        "pandas",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step0_smart_fetch.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_headers",
+          "line": 32
+        },
+        {
+          "name": "fetch_smart",
+          "line": 35
+        },
+        {
+          "name": "save_to_csv",
+          "line": 81
+        },
+        {
+          "name": "main",
+          "line": 107
+        }
+      ],
+      "imports": [
+        "datetime",
+        "os",
+        "pandas",
+        "requests",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step0_sniper_fill.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_headers",
+          "line": 32
+        },
+        {
+          "name": "fetch_smart",
+          "line": 35
+        },
+        {
+          "name": "save_to_csv",
+          "line": 81
+        },
+        {
+          "name": "main",
+          "line": 107
+        }
+      ],
+      "imports": [
+        "datetime",
+        "os",
+        "pandas",
+        "requests",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step0_yfinance_patch.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_target_codes",
+          "line": 32
+        },
+        {
+          "name": "download_and_save",
+          "line": 41
+        },
+        {
+          "name": "main",
+          "line": 99
+        }
+      ],
+      "imports": [
+        "config_loader",
+        "os",
+        "pandas",
+        "sys",
+        "time",
+        "yfinance"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step1_backfill_fast_v2.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_target_codes",
+          "line": 25
+        },
+        {
+          "name": "main",
+          "line": 47
+        }
+      ],
+      "imports": [
+        "datetime",
+        "jquantsapi",
+        "os",
+        "pandas",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step1_backfill_fast_v4.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_id_token",
+          "line": 32
+        },
+        {
+          "name": "main",
+          "line": 41
+        }
+      ],
+      "imports": [
+        "datetime",
+        "os",
+        "pandas",
+        "requests",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step1_jquants_daily.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "BATからの参照あり",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_headers",
+          "line": 28
+        },
+        {
+          "name": "convert_code",
+          "line": 31
+        },
+        {
+          "name": "is_valid_code",
+          "line": 42
+        },
+        {
+          "name": "normalize_datetime",
+          "line": 54
+        },
+        {
+          "name": "get_all_quotes_for_date",
+          "line": 69
+        },
+        {
+          "name": "get_last_date",
+          "line": 102
+        },
+        {
+          "name": "main",
+          "line": 118
+        }
+      ],
+      "imports": [
+        "datetime",
+        "os",
+        "pandas",
+        "re",
+        "requests",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step1_prepare_data.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "process_file",
+          "line": 37
+        },
+        {
+          "name": "main",
+          "line": 165
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "pandas_ta",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step1_setup_data.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "download_and_save",
+          "line": 34
+        },
+        {
+          "name": "main",
+          "line": 88
+        }
+      ],
+      "imports": [
+        "os",
+        "pandas",
+        "time",
+        "yfinance"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step2_env.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "TradingEnv",
+          "line": 22
+        }
+      ],
+      "imports": [
+        "gymnasium",
+        "numpy",
+        "pandas",
+        "pandas_ta"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step2_env_universal.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "TradingEnv",
+          "line": 16
+        }
+      ],
+      "imports": [
+        "gymnasium",
+        "numpy",
+        "pandas",
+        "pandas_ta"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step2_screening.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "BATからの参照あり",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "load_config_lists",
+          "line": 46
+        },
+        {
+          "name": "convert_code",
+          "line": 74
+        },
+        {
+          "name": "is_valid_code",
+          "line": 80
+        },
+        {
+          "name": "calc_rsi",
+          "line": 86
+        },
+        {
+          "name": "analyze_stock",
+          "line": 94
+        },
+        {
+          "name": "main",
+          "line": 230
+        }
+      ],
+      "imports": [
+        "concurrent.futures",
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "re",
+        "warnings",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step3_train.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "DetailedStatsCallback",
+          "line": 81
+        },
+        {
+          "name": "train",
+          "line": 104
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "stable_baselines3",
+        "stable_baselines3.common.callbacks",
+        "stable_baselines3.common.vec_env",
+        "step2_env_universal",
+        "torch",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step3_train_individual.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "DetailedStatsCallback",
+          "line": 81
+        },
+        {
+          "name": "train",
+          "line": 104
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "stable_baselines3",
+        "stable_baselines3.common.callbacks",
+        "stable_baselines3.common.vec_env",
+        "step2_env_universal",
+        "torch",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step4_backtest.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "backtest",
+          "line": 14
+        }
+      ],
+      "imports": [
+        "glob",
+        "matplotlib.pyplot",
+        "os",
+        "pandas",
+        "stable_baselines3",
+        "step2_env"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step4_process_daily_log.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "find_live_data_files",
+          "line": 25
+        },
+        {
+          "name": "process_file",
+          "line": 30
+        },
+        {
+          "name": "main",
+          "line": 173
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step5_backtest.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "load_data_files",
+          "line": 34
+        },
+        {
+          "name": "run",
+          "line": 42
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "stable_baselines3",
+        "stable_baselines3.common.vec_env",
+        "step2_env_universal",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step5_debug_xray.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "normalize_column_names",
+          "line": 17
+        },
+        {
+          "name": "xray_scan",
+          "line": 42
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "traceback"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step5_optimize_rules.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "normalize_column_names",
+          "line": 29
+        },
+        {
+          "name": "load_data",
+          "line": 52
+        },
+        {
+          "name": "simulate_strategy",
+          "line": 76
+        },
+        {
+          "name": "objective",
+          "line": 143
+        },
+        {
+          "name": "run_optimization",
+          "line": 159
+        }
+      ],
+      "imports": [
+        "glob",
+        "logging",
+        "numpy",
+        "optuna",
+        "os",
+        "pandas",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step6_inject_config.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "BATからの参照あり",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "load_yaml_data",
+          "line": 44
+        },
+        {
+          "name": "rescue_passwords",
+          "line": 52
+        },
+        {
+          "name": "load_screening_results",
+          "line": 65
+        },
+        {
+          "name": "backup_config",
+          "line": 76
+        },
+        {
+          "name": "generate_beautiful_config",
+          "line": 86
+        },
+        {
+          "name": "main",
+          "line": 333
+        }
+      ],
+      "imports": [
+        "datetime",
+        "os",
+        "pandas",
+        "re",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step7_morning_filter.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "BATからの参照あり",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "KabuAPI",
+          "line": 44
+        },
+        {
+          "name": "analyze_board",
+          "line": 77
+        },
+        {
+          "name": "load_candidates",
+          "line": 134
+        },
+        {
+          "name": "update_config",
+          "line": 145
+        },
+        {
+          "name": "main",
+          "line": 155
+        }
+      ],
+      "imports": [
+        "datetime",
+        "logging",
+        "os",
+        "pandas",
+        "requests",
+        "subprocess",
+        "sys",
+        "time",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step99_emergency_exit.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "ConfigWrapper",
+          "line": 6
+        },
+        {
+          "name": "main",
+          "line": 17
+        }
+      ],
+      "imports": [
+        "kabus_api",
+        "sys",
+        "time",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "step_raw_to_merged.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "calc_rci_series",
+          "line": 31
+        },
+        {
+          "name": "safe_get_column",
+          "line": 54
+        },
+        {
+          "name": "process_raw_file",
+          "line": 65
+        },
+        {
+          "name": "append_to_merged",
+          "line": 210
+        },
+        {
+          "name": "main",
+          "line": 241
+        }
+      ],
+      "imports": [
+        "datetime",
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "pandas_ta",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "strategy_router.py",
+      "domain": "戦略・リスク・証券API・注文",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "Context",
+          "line": 15
+        },
+        {
+          "name": "StrategyRouter",
+          "line": 57
+        }
+      ],
+      "imports": [
+        "numpy",
+        "time",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "symbol_gate.py",
+      "domain": "戦略・リスク・証券API・注文",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "SymbolGate",
+          "line": 14
+        }
+      ],
+      "imports": [
+        "__future__",
+        "time",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "telemetry.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "Telemetry",
+          "line": 20
+        }
+      ],
+      "imports": [
+        "json",
+        "logging",
+        "os",
+        "time",
+        "typing",
+        "utils_common"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "test_notify.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "MockConfig",
+          "line": 6
+        }
+      ],
+      "imports": [
+        "notifier",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "test_run.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "test_sequence",
+          "line": 9
+        }
+      ],
+      "imports": [
+        "auth_login",
+        "pyautogui",
+        "subprocess",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "tool_generate_training_data.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "calc_rci_series",
+          "line": 28
+        },
+        {
+          "name": "process_daily_file",
+          "line": 49
+        },
+        {
+          "name": "main",
+          "line": 120
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "pandas_ta",
+        "random"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "tool_normalize_data_raw.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_line_count",
+          "line": 21
+        },
+        {
+          "name": "main",
+          "line": 29
+        }
+      ],
+      "imports": [
+        "glob",
+        "os",
+        "pandas"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "tool_select_to_raw.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "get_line_count",
+          "line": 25
+        },
+        {
+          "name": "main",
+          "line": 33
+        }
+      ],
+      "imports": [
+        "glob",
+        "os",
+        "random",
+        "shutil"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "train_from_ohlcv.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "_fallback_tick",
+          "line": 18
+        },
+        {
+          "name": "load_csv",
+          "line": 38
+        },
+        {
+          "name": "simulate_symbol",
+          "line": 56
+        },
+        {
+          "name": "grid_search_theta",
+          "line": 148
+        },
+        {
+          "name": "main",
+          "line": 163
+        }
+      ],
+      "imports": [
+        "argparse",
+        "csv",
+        "json",
+        "math",
+        "os",
+        "pathlib",
+        "statistics",
+        "utils_common"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "train_individual.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "DetailedStatsCallback",
+          "line": 73
+        },
+        {
+          "name": "train",
+          "line": 121
+        }
+      ],
+      "imports": [
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "stable_baselines3",
+        "stable_baselines3.common.callbacks",
+        "stable_baselines3.common.vec_env",
+        "step2_env_universal",
+        "torch",
+        "traceback",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "train_policy_online.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "_load_model",
+          "line": 35
+        },
+        {
+          "name": "_save_model",
+          "line": 72
+        },
+        {
+          "name": "_clip",
+          "line": 80
+        },
+        {
+          "name": "_update_online_stats",
+          "line": 86
+        },
+        {
+          "name": "_update_weights",
+          "line": 113
+        },
+        {
+          "name": "update_after_trade",
+          "line": 142
+        }
+      ],
+      "imports": [
+        "json",
+        "os",
+        "time",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "train_universal.py",
+      "domain": "強化学習・モデル・方策",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "UniversalTradingEnv",
+          "line": 55
+        },
+        {
+          "name": "WinRateCallback",
+          "line": 86
+        },
+        {
+          "name": "load_all_data",
+          "line": 148
+        },
+        {
+          "name": "train",
+          "line": 208
+        }
+      ],
+      "imports": [
+        "cloudpickle",
+        "glob",
+        "numpy",
+        "os",
+        "pandas",
+        "stable_baselines3",
+        "stable_baselines3.common.callbacks",
+        "stable_baselines3.common.vec_env",
+        "step2_env_universal",
+        "torch",
+        "warnings"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "utils_common.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "main入口から静的に接続",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "now",
+          "line": 26
+        },
+        {
+          "name": "jst_iso",
+          "line": 30
+        },
+        {
+          "name": "ensure_dir",
+          "line": 34
+        },
+        {
+          "name": "setup_logging",
+          "line": 39
+        },
+        {
+          "name": "jpx_tick_by_price",
+          "line": 71
+        },
+        {
+          "name": "infer_tick_from_board",
+          "line": 83
+        },
+        {
+          "name": "tick_size",
+          "line": 122
+        },
+        {
+          "name": "round_to_tick",
+          "line": 139
+        }
+      ],
+      "imports": [
+        "datetime",
+        "logging",
+        "math",
+        "os",
+        "sys",
+        "time",
+        "typing"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "utils_compile_raw.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "normalize_columns",
+          "line": 25
+        },
+        {
+          "name": "main",
+          "line": 51
+        }
+      ],
+      "imports": [
+        "glob",
+        "os",
+        "pandas",
+        "shutil"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "utils_import_archive.py",
+      "domain": "取得・データ加工・特徴量",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "main",
+          "line": 22
+        }
+      ],
+      "imports": [
+        "glob",
+        "os",
+        "shutil"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "verify_v22.py",
+      "domain": "バックテスト・検証",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "load_config_values",
+          "line": 28
+        },
+        {
+          "name": "run_verification",
+          "line": 46
+        }
+      ],
+      "imports": [
+        "numpy",
+        "os",
+        "pandas",
+        "stable_baselines3",
+        "step2_env_universal",
+        "yaml"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "wait_840.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "BATからの参照あり",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [
+        "datetime",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "wait_time.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "BATからの参照あり",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "wait_until_target_time",
+          "line": 4
+        }
+      ],
+      "imports": [
+        "datetime",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "wakeup.py",
+      "domain": "運用・設定・補助・試作の独立入口",
+      "static_connection": "BATからの参照あり",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [],
+      "imports": [
+        "datetime",
+        "subprocess",
+        "sys",
+        "time"
+      ],
+      "explicit_unimplemented_methods": []
+    },
+    {
+      "path": "yesterday_report_complete.py",
+      "domain": "記録・監視・集計・既存UI",
+      "static_connection": "独立・利用未確認",
+      "runtime_status": "実装あり・動作未検証",
+      "definitions": [
+        {
+          "name": "ensure_dir",
+          "line": 14
+        },
+        {
+          "name": "load_yesterday_log",
+          "line": 18
+        },
+        {
+          "name": "read_file_safely",
+          "line": 39
+        },
+        {
+          "name": "analyze",
+          "line": 50
+        },
+        {
+          "name": "main",
+          "line": 149
+        }
+      ],
+      "imports": [
+        "datetime",
+        "glob",
+        "os",
+        "pandas",
+        "re"
+      ],
+      "explicit_unimplemented_methods": []
+    }
+  ]
+}

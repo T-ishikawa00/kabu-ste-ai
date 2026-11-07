@@ -1,0 +1,560 @@
+[
+  {
+    "class": "SymbolCfg",
+    "field": "code",
+    "annotation": "str",
+    "source_line": 21
+  },
+  {
+    "class": "SymbolCfg",
+    "field": "exchange",
+    "annotation": "int",
+    "source_line": 22
+  },
+  {
+    "class": "SymbolCfg",
+    "field": "qty",
+    "annotation": "int",
+    "source_line": 23
+  },
+  {
+    "class": "SymbolCfg",
+    "field": "min_order_interval_sec",
+    "annotation": "int",
+    "source_line": 24
+  },
+  {
+    "class": "SymbolCfg",
+    "field": "tp_pct_cap",
+    "annotation": "Optional[float]",
+    "source_line": 25
+  },
+  {
+    "class": "SymbolCfg",
+    "field": "sl_pct_cap",
+    "annotation": "Optional[float]",
+    "source_line": 26
+  },
+  {
+    "class": "SymbolCfg",
+    "field": "tp_ticks_cap",
+    "annotation": "Optional[int]",
+    "source_line": 27
+  },
+  {
+    "class": "SymbolCfg",
+    "field": "sl_ticks_cap",
+    "annotation": "Optional[int]",
+    "source_line": 28
+  },
+  {
+    "class": "PortfolioCfg",
+    "field": "max_open_positions",
+    "annotation": "int",
+    "source_line": 32
+  },
+  {
+    "class": "TradingCfg",
+    "field": "long_only",
+    "annotation": "bool",
+    "source_line": 36
+  },
+  {
+    "class": "TradingCfg",
+    "field": "day_trade_credit",
+    "annotation": "bool",
+    "source_line": 37
+  },
+  {
+    "class": "RiskCfg",
+    "field": "max_daily_loss_jpy",
+    "annotation": "int",
+    "source_line": 41
+  },
+  {
+    "class": "RiskCfg",
+    "field": "no_new_entry_after",
+    "annotation": "str",
+    "source_line": 42
+  },
+  {
+    "class": "RiskCfg",
+    "field": "force_close_time",
+    "annotation": "str",
+    "source_line": 43
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "api_latency_ms_limit",
+    "annotation": "int",
+    "source_line": 47
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "max_order_failures",
+    "annotation": "int",
+    "source_line": 48
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "order_fail_window_sec",
+    "annotation": "int",
+    "source_line": 49
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "spike_pct",
+    "annotation": "float",
+    "source_line": 50
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "spike_window_sec",
+    "annotation": "int",
+    "source_line": 51
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "pause_after_spike_sec",
+    "annotation": "int",
+    "source_line": 52
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "pause_on_latency",
+    "annotation": "bool",
+    "source_line": 53
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "pause_on_order_failures",
+    "annotation": "bool",
+    "source_line": 54
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "kill_switch_file",
+    "annotation": "str",
+    "source_line": 55
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "board_min_interval_ms",
+    "annotation": "int",
+    "source_line": 56
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "api_qps_limit",
+    "annotation": "int",
+    "source_line": 57
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "backoff_429_ms",
+    "annotation": "int",
+    "source_line": 58
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "holdid_wait_ms",
+    "annotation": "int",
+    "source_line": 59
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "poll_interval_ms",
+    "annotation": "int",
+    "source_line": 60
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "cooldown_after_exit_sec",
+    "annotation": "float",
+    "source_line": 62
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "streak_pause_sec",
+    "annotation": "float",
+    "source_line": 63
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "min_order_interval_sec",
+    "annotation": "float",
+    "source_line": 64
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "order_confirm_timeout_sec",
+    "annotation": "float",
+    "source_line": 65
+  },
+  {
+    "class": "SafetyCfg",
+    "field": "api_call_interval_sec",
+    "annotation": "float",
+    "source_line": 66
+  },
+  {
+    "class": "ShortCfg",
+    "field": "enabled",
+    "annotation": "bool",
+    "source_line": 70
+  },
+  {
+    "class": "ShortCfg",
+    "field": "allowed_symbols",
+    "annotation": "List[str]",
+    "source_line": 71
+  },
+  {
+    "class": "ShortCfg",
+    "field": "no_entry_after",
+    "annotation": "str",
+    "source_line": 72
+  },
+  {
+    "class": "ShortCfg",
+    "field": "force_close_time",
+    "annotation": "str",
+    "source_line": 73
+  },
+  {
+    "class": "ShortCfg",
+    "field": "tp_pct",
+    "annotation": "float",
+    "source_line": 75
+  },
+  {
+    "class": "ShortCfg",
+    "field": "sl_pct",
+    "annotation": "float",
+    "source_line": 76
+  },
+  {
+    "class": "ShortCfg",
+    "field": "max_hold_sec",
+    "annotation": "int",
+    "source_line": 77
+  },
+  {
+    "class": "ShortCfg",
+    "field": "panic_on_special_quote",
+    "annotation": "bool",
+    "source_line": 78
+  },
+  {
+    "class": "ShortCfg",
+    "field": "panic_distance_pct",
+    "annotation": "float",
+    "source_line": 79
+  },
+  {
+    "class": "CommonCfg",
+    "field": "tp_pct",
+    "annotation": "float",
+    "source_line": 84
+  },
+  {
+    "class": "CommonCfg",
+    "field": "sl_pct",
+    "annotation": "float",
+    "source_line": 85
+  },
+  {
+    "class": "CommonCfg",
+    "field": "max_hold_sec",
+    "annotation": "int",
+    "source_line": 86
+  },
+  {
+    "class": "ExitCfg",
+    "field": "trail_back_pct",
+    "annotation": "float",
+    "source_line": 90
+  },
+  {
+    "class": "ExitCfg",
+    "field": "trail_start_pct",
+    "annotation": "float",
+    "source_line": 91
+  },
+  {
+    "class": "ExitCfg",
+    "field": "max_hold_sec",
+    "annotation": "int",
+    "source_line": 92
+  },
+  {
+    "class": "GatekeeperCfg",
+    "field": "enabled",
+    "annotation": "bool",
+    "source_line": 96
+  },
+  {
+    "class": "GatekeeperCfg",
+    "field": "whitelist",
+    "annotation": "List[str]",
+    "source_line": 97
+  },
+  {
+    "class": "GatekeeperCfg",
+    "field": "blacklist",
+    "annotation": "List[str]",
+    "source_line": 98
+  },
+  {
+    "class": "NotificationCfg",
+    "field": "discord_webhook_url",
+    "annotation": "str",
+    "source_line": 102
+  },
+  {
+    "class": "NotificationCfg",
+    "field": "line_notify_token",
+    "annotation": "str",
+    "source_line": 103
+  },
+  {
+    "class": "NotificationCfg",
+    "field": "notify_on_startup",
+    "annotation": "bool",
+    "source_line": 104
+  },
+  {
+    "class": "NotificationCfg",
+    "field": "notify_on_entry",
+    "annotation": "bool",
+    "source_line": 105
+  },
+  {
+    "class": "NotificationCfg",
+    "field": "notify_on_exit",
+    "annotation": "bool",
+    "source_line": 106
+  },
+  {
+    "class": "NotificationCfg",
+    "field": "notify_on_error",
+    "annotation": "bool",
+    "source_line": 107
+  },
+  {
+    "class": "NotificationCfg",
+    "field": "notify_hourly",
+    "annotation": "bool",
+    "source_line": 108
+  },
+  {
+    "class": "EntryCfg",
+    "field": "theta",
+    "annotation": "float",
+    "source_line": 112
+  },
+  {
+    "class": "EntryCfg",
+    "field": "ai_confidence_threshold",
+    "annotation": "float",
+    "source_line": 113
+  },
+  {
+    "class": "LoggingCfg",
+    "field": "save_data",
+    "annotation": "bool",
+    "source_line": 117
+  },
+  {
+    "class": "LoggingCfg",
+    "field": "save_interval_sec",
+    "annotation": "int",
+    "source_line": 118
+  },
+  {
+    "class": "LoggingCfg",
+    "field": "log_dir",
+    "annotation": "str",
+    "source_line": 119
+  },
+  {
+    "class": "BuySellCfg",
+    "field": "front_order_type",
+    "annotation": "int",
+    "source_line": 123
+  },
+  {
+    "class": "BuySellCfg",
+    "field": "price",
+    "annotation": "int",
+    "source_line": 124
+  },
+  {
+    "class": "OrdersCfg",
+    "field": "buy",
+    "annotation": "BuySellCfg",
+    "source_line": 128
+  },
+  {
+    "class": "OrdersCfg",
+    "field": "sell",
+    "annotation": "BuySellCfg",
+    "source_line": 129
+  },
+  {
+    "class": "APISettings",
+    "field": "base",
+    "annotation": "str",
+    "source_line": 133
+  },
+  {
+    "class": "APISettings",
+    "field": "api_password_env",
+    "annotation": "Optional[str]",
+    "source_line": 134
+  },
+  {
+    "class": "APISettings",
+    "field": "trade_password_env",
+    "annotation": "Optional[str]",
+    "source_line": 135
+  },
+  {
+    "class": "APISettings",
+    "field": "api_password",
+    "annotation": "Optional[str]",
+    "source_line": 136
+  },
+  {
+    "class": "APISettings",
+    "field": "trade_password",
+    "annotation": "Optional[str]",
+    "source_line": 137
+  },
+  {
+    "class": "APISettings",
+    "field": "timeout_get_sec",
+    "annotation": "int",
+    "source_line": 138
+  },
+  {
+    "class": "APISettings",
+    "field": "timeout_post_sec",
+    "annotation": "int",
+    "source_line": 139
+  },
+  {
+    "class": "Config",
+    "field": "paper_trading",
+    "annotation": "bool",
+    "source_line": 143
+  },
+  {
+    "class": "Config",
+    "field": "log_level",
+    "annotation": "str",
+    "source_line": 144
+  },
+  {
+    "class": "Config",
+    "field": "symbols",
+    "annotation": "List[SymbolCfg]",
+    "source_line": 145
+  },
+  {
+    "class": "Config",
+    "field": "portfolio",
+    "annotation": "PortfolioCfg",
+    "source_line": 146
+  },
+  {
+    "class": "Config",
+    "field": "trading",
+    "annotation": "TradingCfg",
+    "source_line": 147
+  },
+  {
+    "class": "Config",
+    "field": "risk",
+    "annotation": "RiskCfg",
+    "source_line": 148
+  },
+  {
+    "class": "Config",
+    "field": "safety",
+    "annotation": "SafetyCfg",
+    "source_line": 149
+  },
+  {
+    "class": "Config",
+    "field": "short",
+    "annotation": "ShortCfg",
+    "source_line": 151
+  },
+  {
+    "class": "Config",
+    "field": "common",
+    "annotation": "CommonCfg",
+    "source_line": 152
+  },
+  {
+    "class": "Config",
+    "field": "exit",
+    "annotation": "ExitCfg",
+    "source_line": 154
+  },
+  {
+    "class": "Config",
+    "field": "gatekeeper",
+    "annotation": "GatekeeperCfg",
+    "source_line": 156
+  },
+  {
+    "class": "Config",
+    "field": "notification",
+    "annotation": "NotificationCfg",
+    "source_line": 157
+  },
+  {
+    "class": "Config",
+    "field": "logging",
+    "annotation": "LoggingCfg",
+    "source_line": 159
+  },
+  {
+    "class": "Config",
+    "field": "entry",
+    "annotation": "EntryCfg",
+    "source_line": 160
+  },
+  {
+    "class": "Config",
+    "field": "orders",
+    "annotation": "OrdersCfg",
+    "source_line": 162
+  },
+  {
+    "class": "Config",
+    "field": "api",
+    "annotation": "APISettings",
+    "source_line": 163
+  },
+  {
+    "class": "Config",
+    "field": "telemetry_path",
+    "annotation": "str",
+    "source_line": 164
+  },
+  {
+    "class": "Config",
+    "field": "max_concurrent_symbols",
+    "annotation": "int",
+    "source_line": 165
+  },
+  {
+    "class": "Config",
+    "field": "mode",
+    "annotation": "str",
+    "source_line": 166
+  }
+]

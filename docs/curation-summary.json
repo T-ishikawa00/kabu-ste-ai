@@ -1,0 +1,33 @@
+{
+  "source_baseline": "428f5d002c4a921d9ee8a5a3db8d983ac91ebed2",
+  "source_tree": "2a579b6769a15c7cea1d6eddafb1970824496b3c",
+  "baseline_files": 10407,
+  "retained_implementation_files": 91,
+  "retained_python": 87,
+  "retained_bat": 3,
+  "retained_dashboard_html": 1,
+  "byte_identical_original_files": 77,
+  "value_redacted_files": 14,
+  "latest_index_excluded_files": 10316,
+  "excluded_groups": {
+    "__pycache__": 30,
+    "backtest_results": 28,
+    "root_private_or_runtime_asset": 5,
+    "config_backup": 58,
+    "data": 72,
+    "data_archive_daily": 4752,
+    "data_archive_daily_backup": 4432,
+    "data_raw": 381,
+    "logs": 106,
+    "model": 164,
+    "reports": 38,
+    "runtime": 9,
+    "tb_logs": 206,
+    "tensorboard_logs": 19,
+    "today.csv": 16
+  },
+  "original_assets_deleted_from_preservation": 0,
+  "history_rewritten": false,
+  "preservation_bundle_sha256": "44ce86c08da301507350ee9d92522a88e5fe018b83d29cf3eb4428733767fd1b",
+  "full_private_ledger": "Held outside the repository; local delivery report gives its location"
+}

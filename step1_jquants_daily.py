@@ -19,7 +19,7 @@ from datetime import datetime
 # ==========================================
 # ★API Key
 # ==========================================
-MY_API_KEY = "REDACTED"
+MY_API_KEY = ""
 
 DATA_DIR = "data_archive_daily"
 os.makedirs(DATA_DIR, exist_ok=True)

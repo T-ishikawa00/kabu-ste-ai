@@ -1,0 +1,11 @@
+# Static archive and stdlib-only safe validation; no legacy runtime installer.
+[tool.pytest.ini_options]
+testpaths = ["tests/safe"]
+python_files = ["test_safe_*.py"]
+norecursedirs = [".git", "data", "model", "models", "runtime", "logs", "config_backup"]
+
+[tool.kabuste]
+source-baseline = "428f5d002c4a921d9ee8a5a3db8d983ac91ebed2"
+safe-python = "3.12"
+safe-runtime-dependencies = []
+historical-research-versions = "unverified"

@@ -1,0 +1,29 @@
+test_extracts_only_definition_and_rejects_changed_fingerprint (test_safe_extraction.SafeExtractionBoundaryTests.test_extracts_only_definition_and_rejects_changed_fingerprint) ... ok
+test_rejects_legacy_constructor_and_path_outside_allowlist (test_safe_extraction.SafeExtractionBoundaryTests.test_rejects_legacy_constructor_and_path_outside_allowlist) ... ok
+test_market_temperature_compute_at_cold_and_hot_endpoints (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_market_temperature_compute_at_cold_and_hot_endpoints) ... ok
+test_market_temperature_missing_input_key_fails_explicitly (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_market_temperature_missing_input_key_fails_explicitly) ... ok
+test_market_temperature_scale_clamps_inverts_and_handles_equal_bounds (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_market_temperature_scale_clamps_inverts_and_handles_equal_bounds) ... ok
+test_norm_clamps_endpoints_equal_bounds_and_reversed_interval (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_norm_clamps_endpoints_equal_bounds_and_reversed_interval) ... ok
+test_realized_pnl_long_short_flat_and_invalid_entry_boundaries (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_realized_pnl_long_short_flat_and_invalid_entry_boundaries) ... ok
+test_risk_features_daily_pl_clamps_both_boundaries (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_risk_features_daily_pl_clamps_both_boundaries) ... ok
+test_risk_features_have_eight_ordered_values_and_default_behavior (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_risk_features_have_eight_ordered_values_and_default_behavior) ... ok
+test_router_defaults_and_swing_gate_boundaries (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_router_defaults_and_swing_gate_boundaries) ... ok
+test_router_forbidden_gate_boundaries_and_precedence (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_router_forbidden_gate_boundaries_and_precedence) ... ok
+test_strategy_size_preserves_original_mini_swing_minimum (test_safe_legacy_math.ExtractedLegacyFunctionTests.test_strategy_size_preserves_original_mini_swing_minimum) ... ok
+test_rejects_nonfinite_or_invalid_synthetic_inputs (test_safe_pipeline.MarketEventValidationTests.test_rejects_nonfinite_or_invalid_synthetic_inputs) ... ok
+test_empty_scenario_has_no_fills_or_position (test_safe_pipeline.OfflinePipelineTests.test_empty_scenario_has_no_fills_or_position) ... ok
+test_fixed_artificial_events_are_deterministic_and_labeled (test_safe_pipeline.OfflinePipelineTests.test_fixed_artificial_events_are_deterministic_and_labeled) ... ok
+test_loss_rejected_order_does_not_mutate_ledger (test_safe_pipeline.OfflinePipelineTests.test_loss_rejected_order_does_not_mutate_ledger) ... ok
+test_max_units_rejection_does_not_mutate_position (test_safe_pipeline.OfflinePipelineTests.test_max_units_rejection_does_not_mutate_position) ... ok
+test_pipeline_rejects_non_event_objects (test_safe_pipeline.OfflinePipelineTests.test_pipeline_rejects_non_event_objects) ... ok
+test_weighted_entry_long_close_and_short_reversal (test_safe_pipeline.PositionLedgerTests.test_weighted_entry_long_close_and_short_reversal) ... ok
+test_invalid_intents_are_rejected_without_ledger_mutation (test_safe_pipeline.RiskGateTests.test_invalid_intents_are_rejected_without_ledger_mutation) ... ok
+test_loss_limit_still_allows_exposure_reduction (test_safe_pipeline.RiskGateTests.test_loss_limit_still_allows_exposure_reduction) ... ok
+test_rejects_exposure_at_or_beyond_the_loss_limit (test_safe_pipeline.RiskGateTests.test_rejects_exposure_at_or_beyond_the_loss_limit) ... ok
+test_rejects_order_that_would_exceed_max_units (test_safe_pipeline.RiskGateTests.test_rejects_order_that_would_exceed_max_units) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.018s
+
+OK
+{"mode": "tests", "forbidden_attempts": 0, "categories": []}

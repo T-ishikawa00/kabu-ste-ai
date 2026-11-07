@@ -1,0 +1,9 @@
+Network namespace interfaces and addresses (netlink):
+lo               DOWN
+IPv4 and IPv6 routing tables:
+Namespace mount access:
+/tmp/kabu-ste-isolation.eV2AzE/usr ro,nosuid,nodev,relatime,discard,errors=remount-ro,data=ordered
+/tmp/kabu-ste-isolation.eV2AzE/usr/lib/wsl/drivers ro,nosuid,nodev,noatime,aname=drivers;fmask=222;dmask=222,cache=5,access=client,msize=65536,trans=fd,rfd=8,wfd=8
+/tmp/kabu-ste-isolation.eV2AzE/usr/lib/wsl/lib ro,nosuid,nodev,noatime,lowerdir=/gpu_lib_packaged:/gpu_lib_inbox,upperdir=/gpu_lib/rw/upper,workdir=/gpu_lib/rw/work,uuid=on
+/tmp/kabu-ste-isolation.eV2AzE/usr/lib/modules/6.6.87.2-microsoft-standard-WSL2 ro,nosuid,nodev,noatime,lowerdir=/modules,upperdir=/lib/modules/6.6.87.2-microsoft-standard-WSL2/rw/upper,workdir=/lib/modules/6.6.87.2-microsoft-standard-WSL2/rw/work,uuid=on
+Root exposes /usr read-only plus synthetic review project, temp and results; no /home, /mnt, /proc or host /etc.

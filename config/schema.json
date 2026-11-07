@@ -1,0 +1,637 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Historical Config declared shape; not an executable live configuration",
+  "description": "Generated from config_loader.py AST annotations only. No operating values or credentials copied. This is documentation, not evidence of original runtime validation.",
+  "$ref": "#/$defs/Config",
+  "$defs": {
+    "SymbolCfg": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 21
+        },
+        "exchange": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 22
+        },
+        "qty": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 23
+        },
+        "min_order_interval_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 24
+        },
+        "tp_pct_cap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-original-type": "Optional[float]",
+          "x-source-line": 25
+        },
+        "sl_pct_cap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-original-type": "Optional[float]",
+          "x-source-line": 26
+        },
+        "tp_ticks_cap": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-original-type": "Optional[int]",
+          "x-source-line": 27
+        },
+        "sl_ticks_cap": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-original-type": "Optional[int]",
+          "x-source-line": 28
+        }
+      },
+      "additionalProperties": false
+    },
+    "PortfolioCfg": {
+      "type": "object",
+      "properties": {
+        "max_open_positions": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 32
+        }
+      },
+      "additionalProperties": false
+    },
+    "TradingCfg": {
+      "type": "object",
+      "properties": {
+        "long_only": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 36
+        },
+        "day_trade_credit": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 37
+        }
+      },
+      "additionalProperties": false
+    },
+    "RiskCfg": {
+      "type": "object",
+      "properties": {
+        "max_daily_loss_jpy": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 41
+        },
+        "no_new_entry_after": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 42
+        },
+        "force_close_time": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 43
+        }
+      },
+      "additionalProperties": false
+    },
+    "SafetyCfg": {
+      "type": "object",
+      "properties": {
+        "api_latency_ms_limit": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 47
+        },
+        "max_order_failures": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 48
+        },
+        "order_fail_window_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 49
+        },
+        "spike_pct": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 50
+        },
+        "spike_window_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 51
+        },
+        "pause_after_spike_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 52
+        },
+        "pause_on_latency": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 53
+        },
+        "pause_on_order_failures": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 54
+        },
+        "kill_switch_file": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 55
+        },
+        "board_min_interval_ms": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 56
+        },
+        "api_qps_limit": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 57
+        },
+        "backoff_429_ms": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 58
+        },
+        "holdid_wait_ms": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 59
+        },
+        "poll_interval_ms": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 60
+        },
+        "cooldown_after_exit_sec": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 62
+        },
+        "streak_pause_sec": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 63
+        },
+        "min_order_interval_sec": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 64
+        },
+        "order_confirm_timeout_sec": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 65
+        },
+        "api_call_interval_sec": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 66
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShortCfg": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 70
+        },
+        "allowed_symbols": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-original-type": "List[str]",
+          "x-source-line": 71
+        },
+        "no_entry_after": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 72
+        },
+        "force_close_time": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 73
+        },
+        "tp_pct": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 75
+        },
+        "sl_pct": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 76
+        },
+        "max_hold_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 77
+        },
+        "panic_on_special_quote": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 78
+        },
+        "panic_distance_pct": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 79
+        }
+      },
+      "additionalProperties": false
+    },
+    "CommonCfg": {
+      "type": "object",
+      "properties": {
+        "tp_pct": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 84
+        },
+        "sl_pct": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 85
+        },
+        "max_hold_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 86
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExitCfg": {
+      "type": "object",
+      "properties": {
+        "trail_back_pct": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 90
+        },
+        "trail_start_pct": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 91
+        },
+        "max_hold_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 92
+        }
+      },
+      "additionalProperties": false
+    },
+    "GatekeeperCfg": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 96
+        },
+        "whitelist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-original-type": "List[str]",
+          "x-source-line": 97
+        },
+        "blacklist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-original-type": "List[str]",
+          "x-source-line": 98
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotificationCfg": {
+      "type": "object",
+      "properties": {
+        "discord_webhook_url": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 102
+        },
+        "line_notify_token": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 103
+        },
+        "notify_on_startup": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 104
+        },
+        "notify_on_entry": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 105
+        },
+        "notify_on_exit": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 106
+        },
+        "notify_on_error": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 107
+        },
+        "notify_hourly": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 108
+        }
+      },
+      "additionalProperties": false
+    },
+    "EntryCfg": {
+      "type": "object",
+      "properties": {
+        "theta": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 112
+        },
+        "ai_confidence_threshold": {
+          "type": "number",
+          "x-original-type": "float",
+          "x-source-line": 113
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoggingCfg": {
+      "type": "object",
+      "properties": {
+        "save_data": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 117
+        },
+        "save_interval_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 118
+        },
+        "log_dir": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 119
+        }
+      },
+      "additionalProperties": false
+    },
+    "BuySellCfg": {
+      "type": "object",
+      "properties": {
+        "front_order_type": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 123
+        },
+        "price": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 124
+        }
+      },
+      "additionalProperties": false
+    },
+    "OrdersCfg": {
+      "type": "object",
+      "properties": {
+        "buy": {
+          "$ref": "#/$defs/BuySellCfg",
+          "x-original-type": "BuySellCfg",
+          "x-source-line": 128
+        },
+        "sell": {
+          "$ref": "#/$defs/BuySellCfg",
+          "x-original-type": "BuySellCfg",
+          "x-source-line": 129
+        }
+      },
+      "additionalProperties": false
+    },
+    "APISettings": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 133
+        },
+        "api_password_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-original-type": "Optional[str]",
+          "x-source-line": 134
+        },
+        "trade_password_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-original-type": "Optional[str]",
+          "x-source-line": 135
+        },
+        "api_password": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-original-type": "Optional[str]",
+          "x-source-line": 136
+        },
+        "trade_password": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-original-type": "Optional[str]",
+          "x-source-line": 137
+        },
+        "timeout_get_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 138
+        },
+        "timeout_post_sec": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 139
+        }
+      },
+      "additionalProperties": false
+    },
+    "Config": {
+      "type": "object",
+      "properties": {
+        "paper_trading": {
+          "type": "boolean",
+          "x-original-type": "bool",
+          "x-source-line": 143
+        },
+        "log_level": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 144
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SymbolCfg"
+          },
+          "x-original-type": "List[SymbolCfg]",
+          "x-source-line": 145
+        },
+        "portfolio": {
+          "$ref": "#/$defs/PortfolioCfg",
+          "x-original-type": "PortfolioCfg",
+          "x-source-line": 146
+        },
+        "trading": {
+          "$ref": "#/$defs/TradingCfg",
+          "x-original-type": "TradingCfg",
+          "x-source-line": 147
+        },
+        "risk": {
+          "$ref": "#/$defs/RiskCfg",
+          "x-original-type": "RiskCfg",
+          "x-source-line": 148
+        },
+        "safety": {
+          "$ref": "#/$defs/SafetyCfg",
+          "x-original-type": "SafetyCfg",
+          "x-source-line": 149
+        },
+        "short": {
+          "$ref": "#/$defs/ShortCfg",
+          "x-original-type": "ShortCfg",
+          "x-source-line": 151
+        },
+        "common": {
+          "$ref": "#/$defs/CommonCfg",
+          "x-original-type": "CommonCfg",
+          "x-source-line": 152
+        },
+        "exit": {
+          "$ref": "#/$defs/ExitCfg",
+          "x-original-type": "ExitCfg",
+          "x-source-line": 154
+        },
+        "gatekeeper": {
+          "$ref": "#/$defs/GatekeeperCfg",
+          "x-original-type": "GatekeeperCfg",
+          "x-source-line": 156
+        },
+        "notification": {
+          "$ref": "#/$defs/NotificationCfg",
+          "x-original-type": "NotificationCfg",
+          "x-source-line": 157
+        },
+        "logging": {
+          "$ref": "#/$defs/LoggingCfg",
+          "x-original-type": "LoggingCfg",
+          "x-source-line": 159
+        },
+        "entry": {
+          "$ref": "#/$defs/EntryCfg",
+          "x-original-type": "EntryCfg",
+          "x-source-line": 160
+        },
+        "orders": {
+          "$ref": "#/$defs/OrdersCfg",
+          "x-original-type": "OrdersCfg",
+          "x-source-line": 162
+        },
+        "api": {
+          "$ref": "#/$defs/APISettings",
+          "x-original-type": "APISettings",
+          "x-source-line": 163
+        },
+        "telemetry_path": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 164
+        },
+        "max_concurrent_symbols": {
+          "type": "integer",
+          "x-original-type": "int",
+          "x-source-line": 165
+        },
+        "mode": {
+          "type": "string",
+          "x-original-type": "str",
+          "x-source-line": 166
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

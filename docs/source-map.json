@@ -1,0 +1,1085 @@
+{
+  "source_commit": "428f5d002c4a921d9ee8a5a3db8d983ac91ebed2",
+  "retained_files": [
+    {
+      "source_path": "analyze_details.py",
+      "target_path": "analyze_details.py",
+      "source_blob": "e3289fed2e073f5e3b4889636cf416f302da518c",
+      "source_sha256": "c47c34515dd3cb8495ebbca55cad1250a0d02af560dae2bd9455f045ead4f341",
+      "latest_sha256": "c47c34515dd3cb8495ebbca55cad1250a0d02af560dae2bd9455f045ead4f341",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "088cca6b78495c5f6178878e2f98443bc5b9cc1f601274dc42e85c4b7c8cb313"
+    },
+    {
+      "source_path": "analyze_log_text.py",
+      "target_path": "analyze_log_text.py",
+      "source_blob": "59fc45afbbcef3fc4d0f37f7b69b37794fe87525",
+      "source_sha256": "54baa39d38f0a3edcc50f2a52484b03c3f7d2f33e75f5e7b8564d47330795776",
+      "latest_sha256": "54baa39d38f0a3edcc50f2a52484b03c3f7d2f33e75f5e7b8564d47330795776",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "47c0afd3ea640a9de22e5a616964ade7e39fab9154ce863efdf456935e65ba77"
+    },
+    {
+      "source_path": "analyze_logs.py",
+      "target_path": "analyze_logs.py",
+      "source_blob": "11e9095ee23d41b68e99d8623c196b2699ef8681",
+      "source_sha256": "869846dbf8acb08a6835f25c74dec8e20985deee2d59cab8663c312d74d6c1af",
+      "latest_sha256": "869846dbf8acb08a6835f25c74dec8e20985deee2d59cab8663c312d74d6c1af",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "aba50b7dda923c839168276147bb1404b5a00b7d633234bad5d1a79d030c9bc3"
+    },
+    {
+      "source_path": "auth_login.py",
+      "target_path": "auth_login.py",
+      "source_blob": "d48f2fea1544df01f6842d89a099761b634b274b",
+      "source_sha256": "28beca5a0bceb11d38c835bc3ef3c3446b29cc77a27ec34c53d31e5c87f69423",
+      "latest_sha256": "48c7243f5ecce0a02355550e5f8175f88bbd9969cf3e7bcb846bd60d7a97fe10",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "personal_path",
+          "line": 16
+        },
+        {
+          "category": "personal_path",
+          "line": 17
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "d92ae1c5f9cf0756a09dbc18d630bbca0d36be688a9443f71229312f958203e8"
+    },
+    {
+      "source_path": "auto_login.py",
+      "target_path": "auto_login.py",
+      "source_blob": "cfd554b6dcaff3cac496cf2e4998992ca22a771b",
+      "source_sha256": "5abe292be378003c107e9e7133acc146041fc6e0799c18a26bd6b47307c2b3e6",
+      "latest_sha256": "8b0d5d91548a9114a48943bb8129b594f45868f41b831c5fdc73f93e04c77f5e",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "personal_path",
+          "line": 26
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "97a131f72e57911498fac3c61e8b5dfce1564345b6573359de139fb1a343b974"
+    },
+    {
+      "source_path": "backtest_rules.py",
+      "target_path": "backtest_rules.py",
+      "source_blob": "c24dca3879bb52dfa0668a0efc5d65ba48f85999",
+      "source_sha256": "97d24459c190583b8b87b680f55c42d27d3b0ec776ef51996a61c47a5a45985f",
+      "latest_sha256": "97d24459c190583b8b87b680f55c42d27d3b0ec776ef51996a61c47a5a45985f",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "6328ae728daffa478a20a6aafcd610aeeef14a7bb14a21c937aebb5b741b0e2e"
+    },
+    {
+      "source_path": "bandit_linucb.py",
+      "target_path": "bandit_linucb.py",
+      "source_blob": "c724c7a0d75a1f27c27a15ac1fd89ab4342c5251",
+      "source_sha256": "8591c147bdf5be7960e5659c04f3d95fe06e6063464aba78611e76b0f9575b4e",
+      "latest_sha256": "8591c147bdf5be7960e5659c04f3d95fe06e6063464aba78611e76b0f9575b4e",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "ec5402148c813069e2db036d3dcd9f152d30cd8c666b951e6ef60c623f5933e6"
+    },
+    {
+      "source_path": "broker.py",
+      "target_path": "broker.py",
+      "source_blob": "323faa59419eb7827549fa9ee5ad7484b51ee995",
+      "source_sha256": "81018d277a9f41fd44c5bd7c345940c4f770575d87427d18b630238b7cb5ef6b",
+      "latest_sha256": "81018d277a9f41fd44c5bd7c345940c4f770575d87427d18b630238b7cb5ef6b",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "a1e78d5c96423e38b419a937c0b2c00d79ab5c2620d80923fb3d13be2fdbd817"
+    },
+    {
+      "source_path": "build_dataset_from_logs.py",
+      "target_path": "build_dataset_from_logs.py",
+      "source_blob": "81e9afb1b487e57ff428c274d41fff7a085a016b",
+      "source_sha256": "5a70f48b979a59c75f0816fe45441641b0aff8fb4dce0bd10470d179218a7ca8",
+      "latest_sha256": "5a70f48b979a59c75f0816fe45441641b0aff8fb4dce0bd10470d179218a7ca8",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "063aed20202bce2cf90e3b52f37b4cf3fc2a276b7adf39495189811eae9b9c66"
+    },
+    {
+      "source_path": "check_7011.py",
+      "target_path": "check_7011.py",
+      "source_blob": "d7408738caa1c1394fa8dc9dbb1216e630291be2",
+      "source_sha256": "ac3dcbf8347fcdebb02771568d857884c4c9a3d97eb16f8776eb01c3e3e2fbf3",
+      "latest_sha256": "ac3dcbf8347fcdebb02771568d857884c4c9a3d97eb16f8776eb01c3e3e2fbf3",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "62a8e30ee033c182b81c2fc12c78b83ad3a7a773d492ecb7588e48b985be9bdc"
+    },
+    {
+      "source_path": "check_context.py",
+      "target_path": "check_context.py",
+      "source_blob": "a7286586ad03e4b5c4746208cd72ba419ebc62df",
+      "source_sha256": "6c3b5acf60365dc3d6d84ddf862df08d10747125fbacb31329cc236da01a68ee",
+      "latest_sha256": "6c3b5acf60365dc3d6d84ddf862df08d10747125fbacb31329cc236da01a68ee",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "195711cccbd682586f3dab345500878c1ad6fd37d99a2abff81041d527d41f40"
+    },
+    {
+      "source_path": "check_data.py",
+      "target_path": "check_data.py",
+      "source_blob": "a2ba3c2749c732fe675f91e2454d10d65f9ee34d",
+      "source_sha256": "d65094dd4819ad61461448a4bfc5079c51f4e0f55fdb0d4598ae8db97b70ba46",
+      "latest_sha256": "d65094dd4819ad61461448a4bfc5079c51f4e0f55fdb0d4598ae8db97b70ba46",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "6a0a462726a05e44ac5b69a4ffa129ce083a5ee97bd0516bf9c19a9ce53f9fb8"
+    },
+    {
+      "source_path": "check_files.py",
+      "target_path": "check_files.py",
+      "source_blob": "af497d3cc2b0377573ffb788cd710af0cf93bb81",
+      "source_sha256": "ea66e493bab68ee68aa94a3dddfcc2936665f5a0dc8eb5b238a0140d86f994e2",
+      "latest_sha256": "ea66e493bab68ee68aa94a3dddfcc2936665f5a0dc8eb5b238a0140d86f994e2",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "a6870d7370077792b72270256aba9eb55862b527baa32b8298cd5994a72fcbd9"
+    },
+    {
+      "source_path": "check_gmail.py",
+      "target_path": "check_gmail.py",
+      "source_blob": "24bba93d8b6974eb17530d96b2b9b7e8e9c4670e",
+      "source_sha256": "ade370d6bcc5c54513522812551bb55e7875a640f0f4a14e6ba9ae3bc949fb9c",
+      "latest_sha256": "ade370d6bcc5c54513522812551bb55e7875a640f0f4a14e6ba9ae3bc949fb9c",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "aacc9865de01bfb11ebea7b4ba464ec5dfbda3e3dafb8971099e79f14380c31e"
+    },
+    {
+      "source_path": "check_log.py",
+      "target_path": "check_log.py",
+      "source_blob": "d7408738caa1c1394fa8dc9dbb1216e630291be2",
+      "source_sha256": "ac3dcbf8347fcdebb02771568d857884c4c9a3d97eb16f8776eb01c3e3e2fbf3",
+      "latest_sha256": "ac3dcbf8347fcdebb02771568d857884c4c9a3d97eb16f8776eb01c3e3e2fbf3",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "62a8e30ee033c182b81c2fc12c78b83ad3a7a773d492ecb7588e48b985be9bdc"
+    },
+    {
+      "source_path": "check_screening.py",
+      "target_path": "check_screening.py",
+      "source_blob": "a56ef3efcf9a7816513386bc9cb594f1ea17cde2",
+      "source_sha256": "f0e61b96dc6f6dd110f641baa5e72516bbe52011d2bcda78550c8713437b577b",
+      "latest_sha256": "f0e61b96dc6f6dd110f641baa5e72516bbe52011d2bcda78550c8713437b577b",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "a2d7c79c54802c6bbec08a52c981f3c2ccde9ad601cbef5a4c3a51abe41a6ff2"
+    },
+    {
+      "source_path": "config_loader.py",
+      "target_path": "config_loader.py",
+      "source_blob": "0fde0a9c65ef6484b1e574ac6a47d124236af93b",
+      "source_sha256": "b7e1adc21ee6edd543fe3c48b84ee0479643283c0235083c940b4ab9abf5bf92",
+      "latest_sha256": "b7e1adc21ee6edd543fe3c48b84ee0479643283c0235083c940b4ab9abf5bf92",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "e3dc9ea05ddd5844790f3c1a22bcbf7b0bdd5a8ba354b8dad9d9257c8838c9b2"
+    },
+    {
+      "source_path": "controller.py",
+      "target_path": "controller.py",
+      "source_blob": "36737bd4a2fe288db404aa83dac341b1f8850238",
+      "source_sha256": "a2989218beb37d1d6732ba8863d1d12a67ca3a287d2f285f6bb628f4b6e69218",
+      "latest_sha256": "a2989218beb37d1d6732ba8863d1d12a67ca3a287d2f285f6bb628f4b6e69218",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "1554eac9bc4584c787b31d946135013374fd17986cb640623ba6775d42decb45"
+    },
+    {
+      "source_path": "controller_ws.py",
+      "target_path": "controller_ws.py",
+      "source_blob": "c589a27ae4472855f482122c86fb2fac6971dc73",
+      "source_sha256": "db0c51251ae330c8e1baab9b083cf86c6e718e2fca9cbf33df4c2ded6dec1009",
+      "latest_sha256": "db0c51251ae330c8e1baab9b083cf86c6e718e2fca9cbf33df4c2ded6dec1009",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "4f0f02b78804c3765632ec8bfe1521c718151aef5469f2ea56ca74208d809ae8"
+    },
+    {
+      "source_path": "daily_mission.py",
+      "target_path": "daily_mission.py",
+      "source_blob": "90e5b2b98b4812a5d858198d116529271b4fa6ed",
+      "source_sha256": "9f55270921cf8e3c78070f498e356ea2899a8cc35519ca5919b5ee6ab529b5f4",
+      "latest_sha256": "9f55270921cf8e3c78070f498e356ea2899a8cc35519ca5919b5ee6ab529b5f4",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "87ab792a9948fab777056e29f5837f0a2035c029d34bb4bc4251efe34f99ed18"
+    },
+    {
+      "source_path": "dashboard.html",
+      "target_path": "dashboard.html",
+      "source_blob": "8d1f817291c14a597ea0251f830b252ee34cb4f3",
+      "source_sha256": "17c3e2a1de36df1564bac137b79111fc5dd01f58195c56bb8dfe4c29c5982f50",
+      "latest_sha256": "17c3e2a1de36df1564bac137b79111fc5dd01f58195c56bb8dfe4c29c5982f50",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained"
+    },
+    {
+      "source_path": "data_collector.py",
+      "target_path": "data_collector.py",
+      "source_blob": "6e438b790e00086086d9d4c013d1b43e241e1dea",
+      "source_sha256": "3851dd299d848ac00bc69416b0f3dac9b2f7954b6704cbb36648a1a6b5955223",
+      "latest_sha256": "3851dd299d848ac00bc69416b0f3dac9b2f7954b6704cbb36648a1a6b5955223",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "80367ea061207ec5bb9ac16a4c1e48d7d114c088f95c0081aa64a02c72230294"
+    },
+    {
+      "source_path": "debug_check_data.py",
+      "target_path": "debug_check_data.py",
+      "source_blob": "e0023164226731ca03a2016384e6a650e2eae0d5",
+      "source_sha256": "5947148a1c19e9bdce2a0c654aa78cd68c5c81dee51c46b99ebeee83fd92db90",
+      "latest_sha256": "3799c8a85c0bd0b1ea8ff275c13a22e37a2072d8614a34217251ca9ba6d5af4c",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 14
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "6d6385e14312e1da277c2c240d92bdb725ea15263620023c3dc829f8821e3983"
+    },
+    {
+      "source_path": "debug_jquants.py",
+      "target_path": "debug_jquants.py",
+      "source_blob": "04a3de216834311e684136076ed0475895af1589",
+      "source_sha256": "d84724193d413a8a878496dea75bdac112ef70a15350d49055928df8719df821",
+      "latest_sha256": "c167b39bc40f2884fc8cf33612679cdf202224b47d0c9489e60d7d84fb197a71",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 5
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "7214f19498a7d3f2b082309a163ad28ac30e4a9de6a4cf6dc52648e717deb94a"
+    },
+    {
+      "source_path": "entry_decider.py",
+      "target_path": "entry_decider.py",
+      "source_blob": "3adbdbf8bbc2c2fb583c97297dbfefeb77a0ca46",
+      "source_sha256": "bd1e2f715ea999aa651f1029914ab8fa42042c49733c95baa0cc895272f0960a",
+      "latest_sha256": "bd1e2f715ea999aa651f1029914ab8fa42042c49733c95baa0cc895272f0960a",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "da2ef17c1dd7e607e9321d2be3546e66e104988c5fafeb5480477ac958b6a7ad"
+    },
+    {
+      "source_path": "exit_decider.py",
+      "target_path": "exit_decider.py",
+      "source_blob": "ea63091a4c2156a4e9623cd5fe058a326c158c6e",
+      "source_sha256": "ecde767cc51bbd73040fb41eb7e924810ab190e74d9131693824716f49d3afd2",
+      "latest_sha256": "ecde767cc51bbd73040fb41eb7e924810ab190e74d9131693824716f49d3afd2",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "bf42a90eada55c43ba5a0d1421f58c934b49e1c60bdb579ca07b9d00de41e760"
+    },
+    {
+      "source_path": "features.py",
+      "target_path": "features.py",
+      "source_blob": "7457be1ebbe7d253aefe1b15f50cc6ef36575717",
+      "source_sha256": "6b88faaf1880c08ad81004199accedffdfbfcacbcf93701e587409715be5c3af",
+      "latest_sha256": "6b88faaf1880c08ad81004199accedffdfbfcacbcf93701e587409715be5c3af",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "95a99aa2e08cf20b48294ae6b1a91e035fa96d2de91849d3b58c2c2e2f6fd280"
+    },
+    {
+      "source_path": "fetch_ohlcv_yahoo.py",
+      "target_path": "fetch_ohlcv_yahoo.py",
+      "source_blob": "231f747572d7b5aa3246a63812d579f78b12e829",
+      "source_sha256": "797d754194ce1494fbedf6bdad887b5944cb3a11f2404f0b484e8ca5f651c73b",
+      "latest_sha256": "797d754194ce1494fbedf6bdad887b5944cb3a11f2404f0b484e8ca5f651c73b",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "fb1cfc8fe2daa57175c8105d26287ab11f37cffd4416e6c207d6eae08d3da392"
+    },
+    {
+      "source_path": "find_url.py",
+      "target_path": "find_url.py",
+      "source_blob": "87cfd692784ed9142c42c2745c475c0c9020b9f9",
+      "source_sha256": "4db2179c4b3cd77d396e81f59523f06686943ff1ca70649d2833ebc4d82112a8",
+      "latest_sha256": "9e899209c0eccc4552e6fda0ebb3c5f2a2d8b0787aa5ca9869c1f674fb35a0c1",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 4
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "a9d56fb8e1557502256963466a57dd1a92240d95b96ccf8dd6f1c7695a641491"
+    },
+    {
+      "source_path": "fix_datetime_format.py",
+      "target_path": "fix_datetime_format.py",
+      "source_blob": "6c0fdb986087986658e36c639714e9205ad425a3",
+      "source_sha256": "3025944c68e89f10fa83dbf6f17a022a505a6eb3de65f5abed6c2abdd8628e43",
+      "latest_sha256": "3025944c68e89f10fa83dbf6f17a022a505a6eb3de65f5abed6c2abdd8628e43",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "6e53d4b7ea544bc61789a7a5e9d9d74776a7ba6fa026ab2a6b36a489ca4877f9"
+    },
+    {
+      "source_path": "get_pos.py",
+      "target_path": "get_pos.py",
+      "source_blob": "a9e22e4c4f4f2862de8c562609e02d08e5388c5b",
+      "source_sha256": "6aafc061cb61a785bca6fc81df146442409381a7193961313f2df4e0da6c2e84",
+      "latest_sha256": "6aafc061cb61a785bca6fc81df146442409381a7193961313f2df4e0da6c2e84",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "a6e896b4d20d3a16181d294d9afbc29ee6a33b1c7f4bbdbaba1cf3df17bd36f3"
+    },
+    {
+      "source_path": "kabus_api.py",
+      "target_path": "kabus_api.py",
+      "source_blob": "373c210c869d6113b8eb916fd228c3830f55e030",
+      "source_sha256": "22df4e3ac8b8af45a398558f5decdcf4a0d11457264422e6b2b67ecd76464e51",
+      "latest_sha256": "22df4e3ac8b8af45a398558f5decdcf4a0d11457264422e6b2b67ecd76464e51",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "3a3b47915d1480901900ddad02765d7a35f69bc01faacb9a79a031ef36e65da1"
+    },
+    {
+      "source_path": "kpi_rollup.py",
+      "target_path": "kpi_rollup.py",
+      "source_blob": "96f714ccfca945fbf9fa3624e5ff3e7d33bd365e",
+      "source_sha256": "ba5829176af68a6ae69b469ca30b6e97f672c3da3390c620f50a64942686af09",
+      "latest_sha256": "ba5829176af68a6ae69b469ca30b6e97f672c3da3390c620f50a64942686af09",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "a2168874d1e601f9d524a027c33168892400048647f50042e5a3a0eb60f2f38b"
+    },
+    {
+      "source_path": "launch_multi_bot.py",
+      "target_path": "launch_multi_bot.py",
+      "source_blob": "85d4fef2c05e9bab9d827a9ecd53c469ad5e3d49",
+      "source_sha256": "2a29734229c4fdf56a510dfb4875960315d9544d45a6fefca6e12dedd34ad0ee",
+      "latest_sha256": "2a29734229c4fdf56a510dfb4875960315d9544d45a6fefca6e12dedd34ad0ee",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "65c8a3fbc60e73e53e82b43a8392377c229b0a0418430712ce95a973984c9918"
+    },
+    {
+      "source_path": "main.py",
+      "target_path": "main.py",
+      "source_blob": "efaf6c0a678ba4b29200ff18f400f0113386dab9",
+      "source_sha256": "3eafa23ae6e0739e106e38d397158fe034307e88cbf4c7bb1799faa5e1e13ddd",
+      "latest_sha256": "3eafa23ae6e0739e106e38d397158fe034307e88cbf4c7bb1799faa5e1e13ddd",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "aef5df91e8bc8eae3030e1e3b8268da927f7d11d13c5c1dedff6fc3e8897e689"
+    },
+    {
+      "source_path": "market_temperature.py",
+      "target_path": "market_temperature.py",
+      "source_blob": "085642f00d49d448808697314206db65300bf050",
+      "source_sha256": "1e0a5c035fc9f43571efa01c358dd3565df93048db501a471e1a029475888a7d",
+      "latest_sha256": "1e0a5c035fc9f43571efa01c358dd3565df93048db501a471e1a029475888a7d",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "e80a268c79c615e8d84d5ec52a135628fe049b8874776f33f12f204927be5ade"
+    },
+    {
+      "source_path": "migrate_models_71_to_73_safe.py",
+      "target_path": "migrate_models_71_to_73_safe.py",
+      "source_blob": "66a909f34713f24c58806418a1ef62e71f55a17f",
+      "source_sha256": "133cfdc1398e866937030ed51c416a0a5b4edd465538ed085a61f392afe70101",
+      "latest_sha256": "133cfdc1398e866937030ed51c416a0a5b4edd465538ed085a61f392afe70101",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "95e4f857dc5b996e945e09e9a5693ce587de1da8f39773d413ac0fe786314541"
+    },
+    {
+      "source_path": "model_registry.py",
+      "target_path": "model_registry.py",
+      "source_blob": "8726f967080bcc3f9bf8e9f887f6008d9c8cf077",
+      "source_sha256": "d40500728826f3535148db0f2d31b36df2b1e5e0353e30bf66d9e609570c2350",
+      "latest_sha256": "d40500728826f3535148db0f2d31b36df2b1e5e0353e30bf66d9e609570c2350",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "d44a4d65ce2eb64101f8cb3de4ec457b9a3c58959f6781654a10c08e1527b078"
+    },
+    {
+      "source_path": "morning_batch.bat",
+      "target_path": "morning_batch.bat",
+      "source_blob": "f7c3133972f78d0494e4aac06d4cb2f063685689",
+      "source_sha256": "8fe0332b0c88ce197e0a8ad8bcdfc8c3449a7b363bf358ac7c73e1123e8bcb71",
+      "latest_sha256": "8fe0332b0c88ce197e0a8ad8bcdfc8c3449a7b363bf358ac7c73e1123e8bcb71",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained"
+    },
+    {
+      "source_path": "night_batch.bat",
+      "target_path": "night_batch.bat",
+      "source_blob": "418d9c0dc7553420639f2ec0ebba9c6152139c24",
+      "source_sha256": "7aabc62a4c5e1ff3ac89dd9274fafa17b8cff90e697dfe6f7ca847ade1882502",
+      "latest_sha256": "7aabc62a4c5e1ff3ac89dd9274fafa17b8cff90e697dfe6f7ca847ade1882502",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained"
+    },
+    {
+      "source_path": "notifier.py",
+      "target_path": "notifier.py",
+      "source_blob": "18b9662a0bba8972d9c3a2d8606d6469b1a5f5b2",
+      "source_sha256": "25f0273041f67976cc9203f4b58e998b3b2f2c2bcd09a05d06d12680cdecb4e2",
+      "latest_sha256": "25f0273041f67976cc9203f4b58e998b3b2f2c2bcd09a05d06d12680cdecb4e2",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "52c5cb8aae052ac29dc39a3d8eca365573ac26cb86d9d12596a24097a00cc4ec"
+    },
+    {
+      "source_path": "offline_train_theta.py",
+      "target_path": "offline_train_theta.py",
+      "source_blob": "86d15df4d2bf5bf6d75ec9f4c7faa2a08f1b9f01",
+      "source_sha256": "d14ddf3a26325d28d569d424b032483fc23d71e2087309a21cc75fd87bf30d46",
+      "latest_sha256": "d14ddf3a26325d28d569d424b032483fc23d71e2087309a21cc75fd87bf30d46",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "a62ab0990d45cd06fc9ff58d2dd277f51a7033880a39ecd0d3a1760da084c9d5"
+    },
+    {
+      "source_path": "regime_manager.py",
+      "target_path": "regime_manager.py",
+      "source_blob": "cd7998f10293e5abab3aeef5cde8faf6a34051d6",
+      "source_sha256": "7c33e64e328615c56192246f273114df718d08ac6aad8d8a75320dae21ceda57",
+      "latest_sha256": "7c33e64e328615c56192246f273114df718d08ac6aad8d8a75320dae21ceda57",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "acf698e97cb727adca66079419f479f408955f38cd52e49868356dded16e8fb7"
+    },
+    {
+      "source_path": "risk_sizer.py",
+      "target_path": "risk_sizer.py",
+      "source_blob": "15d56324307a1bdb8d8f83c6d003ee3ca3c7294c",
+      "source_sha256": "a4e66a10bb104257f7f05fb1ca1a9ff366c10261b6fb53ded226795e59607acc",
+      "latest_sha256": "a4e66a10bb104257f7f05fb1ca1a9ff366c10261b6fb53ded226795e59607acc",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "149f401d2303986a374d5053a8d4ef7f37d8492c0fde115f22778574a165e625"
+    },
+    {
+      "source_path": "run_backtest.py",
+      "target_path": "run_backtest.py",
+      "source_blob": "78179a493665399d0e06b71cce143e17f4c5dda1",
+      "source_sha256": "3547990495faf9a8f2c65d0194fb4b95886d9c1647b841da4628a0a5d16c774c",
+      "latest_sha256": "3547990495faf9a8f2c65d0194fb4b95886d9c1647b841da4628a0a5d16c774c",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "7d8b6f4383110c4a0e1b19db1891095091c34adcc0b6eab049ca99f33ddbd598"
+    },
+    {
+      "source_path": "run_backtest_hybrid.py",
+      "target_path": "run_backtest_hybrid.py",
+      "source_blob": "8059f360924e85645601ff725f2cb7a836e7009a",
+      "source_sha256": "4ab4a2cd5b488554286fbafb2d11374485ccc3e2180361067166c1c97b08b810",
+      "latest_sha256": "4ab4a2cd5b488554286fbafb2d11374485ccc3e2180361067166c1c97b08b810",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "bfc6e5c467351e670eed4347ac500c7e2e4f28a98fc2cbe30cf002c39e396d53"
+    },
+    {
+      "source_path": "short_term_memory.py",
+      "target_path": "short_term_memory.py",
+      "source_blob": "83c7794f75f2acd9f526e2a23ad481b87ae8e64f",
+      "source_sha256": "ce73418c8608d6279ef16884fa16ae10faa69db65d54dafa217d324df20bea8b",
+      "latest_sha256": "ce73418c8608d6279ef16884fa16ae10faa69db65d54dafa217d324df20bea8b",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "28906c170ef267f5b873adc3ec51f52223eebc6c2f7eadcb2bac764a069f1946"
+    },
+    {
+      "source_path": "start_daily.bat",
+      "target_path": "start_daily.bat",
+      "source_blob": "d1d3d9491ca81c6c65cea855f412476a0569537b",
+      "source_sha256": "210d11ab93811ea3cc911bf0d218879f31f1eefe4a8fcd2c745daecdff58dcf2",
+      "latest_sha256": "210d11ab93811ea3cc911bf0d218879f31f1eefe4a8fcd2c745daecdff58dcf2",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained"
+    },
+    {
+      "source_path": "step0_backfill_data.py",
+      "target_path": "step0_backfill_data.py",
+      "source_blob": "25fb2e9af78a3cfc339771fa8f8a9ea79fc93d29",
+      "source_sha256": "621eb1d3ed338935a6d963812fc11fd4a0c7e518dd014f00f40308ee4b2cd6bb",
+      "latest_sha256": "7a0ca38821b7e2fe82de8ed65d37417a49363332bff09023d7681f233bb5b630",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 20
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "6af5bc1b45ee441250cd93c6516a88a04c05cb6954fbe2d8fa027289b1f6ca86"
+    },
+    {
+      "source_path": "step0_smart_fetch.py",
+      "target_path": "step0_smart_fetch.py",
+      "source_blob": "de2fb1fed77fb3b9f2e856be625b49297012b873",
+      "source_sha256": "8ecdd939bea7e5adaed563a662a7e43da8002e87f5caf3cf46b6229f40abad12",
+      "latest_sha256": "37490e763b4f0ea42f179881dbe8b05fecc01944f13bfc1b2ca9348c2179d2f3",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 19
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "feb3feac6d4e6068acd049b68fc2b059330ba089fcc6ff481a51e5111a809e91"
+    },
+    {
+      "source_path": "step0_sniper_fill.py",
+      "target_path": "step0_sniper_fill.py",
+      "source_blob": "de2fb1fed77fb3b9f2e856be625b49297012b873",
+      "source_sha256": "8ecdd939bea7e5adaed563a662a7e43da8002e87f5caf3cf46b6229f40abad12",
+      "latest_sha256": "37490e763b4f0ea42f179881dbe8b05fecc01944f13bfc1b2ca9348c2179d2f3",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 19
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "feb3feac6d4e6068acd049b68fc2b059330ba089fcc6ff481a51e5111a809e91"
+    },
+    {
+      "source_path": "step0_yfinance_patch.py",
+      "target_path": "step0_yfinance_patch.py",
+      "source_blob": "65927b74089f360d08ffb334174c3689dce98fa8",
+      "source_sha256": "fff0e55988621c4c935ddfb2ae774bbbe2b381794c1cd0048f6037a3c49fcda2",
+      "latest_sha256": "fff0e55988621c4c935ddfb2ae774bbbe2b381794c1cd0048f6037a3c49fcda2",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "e1836364b39b88d1e960fa1e87d47e310f6aacc3b380626faee796ef45812619"
+    },
+    {
+      "source_path": "step1_backfill_fast_v2.py",
+      "target_path": "step1_backfill_fast_v2.py",
+      "source_blob": "25fb2e9af78a3cfc339771fa8f8a9ea79fc93d29",
+      "source_sha256": "621eb1d3ed338935a6d963812fc11fd4a0c7e518dd014f00f40308ee4b2cd6bb",
+      "latest_sha256": "7a0ca38821b7e2fe82de8ed65d37417a49363332bff09023d7681f233bb5b630",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 20
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "6af5bc1b45ee441250cd93c6516a88a04c05cb6954fbe2d8fa027289b1f6ca86"
+    },
+    {
+      "source_path": "step1_backfill_fast_v4.py",
+      "target_path": "step1_backfill_fast_v4.py",
+      "source_blob": "e8b12d738753ff3d0488af5ce1c616a8ee7b4838",
+      "source_sha256": "c28e825992f69abfe1ef36e2b6ac30765115033f52602f91f2533042ff8aedbb",
+      "latest_sha256": "6539538b208864dc0bb9c17f221c83e0e62dbee5762a9ae2dbb1dbbed14658af",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 19
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "4fa60472c94c0408e1eb067e3eb062aa0f4f42b9291f4054a1f185107de740fe"
+    },
+    {
+      "source_path": "step1_jquants_daily.py",
+      "target_path": "step1_jquants_daily.py",
+      "source_blob": "b42362f716094a5059a8fab37eaa399292c0bbc6",
+      "source_sha256": "b9f70edf0065be8ba8985b6e96dc36bba9a60b0040e50cec261484ddac5ff13b",
+      "latest_sha256": "89990fd135bfb69585b8af4f548cb5b3621736ef8830b20cd6f7d1625f4a8075",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 22
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "d69d347d04cb9db2c6ff2891a70a600f13fd8d5254b258b2998107ffaf640dfe"
+    },
+    {
+      "source_path": "step1_prepare_data.py",
+      "target_path": "step1_prepare_data.py",
+      "source_blob": "65ec48e45e329dcc31eab620a4b33aeba225996a",
+      "source_sha256": "df1312bc8fda6c552c013c862a849bcaf2f0c870ad7ea16f52603b67f9aaaef1",
+      "latest_sha256": "df1312bc8fda6c552c013c862a849bcaf2f0c870ad7ea16f52603b67f9aaaef1",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "dd9d3c3b5f3d53dae3a5421edd2162de7db20467c554551a75481cbb29ae3528"
+    },
+    {
+      "source_path": "step1_setup_data.py",
+      "target_path": "step1_setup_data.py",
+      "source_blob": "debd3808a5be57e4cc0acde60b8936fcd715265b",
+      "source_sha256": "508d97fd572f1160de2050bbbd9f919cf113be9aa1aec5a3b11dcff8bd33eb06",
+      "latest_sha256": "508d97fd572f1160de2050bbbd9f919cf113be9aa1aec5a3b11dcff8bd33eb06",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "5f1d4d70da7a851cd66d3e858f5072e9c91b4f313a005b58b97ce11d1bea0ca3"
+    },
+    {
+      "source_path": "step2_env.py",
+      "target_path": "step2_env.py",
+      "source_blob": "a6f36db2abc1502ad8b01e5fd9bb3e03257efa9b",
+      "source_sha256": "6c3e2730ef3c87d159141b12dfc27f7f4fa645bdc86e17f30d7059b28cb36ffa",
+      "latest_sha256": "6c3e2730ef3c87d159141b12dfc27f7f4fa645bdc86e17f30d7059b28cb36ffa",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "cdd1f60abf33a2d09932d53d4878122a064e3e18790e2cc7d3632bfd9ddd9902"
+    },
+    {
+      "source_path": "step2_env_universal.py",
+      "target_path": "step2_env_universal.py",
+      "source_blob": "89ef56e20e1bd37f15587b45da925f6191f25e2f",
+      "source_sha256": "6cb99d6717e590a09e5b1d154d842ca88cb8b5ed832849d3b1895b04f7439e42",
+      "latest_sha256": "6cb99d6717e590a09e5b1d154d842ca88cb8b5ed832849d3b1895b04f7439e42",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "1d4f49064cb043b0aaf462596d5d3b7f03d96d9217625491decbb5fcebab6614"
+    },
+    {
+      "source_path": "step2_screening.py",
+      "target_path": "step2_screening.py",
+      "source_blob": "3bf82843be1753ea11172c58e326160ad61f65b8",
+      "source_sha256": "6d15861e20f61801cc5386c92a67038c25b3c88b7431eff8db273f03dfa4fd0e",
+      "latest_sha256": "6d15861e20f61801cc5386c92a67038c25b3c88b7431eff8db273f03dfa4fd0e",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "fef7df84e4927d0a08ac698766a3bec0c731e40b17ca7b5535649e0208f28744"
+    },
+    {
+      "source_path": "step3_train.py",
+      "target_path": "step3_train.py",
+      "source_blob": "ad5cef7da0a8ec2c6e1c04059d9bd94f651557af",
+      "source_sha256": "c4727bdc64d5eba379a9122893682d1c02abc0eca7500e89f3183ab658bc45a9",
+      "latest_sha256": "c4727bdc64d5eba379a9122893682d1c02abc0eca7500e89f3183ab658bc45a9",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "7f3eb92ea66ffe2009d5d29971dcb04c24d87cbb9fcd352b1d0b8966ae3c0922"
+    },
+    {
+      "source_path": "step3_train_individual.py",
+      "target_path": "step3_train_individual.py",
+      "source_blob": "2669a212d2af7a6fdb1b1e6812a0823c11cfbcb3",
+      "source_sha256": "986e11ce9e6b9187cf2c0b511dd4b4c8dd1ccfaa8f8b217cefc13ce47462ddda",
+      "latest_sha256": "986e11ce9e6b9187cf2c0b511dd4b4c8dd1ccfaa8f8b217cefc13ce47462ddda",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "e021b0f940335fb57da4fbbbe8e1286db3cbf4be0ac15207d83a5ed26968baaf"
+    },
+    {
+      "source_path": "step4_backtest.py",
+      "target_path": "step4_backtest.py",
+      "source_blob": "a0929ca66bace5ef48fc7210850929ab7d04642b",
+      "source_sha256": "641cb5616b45782738979e5cb776a1077a9066e45bf701dc0a89b65ea5c6b066",
+      "latest_sha256": "641cb5616b45782738979e5cb776a1077a9066e45bf701dc0a89b65ea5c6b066",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "d18b96f4a55fbab314e3d186a947c98e2eabbe1405949d411f7fba34a61dc190"
+    },
+    {
+      "source_path": "step4_process_daily_log.py",
+      "target_path": "step4_process_daily_log.py",
+      "source_blob": "41cb4c5897a2d19416be119539ad9fde7cb5a79a",
+      "source_sha256": "be066d64a9b88bf4d8275e87e337b3e01b1e782eb3ac6717747ae79ba57ef19b",
+      "latest_sha256": "be066d64a9b88bf4d8275e87e337b3e01b1e782eb3ac6717747ae79ba57ef19b",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "b0f346ea65fad507f705597dbfbb844241c632b23f67c78e35c79b3d382d30d7"
+    },
+    {
+      "source_path": "step5_backtest.py",
+      "target_path": "step5_backtest.py",
+      "source_blob": "54b914e7a18e6815b16bfef96e5c9fc969dfd0ad",
+      "source_sha256": "32a5a10f5fa43bb2af8869b6c2b8f360c25be9dd80134a5ab8b320585a8f28ce",
+      "latest_sha256": "32a5a10f5fa43bb2af8869b6c2b8f360c25be9dd80134a5ab8b320585a8f28ce",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "b04c2c376cc6560cca1686f245d1b988bc18a3b28dc25f9b3799d2cafb64e765"
+    },
+    {
+      "source_path": "step5_debug_xray.py",
+      "target_path": "step5_debug_xray.py",
+      "source_blob": "768ea3796b313025625b9fdbfe197ca0e3f48585",
+      "source_sha256": "b46827e7f05bd733714ff1caacd8b9fd0938635f12bcd267e62349230d9563b8",
+      "latest_sha256": "b46827e7f05bd733714ff1caacd8b9fd0938635f12bcd267e62349230d9563b8",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "56cebc397f9a8c6fdb266fbba3ba19347caec68853abefaf07362e49c4f7a487"
+    },
+    {
+      "source_path": "step5_optimize_rules.py",
+      "target_path": "step5_optimize_rules.py",
+      "source_blob": "4f166bdde27eb4dfcae38f98deb58c3f1209fd03",
+      "source_sha256": "10b0c96e4c8a259b717556cc19c59fdcd7110d798ef5160d0b2bdc7f40a901bf",
+      "latest_sha256": "10b0c96e4c8a259b717556cc19c59fdcd7110d798ef5160d0b2bdc7f40a901bf",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "809ce78383c9ad1ec71fde01ee7e664c2ab4f5d3f1900741e5d9ef0b40b2691c"
+    },
+    {
+      "source_path": "step6_inject_config.py",
+      "target_path": "step6_inject_config.py",
+      "source_blob": "4b7692b791267f9b034be5b9f8358a9a416e1f55",
+      "source_sha256": "683a64b0ae6e15d3a03ffe3c6c3d420964a483833e811a94eb2e89c481238f52",
+      "latest_sha256": "407b41fd1e2807bda172ba723cd0532cd48e7edc280ee5641dc08d1ef032eb5e",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 111
+        },
+        {
+          "category": "credential_literal",
+          "line": 112
+        },
+        {
+          "category": "credential_literal",
+          "line": 323
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "18ebefd2614ced88f4b0628ea67c531dc4cf95cea3567a955a8dcfaac4517818"
+    },
+    {
+      "source_path": "step7_morning_filter.py",
+      "target_path": "step7_morning_filter.py",
+      "source_blob": "bc539a9e80ad2cd2abde397cac0fe2b6a7e28824",
+      "source_sha256": "61ceafd866f8736e6bffdecdd105e39f65da6ff5304113378cfbb34e0dc9afd6",
+      "latest_sha256": "b471bda54b8e2e703432619828c1eafd06b90a8fd14fc842d497d90346d70441",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "credential_literal",
+          "line": 37
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "4d9b66db1f6079eca4aa469338fa0ccfdd3d6538e3e754a334d49d465e0103a7"
+    },
+    {
+      "source_path": "step99_emergency_exit.py",
+      "target_path": "step99_emergency_exit.py",
+      "source_blob": "dce8fee9c53dca8a88c6f7e855b68ff98b2e7732",
+      "source_sha256": "209a399fb11182d92f01fa94d0c9df66b594b39f17e22547a0242648af1270f3",
+      "latest_sha256": "209a399fb11182d92f01fa94d0c9df66b594b39f17e22547a0242648af1270f3",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "98770b2863ff06f57cd5d92b09af358ff92b6ab4e7ac24b33a9d5b92ab349586"
+    },
+    {
+      "source_path": "step_raw_to_merged.py",
+      "target_path": "step_raw_to_merged.py",
+      "source_blob": "a548aaaaa5e0b08fbedb0473e3121ebe52c7e9e1",
+      "source_sha256": "5368e883110464113f71bc1e6b1c1eed60422ec2467bf1aedda83c37c6953c31",
+      "latest_sha256": "5368e883110464113f71bc1e6b1c1eed60422ec2467bf1aedda83c37c6953c31",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "3d103ed3ec92af8e32da66b079cbc9a56750a6275d62038a754dd2a9ce8ef5e2"
+    },
+    {
+      "source_path": "strategy_router.py",
+      "target_path": "strategy_router.py",
+      "source_blob": "b203a4d93270423549de43c23c581017b711ad55",
+      "source_sha256": "66aeacddca13947f9bbd17dc959f2e5bdbd2844d0d3823e723034d390ae690a5",
+      "latest_sha256": "66aeacddca13947f9bbd17dc959f2e5bdbd2844d0d3823e723034d390ae690a5",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "ffc0a9427f248e7802ad6d633d28385ae5e472f774caac3e39d17a35324754db"
+    },
+    {
+      "source_path": "symbol_gate.py",
+      "target_path": "symbol_gate.py",
+      "source_blob": "d59c3b7bdbd8d19f0d8db93d7346d90054542537",
+      "source_sha256": "977b84ac461058f3dc8c72e54256f544c99954fb926ae0c2003c02414f944bf4",
+      "latest_sha256": "977b84ac461058f3dc8c72e54256f544c99954fb926ae0c2003c02414f944bf4",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "6f4290857cebd8c652f43d92e485b34421c092a06413f224886ff899be99ef6b"
+    },
+    {
+      "source_path": "telemetry.py",
+      "target_path": "telemetry.py",
+      "source_blob": "da5c02a04785dbc8497a48656787c241f3999de1",
+      "source_sha256": "ac20d25fe753be6b68fa17fb164fc09d277b6d39ceb90a61bb8844a3182c1352",
+      "latest_sha256": "ac20d25fe753be6b68fa17fb164fc09d277b6d39ceb90a61bb8844a3182c1352",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "5bf188b907bd3c8e488cf710e2da76e4248875803bc936fbb9f495709969ac56"
+    },
+    {
+      "source_path": "test_notify.py",
+      "target_path": "test_notify.py",
+      "source_blob": "c66090303abf4141196953175b7038f372e88c9f",
+      "source_sha256": "742c4757581301bb84f614fe13729c7a9fd74cf0747a9687191f68f6e0cb3437",
+      "latest_sha256": "742c4757581301bb84f614fe13729c7a9fd74cf0747a9687191f68f6e0cb3437",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "ad1d8c9c827c1b75aac3b4b9f671dc95a1200739e7b348c0833345fae668816c"
+    },
+    {
+      "source_path": "test_run.py",
+      "target_path": "test_run.py",
+      "source_blob": "64fdabeba911719814791b0628cfa340f7790880",
+      "source_sha256": "1b84fdd3cda12e707e1523b53e3eb36d3b707a4ef50fe4a946a46221291e5289",
+      "latest_sha256": "26b8ea636bf285bc39265b649055393a5c4cb13d216439b2c022977b9450d61a",
+      "bytes_identical": false,
+      "redactions": [
+        {
+          "category": "personal_path",
+          "line": 7
+        }
+      ],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "98d555731484cfef522a5de280a865ae52e8f4903bd99ac23913ddeb51925437"
+    },
+    {
+      "source_path": "tool_generate_training_data.py",
+      "target_path": "tool_generate_training_data.py",
+      "source_blob": "fef6b62d9cdbcb6f38c610b8f95b25b6e5c9a4ba",
+      "source_sha256": "dff257549a32326a43f7b009e1132c31f825fb3a3195d68e337535e71fe418d4",
+      "latest_sha256": "dff257549a32326a43f7b009e1132c31f825fb3a3195d68e337535e71fe418d4",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "a24b66d37ce22933742784261362439476ce09d8c0a2f3cea9b2cc58973fd30e"
+    },
+    {
+      "source_path": "tool_normalize_data_raw.py",
+      "target_path": "tool_normalize_data_raw.py",
+      "source_blob": "823a95c5a4be6e97eeb050edb243a5bcab2983ab",
+      "source_sha256": "3ee7b800bada0368624d1ce13d9d58e11ac6b3630f7aa0447729f18ac5ddc2c2",
+      "latest_sha256": "3ee7b800bada0368624d1ce13d9d58e11ac6b3630f7aa0447729f18ac5ddc2c2",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "6acd792810d23d88292fe97e1e4fb8835bbb79a8ea342ca756420e6b8061dd3e"
+    },
+    {
+      "source_path": "tool_select_to_raw.py",
+      "target_path": "tool_select_to_raw.py",
+      "source_blob": "952124aade1f31a011c752ea874effd5ad85589b",
+      "source_sha256": "22d3e5c301507c74567896bf86e6f6f2e305e1f8df4efe696c646e15a2e87b41",
+      "latest_sha256": "22d3e5c301507c74567896bf86e6f6f2e305e1f8df4efe696c646e15a2e87b41",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "3bbd03640d6dcb42e6c1c41d930d620d163c1fa92201937b5a32cb5c77dfa3e5"
+    },
+    {
+      "source_path": "train_from_ohlcv.py",
+      "target_path": "train_from_ohlcv.py",
+      "source_blob": "a8b1741e7160b58856b7c0c2f5bc2edf35ade783",
+      "source_sha256": "770af15e7fbd848daec9f4ccbf338d432e630b61ac443937fe3824e2b503d05d",
+      "latest_sha256": "770af15e7fbd848daec9f4ccbf338d432e630b61ac443937fe3824e2b503d05d",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "be78090c566c19670ddde5338ffe43ade8afc960a34511693eee8a78104705b7"
+    },
+    {
+      "source_path": "train_individual.py",
+      "target_path": "train_individual.py",
+      "source_blob": "0ede13ca367b40527e472c5bf758b5b256d6a3f7",
+      "source_sha256": "1a4e7dc0b839eabb5877be40d604e125e545a3ce55cc49d3efdad0aa5710a91d",
+      "latest_sha256": "1a4e7dc0b839eabb5877be40d604e125e545a3ce55cc49d3efdad0aa5710a91d",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "3566190303d319eb2446a0ebc567b52724eac059aab58786a3f2dcd5426e28c3"
+    },
+    {
+      "source_path": "train_policy_online.py",
+      "target_path": "train_policy_online.py",
+      "source_blob": "8d5a4e1f4326d69a562916b6e8aaa2638cfd3528",
+      "source_sha256": "e2c814589f7f1d3689ac3cef2552dcb9a38b090acb0e06bb15aa78f08d1c43e6",
+      "latest_sha256": "e2c814589f7f1d3689ac3cef2552dcb9a38b090acb0e06bb15aa78f08d1c43e6",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "993bc91dd1ba43238a86d0d9de2395781ed958c5f97505348975b4d102f3acd1"
+    },
+    {
+      "source_path": "train_universal.py",
+      "target_path": "train_universal.py",
+      "source_blob": "d1395018431e41990c3a2b14e01fbccb2c22c78b",
+      "source_sha256": "0d88645d4d70dcc767c3aa91f6d506cc39b05a3ff57eb8a9bcdd41bec86cf9c9",
+      "latest_sha256": "0d88645d4d70dcc767c3aa91f6d506cc39b05a3ff57eb8a9bcdd41bec86cf9c9",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "5a6e6b7c507286008ac322d36dd9cb00efd2a5b762625d4e633b4648230081b9"
+    },
+    {
+      "source_path": "utils_common.py",
+      "target_path": "utils_common.py",
+      "source_blob": "e049a6bf8033ef6d181772a4c0b57b4266d17e99",
+      "source_sha256": "4e7f8d8528235d3df680b26685b89d126fb781a82f4ca93b628c1c1690802087",
+      "latest_sha256": "4e7f8d8528235d3df680b26685b89d126fb781a82f4ca93b628c1c1690802087",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "d85f96e8b5c34bc2edfa5ccdced25ff3979ca9a4256e691d463cde9c68470195"
+    },
+    {
+      "source_path": "utils_compile_raw.py",
+      "target_path": "utils_compile_raw.py",
+      "source_blob": "cc99c0c22d4b6aa69016bedad4eb51086d225dce",
+      "source_sha256": "3018886e653ff236ee80a893cb83a0457921feabb5bb69309f3b6a43098e9abf",
+      "latest_sha256": "3018886e653ff236ee80a893cb83a0457921feabb5bb69309f3b6a43098e9abf",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "aca21f08edc9d0ed0f643492c08d8d3810822cc7f71e36244455519cb7e6821b"
+    },
+    {
+      "source_path": "utils_import_archive.py",
+      "target_path": "utils_import_archive.py",
+      "source_blob": "22b12d5c3b62b8e113c1e2e451a076fa8b57c4c3",
+      "source_sha256": "7bb722315e1909327d89acabf7a764591ce39c8023cf005f23c4134ff9badd40",
+      "latest_sha256": "7bb722315e1909327d89acabf7a764591ce39c8023cf005f23c4134ff9badd40",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "d1d9537fa456909ab7e9f00bdf519ab14ef720e1d7918e49e4b704b6cdc64e8e"
+    },
+    {
+      "source_path": "verify_v22.py",
+      "target_path": "verify_v22.py",
+      "source_blob": "e01bad6d6c7ea18d704c7661d0ae2c6b18b26e04",
+      "source_sha256": "a42700fc4298439f94af43f53f9622074654039d0323b4ec3fe9f1c403d84808",
+      "latest_sha256": "a42700fc4298439f94af43f53f9622074654039d0323b4ec3fe9f1c403d84808",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "16fc0605766977e5c5873aa0cdc37e7e7c9bb59083427f2021ba296294b2b6ae"
+    },
+    {
+      "source_path": "wait_840.py",
+      "target_path": "wait_840.py",
+      "source_blob": "f6e31cac80fb9a8d261a94d276ee5dcfc845a7a6",
+      "source_sha256": "17a2e116c9b2ba4fe0154d724b7164007812f57ff4710367bac6f5ca86972b99",
+      "latest_sha256": "17a2e116c9b2ba4fe0154d724b7164007812f57ff4710367bac6f5ca86972b99",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "be0c5d62526f9fa4d1902909cb5d24208689b2774a325087b9be4e630d0b1d3c"
+    },
+    {
+      "source_path": "wait_time.py",
+      "target_path": "wait_time.py",
+      "source_blob": "eb350a83ac8153ffd0617b06a4d81bc56eb727d4",
+      "source_sha256": "3d91f3c52585bb9df32648c5bd7ef856be8038dc191e9cae091b1383e576cf21",
+      "latest_sha256": "3d91f3c52585bb9df32648c5bd7ef856be8038dc191e9cae091b1383e576cf21",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "4b23edb22d7a73ae53f2cdd0b70ecfb89cb4933028c6f52c41aa52dd059471ab"
+    },
+    {
+      "source_path": "wakeup.py",
+      "target_path": "wakeup.py",
+      "source_blob": "4492cb9dc0a614e69763cf877e0fa0f22ab68daf",
+      "source_sha256": "97158e4420a3386165fa1c15665609a23bd31bdefd11029adc7b2d260a3eb37a",
+      "latest_sha256": "97158e4420a3386165fa1c15665609a23bd31bdefd11029adc7b2d260a3eb37a",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "2a13d8f35df714fcbeb2c1f831cee32eb351fff77f86bbe3b93baa5e7a5bfe6a"
+    },
+    {
+      "source_path": "yesterday_report_complete.py",
+      "target_path": "yesterday_report_complete.py",
+      "source_blob": "a3949fcb021ed92370f637bb9bba8f540e7d75d9",
+      "source_sha256": "ab9e3a693eeae7029d12367092d4c5e2d1ba1c913eac879b2953cb2d132530ff",
+      "latest_sha256": "ab9e3a693eeae7029d12367092d4c5e2d1ba1c913eac879b2953cb2d132530ff",
+      "bytes_identical": true,
+      "redactions": [],
+      "preservation": "original path and logic structure retained",
+      "logic_shape_sha256": "52877c125b09466469c3a6deb6645124a8405b0532be6d6b09a1b27fbef65c68"
+    }
+  ],
+  "meaning": "Original paths retained. Structural AST unchanged; specified credential/path string values redacted. Byte hashes record every source."
+}

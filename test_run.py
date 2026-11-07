@@ -4,7 +4,7 @@ import pyautogui
 from auth_login import auto_input_otp
 
 # パスはあなたの環境に合わせてください
-KABU_STATION_PATH = r"C:\Users\PUBLIC_USER\AppData\Local\kabuStation\KabuS.exe"
+KABU_STATION_PATH = r"C:\Users\<LOCAL_USER>\AppData\Local\kabuStation\KabuS.exe"
 
 def test_sequence():
     print("🧪 深夜の動作テストを開始します...")

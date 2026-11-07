@@ -13,8 +13,8 @@ from googleapiclient.discovery import build
 # ==========================================
 
 # 1. Kabuステーションの場所 (さっき調べたパスに書き換えてください！)
-# 例: r"C:\Users\PUBLIC_USER\AppData\...\KabuStation.exe"
-KABU_STATION_PATH = r"C:\Users\PUBLIC_USER\AppData\Local\kabuStation\KabuS.exe"
+# 例: r"C:\Users\<LOCAL_USER>\AppData\...\KabuStation.exe"
+KABU_STATION_PATH = r"C:\Users\<LOCAL_USER>\AppData\Local\kabuStation\KabuS.exe"
 
 # 2. Gmail設定 (ファイル名は変えないでOK)
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']

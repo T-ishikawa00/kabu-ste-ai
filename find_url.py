@@ -1,7 +1,7 @@
 import requests
 
 # ★API Key
-MY_API_KEY = "REDACTED"
+MY_API_KEY = ""
 
 def find_correct_url():
     print("🔍 J-Quants 1分足の場所を探せ！")

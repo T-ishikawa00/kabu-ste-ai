@@ -34,7 +34,7 @@ FINAL_COUNT = 7  # 最終選定数
 
 # kabuステーションAPI
 API_BASE = "http://localhost:18080/kabusapi"
-API_PASSWORD = "REDACTED"
+API_PASSWORD = ""
 
 # 判定基準 (1次審査)
 MIN_OBI = 0.45           # 最低買い板比率

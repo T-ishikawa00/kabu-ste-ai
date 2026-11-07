@@ -108,8 +108,8 @@ def generate_beautiful_config(current_data, new_daily_codes, fixed_code_list, da
 # ==========================================
 api:
   base: http://localhost:18080/kabusapi
-  api_password: "REDACTED"
-  trade_password: "REDACTED"
+  api_password: ""
+  trade_password: ""
   timeout_get_sec: 10
   timeout_post_sec: 10
 
@@ -320,7 +320,7 @@ router:
 # 通知設定
 # ==========================================
 notification:
-  discord_webhook_url: "REDACTED"
+  discord_webhook_url: ""
   line_notify_token: ""
   notify_on_startup: true
   notify_on_entry: true

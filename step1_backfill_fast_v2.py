@@ -17,7 +17,7 @@ from datetime import datetime
 # ★API Key (リフレッシュトークン)
 # ==========================================
 # もし config.yaml や 環境変数で設定していない場合は、ここに入れてください
-REFRESH_TOKEN = "REDACTED"
+REFRESH_TOKEN = ""
 
 DATA_DIR = "data_archive_daily"
 CONFIG_FILE = "config.yaml"

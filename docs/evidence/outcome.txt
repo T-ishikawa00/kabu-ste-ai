@@ -1,0 +1,1 @@
+Two clean stdlib-only venvs passed; source audited without imports; simulation output reproduced.

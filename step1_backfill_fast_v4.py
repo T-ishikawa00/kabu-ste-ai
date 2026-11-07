@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # ★API Key (リフレッシュトークン)
 # ==========================================
-REFRESH_TOKEN = "REDACTED"
+REFRESH_TOKEN = ""
 
 DATA_DIR = "data_archive_daily"
 BASE_URL = "https://api.jquants.com/v2"

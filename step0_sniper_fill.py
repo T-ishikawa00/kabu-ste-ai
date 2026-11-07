@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # API Key
 # ==========================================
-MY_API_KEY = "REDACTED"
+MY_API_KEY = ""
 
 DATA_DIR = "data"
 BASE_URL = "https://api.jquants.com/v2"

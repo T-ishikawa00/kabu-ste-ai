@@ -1,0 +1,38 @@
+{
+  "created": "2026-11-07",
+  "scope": "Latest source static inspection, fingerprinted pure-function tests and newly written auxiliary Mock; no live system execution",
+  "source_files": 91,
+  "legacy_python_ast_parsed": 87,
+  "legacy_byte_identical": 77,
+  "legacy_value_redacted": 14,
+  "legacy_redacted_string_spans": 17,
+  "tests_per_environment": 23,
+  "clean_venvs": 2,
+  "python": "3.12.3",
+  "bootstrap_pip": "24.0",
+  "third_party_test_dependencies": [],
+  "forbidden_attempts_normal": 0,
+  "intentional_controls_rejected": 6,
+  "allowed_pure_functions": 7,
+  "dashboard_node_check": "PASS (syntax only)",
+  "node_version": "v24.14.0",
+  "proof_files": [
+    "source-audit.json",
+    "guard-controls.json",
+    "tests-one.txt",
+    "tests-two.txt",
+    "simulation-one.txt",
+    "simulation-two.txt",
+    "simulation-arbitrary.txt",
+    "isolation.txt",
+    "python.txt",
+    "pip.txt",
+    "outcome.txt"
+  ],
+  "limits": [
+    "Historical source module constructors/imports not executed",
+    "Models/pickle not loaded",
+    "API/authentication/notifications/live orders not attempted",
+    "No live profitability, continuity, model compatibility or operational safety assertion"
+  ]
+}

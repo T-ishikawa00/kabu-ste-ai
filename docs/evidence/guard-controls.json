@@ -1,0 +1,1 @@
+{"intentional_controls_blocked": 6, "categories": ["network:socket.connect", "network:socket.connect", "process:subprocess.Popen", "real_configuration_or_credentials", "private_asset_read", "forbidden_import:controller"]}

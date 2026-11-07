@@ -1,0 +1,54 @@
+{
+  "scope": "Only reviewed pure function AST nodes; original modules/classes never imported or initialized",
+  "functions": [
+    {
+      "path": "features.py",
+      "qualified_name": "_norm",
+      "line": 4,
+      "end_line": 7,
+      "ast_sha256": "854a25254a3962d374a038060bb26b2715a40768417360b554ce1857eddcaa3b"
+    },
+    {
+      "path": "market_temperature.py",
+      "qualified_name": "MarketTemperature._scale01",
+      "line": 27,
+      "end_line": 34,
+      "ast_sha256": "fa7a0895846991aa485d772599dc99b3efbef92b5359edd50c7424d90852aa3a"
+    },
+    {
+      "path": "market_temperature.py",
+      "qualified_name": "MarketTemperature.compute",
+      "line": 36,
+      "end_line": 53,
+      "ast_sha256": "65ae5b4925f064bf6b79cb982aa3bd2e6165e8bd1cf85352ccff97427fbd4746"
+    },
+    {
+      "path": "risk_sizer.py",
+      "qualified_name": "RiskSizer._features",
+      "line": 47,
+      "end_line": 57,
+      "ast_sha256": "43c33f457891562f3fc217eb89fc5b35e923eb2cb645d16d1d6fd5c4b30de4c5"
+    },
+    {
+      "path": "risk_sizer.py",
+      "qualified_name": "RiskSizer.size_for_strategy",
+      "line": 88,
+      "end_line": 91,
+      "ast_sha256": "b8abf460c4828a9953c11ade5aa7f86d3715e685f2aabce059cd194a224f6f65"
+    },
+    {
+      "path": "step2_env.py",
+      "qualified_name": "TradingEnv._calc_realized_pnl",
+      "line": 439,
+      "end_line": 446,
+      "ast_sha256": "ac16e551d90e64060e54541ed6ed1d73432d07ee57e06b3e30336bf4c818e20a"
+    },
+    {
+      "path": "strategy_router.py",
+      "qualified_name": "StrategyRouter.decide",
+      "line": 87,
+      "end_line": 115,
+      "ast_sha256": "6c00ee44f81561a4c1d092506f8114d57aa8476abca3a965fb89185004956f34"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import pandas as pd
 import requests
 
 # J-Quants API
-MY_API_KEY = "REDACTED"
+MY_API_KEY = ""
 BASE_URL = "https://api.jquants.com/v2"
 DATA_DIR = "data_archive_daily"
 

@@ -2,7 +2,7 @@ import requests
 import json
 
 # ★ここにAPI Key
-MY_API_KEY = "REDACTED"
+MY_API_KEY = ""
 
 def test_connection():
     print("🔍 J-Quants 接続診断")
