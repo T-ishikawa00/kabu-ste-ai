@@ -1,0 +1,22 @@
+{
+  "recordType": "OWNER_BOT_TRADE_RECORD",
+  "publicationOfOwnTradesApproved": true,
+  "sourceCommit": "428f5d002c4a921d9ee8a5a3db8d983ac91ebed2",
+  "sourcePath": "logs/trades_20251216.jsonl",
+  "sourceBlob": "db92308d2e58b27a36d00766c80afdcea82e9b89",
+  "sha256": "8a4c5962e3d81a6a6b31fcecdebf2d019767713853288fc02c8dec81412a9de2",
+  "rows": 4,
+  "fields": [
+    "ts",
+    "code",
+    "strategy",
+    "reason",
+    "pnl_ticks",
+    "pnl_jpy",
+    "slippage_ticks"
+  ],
+  "originalBytesPreserved": true,
+  "brokerExecutionOrFinalProfitReconciled": false,
+  "notThirdPartyQuoteDataset": true,
+  "notPerformanceClaim": true
+}

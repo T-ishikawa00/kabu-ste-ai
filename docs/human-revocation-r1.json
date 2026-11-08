@@ -1,0 +1,13 @@
+{
+  "status": "HUMAN_CONFIRMED_REVOKED",
+  "authority": "Owner instruction for GitHub public preparation R1",
+  "groups": [
+    "broker-api-and-trading-passwords",
+    "discord-webhook",
+    "j-quants-authentication",
+    "google-oauth"
+  ],
+  "testedByCodex": false,
+  "credentialsIncluded": false,
+  "remoteUpdated": false
+}

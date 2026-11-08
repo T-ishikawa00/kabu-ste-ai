@@ -1,0 +1,4 @@
+{"ts": "2025-12-16T09:27:32+09:00", "code": "9509", "strategy": "MINI_SWING", "reason": "COND", "pnl_ticks": -2.0, "pnl_jpy": -300.0, "slippage_ticks": null}
+{"ts": "2025-12-16T12:37:53+09:00", "code": "9501", "strategy": "MINI_SWING", "reason": "COND", "pnl_ticks": 0.2999999999999545, "pnl_jpy": 299.9999999999545, "slippage_ticks": null}
+{"ts": "2025-12-16T12:43:03+09:00", "code": "9501", "strategy": "MINI_SWING", "reason": "COND", "pnl_ticks": 0.20000000000004547, "pnl_jpy": 200.00000000004547, "slippage_ticks": null}
+{"ts": "2025-12-16T13:20:44+09:00", "code": "9501", "strategy": "MINI_SWING", "reason": "COND", "pnl_ticks": -1.7000000000000455, "pnl_jpy": -1700.0000000000455, "slippage_ticks": null}
