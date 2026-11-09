@@ -146,3 +146,7 @@ sh tools/verify_isolated.sh . <空の結果ディレクトリ>
 - [バックアップと出自](docs/backup-and-provenance.md)
 
 ソース対応の全体表は [docs/source-map.json](docs/source-map.json) です。履歴保全と復元情報は[バックアップと出自](docs/backup-and-provenance.md)を参照してください。
+
+## 公開準備 R2
+
+作者・committerメールの公開承認等の最新確認と、リモート適用の範囲は[公開準備R2](docs/PUBLICATION_PREPARATION_R2.md)に記録しています。R1の本人確認待ちは、この更新を反映して解消しています。GitHubへの適用・Public化は別工程です。

@@ -1,0 +1,11 @@
+{
+  "stage": "R2_LOCAL_CANDIDATE_REMOTE_MIGRATION_PENDING",
+  "ownerConfirmedAuthorAndCommitterEmailsMayBePublished": true,
+  "materials": "NOT_APPLICABLE_TO_ADDITIONAL_MATERIAL_CONFIRMATION",
+  "credentialStatus": "HUMAN_CONFIRMED_REVOKED",
+  "credentialStatusScope": "Kabu broker/Discord/J-Quants/Google OAuth only; no live validity test",
+  "emailHistoryRewritten": false,
+  "ossNoticesRetained": true,
+  "remoteHistoryUpdateExecuted": false,
+  "repositoryMadePublic": false
+}
