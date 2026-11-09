@@ -4,9 +4,9 @@
 
 > **安全上の注意:** このリポジトリには実注文へつながるコードがあります。READMEの閲覧や安全用コマンド以外で `main.py`、`controller_ws.py`、学習・バックテストスクリプトを直接起動しないでください。認証情報や実口座を設定して試すことも禁止です。現在の確認はソースの静的読解と隔離された検証に限られ、実注文や本番動作を確認したものではありません。
 
-## 公開準備候補 R1
+## 公開経緯と保存状態
 
-既存の `T-ishikawa00/kabu-ste-ai` を維持するA案に基づく、隔離ローカルの履歴整理候補です。GitHub原本はPrivateのままで、push・Public化はしていません。証券/取引、Discord、J-Quants、Google OAuthの資格情報は本人が失効済みと確認し、`HUMAN_CONFIRMED_REVOKED` として記録しています。実接続による検査・再発行は行っていません。詳細と残る承認事項は[公開準備の状態](docs/publication-preparation-r1.md)を参照してください。
+既存の `T-ishikawa00/kabu-ste-ai` を維持するA案に基づき、履歴整理後、2026年11月9日に同リポジトリをPublic化しました。R1時点では隔離ローカルの公開準備候補として検証し、GitHub原本はPrivateでした。証券/取引、Discord、J-Quants、Google OAuthの資格情報は本人が失効済みと確認し、`HUMAN_CONFIRMED_REVOKED` として記録しています。実接続による検査・再発行は行っていません。通常ブランチ・タグの履歴整理は確認済みですが、GitHubが保持する旧PR参照や過去のオブジェクトの完全消去は確認されていません。経緯は[公開準備R1](docs/publication-preparation-r1.md)と[公開準備R2](docs/PUBLICATION_PREPARATION_R2.md)を参照してください。
 
 ## プロジェクトの目的
 
@@ -16,7 +16,7 @@
 
 ## リポジトリの構成
 
-保存版にはroot直下の実装と複数世代の学習・補助スクリプトがあります。旧ソースパス91件（Python 87、BAT 3、`dashboard.html` 1）は最新ツリーに保持しました。77ファイルは元blobと同一で、14ファイルの資格情報候補・個人作業先の文字列17か所を最新版から除去しています。10,316件の生成物・ログ・データ・モデル・実設定・資格情報等は最新版の追跡対象から外し、原本・バックアップの保全とは分けています。これは前回の最新版整理時点の記録であり、過去履歴からの除去を意味しません。今回の隔離候補で行った履歴除去は別途記録しています。詳細は[バックアップと出自](docs/backup-and-provenance.md)へ。
+保存版にはroot直下の実装と複数世代の学習・補助スクリプトがあります。旧ソースパス91件（Python 87、BAT 3、`dashboard.html` 1）は最新ツリーに保持しました。77ファイルは元blobと同一で、14ファイルの資格情報候補・個人作業先の文字列17か所を最新版から除去しています。10,316件の生成物・ログ・データ・モデル・実設定・資格情報等は最新版の追跡対象から外し、原本・バックアップの保全とは分けています。これは前回の最新版整理時点の記録であり、過去履歴からの除去を意味しません。公開準備段階で実施した履歴整理は別途記録しています。詳細は[バックアップと出自](docs/backup-and-provenance.md)へ。
 
 元のスクリプト配置を維持しています。root importや相対パス、作業ディレクトリを変えると実装への参照が壊れる可能性があるためです。分類一覧は[ソースガイド](docs/source-guide.md)を参照してください。
 
@@ -140,7 +140,7 @@ sh tools/verify_isolated.sh . <空の結果ディレクトリ>
 - [リスクと注文](docs/risk-and-orders.md) — entry/exit条件、Broker、証券API
 - [依存関係](docs/dependencies.md) — ソースから確認したimportと再現性の制約
 - [制約と未検証事項](docs/limitations.md) — 主張できる範囲と未確認点
-- [セキュリティ](docs/security.md) — 秘密情報、履歴、公開前の課題
+- [セキュリティ](docs/security.md) — 秘密情報、履歴、公開準備時点の課題
 - [再現手順](docs/reproduction.md)
 - [検証手順](docs/verification.md)
 - [バックアップと出自](docs/backup-and-provenance.md)
@@ -149,4 +149,4 @@ sh tools/verify_isolated.sh . <空の結果ディレクトリ>
 
 ## 公開準備 R2
 
-作者・committerメールの公開承認等の最新確認と、リモート適用の範囲は[公開準備R2](docs/PUBLICATION_PREPARATION_R2.md)に記録しています。R1の本人確認待ちは、この更新を反映して解消しています。GitHubへの適用・Public化は別工程です。
+作者・committerメールの公開承認と履歴整理の経緯は[公開準備R2](docs/PUBLICATION_PREPARATION_R2.md)に記録しています。R1の本人確認待ちは解消済みです。Privateでの移行検証を経て、2026年11月9日に既存のGitHubリポジトリをPublic化しました。
